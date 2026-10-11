@@ -19,10 +19,13 @@ Cada evento de telemetría representa una operación atribuible a una organizaci
 - **Imagen**: registrar cantidad de imágenes y costo/cuota del proveedor. No convertir imágenes arbitrariamente en tokens.
 - **Video**: registrar duración, créditos u otras unidades en `provider_units` + `provider_unit_name`. No comparar unidades físicas distintas.
 - **Iteraciones**: `attempts` cuenta solicitudes/intententos; la clave `source_event_id` evita duplicar consumos durante reintentos de webhook.
+- **Reintentos**: la captura es insert-once por organización, proveedor y `source_event_id`. Un duplicado devuelve el ID original sin reemplazar costos ni resultados ya aprobados. Las conciliaciones de facturación necesitan un flujo explícito separado; no se deben enviar como una nueva captura del mismo evento.
 - **Eficiencia**: `units_generated` y `units_approved` (un resultado aprobado se registra luego de revisión humana). El costo por aprobado = gasto conocido / aprobaciones en el período.
 - **Ahorro de tiempo**: opcional, solo cuando el área lo mide o estima expresamente; no equivale por sí solo a rentabilidad financiera.
 - **Costo por resultado**: indicador de proceso, no de desempeño individual; sin aprobaciones se muestra sin valor.
 - **Presupuesto**: en `ai_usage_budgets` por organización, área y mes. Los períodos analíticos y los límites mensuales se calculan por separado.
+- **Cobertura**: la lectura solicita el conteo exacto bajo los mismos filtros y permisos. El snapshot distingue `complete`, `partial` y `unknown`; no depende de recibir exactamente 2.000 filas, porque Data API puede aplicar un límite menor. Con cobertura parcial o desconocida se muestran mínimos conocidos y tasas de la muestra, sin confirmar presupuesto disponible ni costo por aprobado total.
+- **Precisión presupuestaria**: los umbrales se comparan en micro-USD, acorde con `numeric(18,6)`. El porcentaje se redondea sólo para presentación. Un límite de USD 0 es un presupuesto válido, distinto de no tener presupuestos configurados.
 
 No registrar prompts, respuestas, archivos ni contenido sensible en estos eventos: solo identificadores y métricas agregables.
 
@@ -57,6 +60,8 @@ await recordAiUsageOutcome({
 });
 ```
 
+En `recordAiUsageOutcome`, omitir `minutes_saved` conserva el valor anterior. Enviar `null` explícito lo elimina. El replay de captura tampoco modifica ese valor.
+
 El ejemplo es un contrato, no un endpoint de captura conectado hoy. Los conectores reales deberán rellenar área, actividad, cliente, usuario y proveedor desde contexto confiable de ejecución. Si la fuente no permite atribuir una generación a un área o proyecto, clasificarla explícitamente como `Sin atribuir` hasta conciliación.
 
 ## Implementación y permisos
@@ -68,7 +73,7 @@ El ejemplo es un contrato, no un endpoint de captura conectado hoy. Los conector
 5. Integrar primero OpenAI/Anthropic/Gemini en agentes; agregar después imagen y video con sus tarifas y unidades reales.
 6. Registrar un evento exitoso, un evento de costo desconocido, una aprobación posterior, un reintento idempotente y un intento de lectura no autorizado.
 7. Confirmar diferencias entre costos estimados y facturas reales antes de mostrar cifras como `facturadas`.
-8. Implementar resúmenes paginados o agregación SQL cuando el volumen supere los 2.000 eventos recientes por consulta; la UI ya advierte cobertura parcial.
+8. Implementar resúmenes paginados o agregación SQL para cubrir todo el período cuando se supere el límite de Data API o de la consulta. Mientras tanto, la UI informa la cobertura y evita conclusiones de presupuesto y eficiencia basadas en una muestra incompleta.
 9. Añadir alertas automáticas/umbrales de gasto y aprobaciones gerenciales, sin accionar recortes automáticamente.
 
 ## QA y criterios de aceptación
@@ -82,3 +87,12 @@ El ejemplo es un contrato, no un endpoint de captura conectado hoy. Los conector
 - Los resultados aprobados se registran después de validación y nunca exceden los generados.
 - No es posible insertar telemetría como `anon` o `authenticated` usando el Data API.
 - El módulo respeta la identidad Avans: Figtree, negro, blanco y coral #F86E4F; escritorio/móvil.
+
+## Regresiones de fiabilidad (2026-10-11)
+
+Ejecutar `npm ci`, `npm test`, `npm run typecheck` y `npm run build`.
+
+`npm test` usa Node Test Runner, TypeScript y React SSR con los paquetes del lockfile. El recorder usa el cliente Supabase real con un adaptador HTTP en memoria: verifica `resolution=ignore-duplicates`, respuesta vacía del duplicado y búsqueda por la clave idempotente completa. Las lecturas de sesión/cobertura se simulan y no ejecutan SQL.
+
+La suite cubre replay tras aprobación, duplicados concurrentes, separación por organización/proveedor, campos opcionales, aprobaciones inválidas, umbrales y sumas decimales, presupuesto cero, costos desconocidos, cobertura parcial/desconocida, tokens por modalidad, acceso restringido y fallas de fuente. No usa credenciales ni datos reales y no valida RLS, migraciones, integraciones o QA visual del navegador.
+

@@ -33,7 +33,7 @@ export async function getAiUsageSnapshot(): Promise<AiUsageSnapshot> {
     const monthStart = new Date().toISOString().slice(0, 7) + "-01";
     const [usage, budgets] = await Promise.all([
       db.from("ai_usage_events")
-        .select("id,occurred_at,area,activity,provider,model,modality,input_tokens,output_tokens,units_generated,units_approved,attempts,cost_usd,minutes_saved,cost_source")
+        .select("id,occurred_at,area,activity,provider,model,modality,input_tokens,output_tokens,units_generated,units_approved,attempts,cost_usd,minutes_saved,cost_source", { count: "exact" })
         .eq("organization_id", membership.organization_id)
         .gte("occurred_at", start).order("occurred_at", { ascending: false }).limit(2000),
       db.from("ai_usage_budgets")
@@ -43,15 +43,26 @@ export async function getAiUsageSnapshot(): Promise<AiUsageSnapshot> {
     if (usage.error || budgets.error) {
       return { mode: "unavailable", events: [], budgets: [], note: "La telemetría todavía no está disponible. Revisá la migración y la conexión Supabase." };
     }
+    const returned = usage.data?.length ?? 0;
+    const total = typeof usage.count === "number" && Number.isSafeInteger(usage.count) && usage.count >= returned ? usage.count : null;
+    const coverage = {
+      status: total === null ? "unknown" as const : total > returned ? "partial" as const : "complete" as const,
+      returned_events: returned,
+      total_events: total,
+    };
     return {
       mode: "live",
       events: (usage.data ?? []) as AiUsageEvent[],
       budgets: (budgets.data ?? []) as AiUsageBudget[],
-      note: (usage.data?.length ?? 0) === 2000
-        ? "Cobertura parcial: se muestran los últimos 2.000 eventos. Requiere agregación paginada."
-        : "Datos registrados en Avans OS. Los costos estimados se identifican separadamente de los facturados.",
+      coverage,
+      note: coverage.status === "partial"
+        ? `Cobertura parcial: se muestran ${returned} de ${total} eventos del período. Los importes son mínimos conocidos; no permiten confirmar el presupuesto ni la eficiencia total.`
+        : coverage.status === "unknown"
+          ? "Cobertura sin verificar: no se pudo confirmar el total de eventos. Los importes son mínimos conocidos."
+          : "Datos registrados en Avans OS. Los costos estimados se identifican separadamente de los facturados.",
     };
   } catch {
     return { mode: "unavailable", events: [], budgets: [], note: "No se pudo consultar la base de datos. No se muestran importes sin verificar." };
   }
 }
+
