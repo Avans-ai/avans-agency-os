@@ -18,11 +18,17 @@ export type AiUsageEvent = {
 };
 
 export type AiUsageBudget = { area: string; monthly_limit_usd: number };
+export type AiUsageCoverage = {
+  status: "complete" | "partial" | "unknown";
+  returned_events: number;
+  total_events: number | null;
+};
 export type AiUsageSnapshot = {
   mode: "demo" | "live" | "unavailable" | "forbidden";
   events: AiUsageEvent[];
   budgets: AiUsageBudget[];
   note: string;
+  coverage?: AiUsageCoverage;
 };
 
 const dayAgo = (days: number) => new Date(Date.now() - days * 86400000).toISOString();
@@ -40,6 +46,7 @@ const sample = (
 export function makeDemoSnapshot(): AiUsageSnapshot {
   return {
     mode: "demo",
+    coverage: { status: "complete", returned_events: 16, total_events: 16 },
     note: "Vista de diseño: cifras ficticias. Sin conexión a facturación de proveedores.",
     budgets: [
       { area: "Diseño y contenido", monthly_limit_usd: 450 },
@@ -68,3 +75,4 @@ export function makeDemoSnapshot(): AiUsageSnapshot {
     ],
   };
 }
+

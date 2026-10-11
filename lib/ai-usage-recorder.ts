@@ -60,17 +60,29 @@ export async function recordAiUsage(event: UsageCapture): Promise<string> {
   }
   if ((event.units_approved ?? 0) > (event.units_generated ?? 0)) throw new Error("Approved results exceed generated results");
 
-  const { data, error } = await adminDb().from("ai_usage_events").upsert({
+  const db = adminDb();
+  // Captures are insert-once. A late provider retry must not reset human outcomes.
+  const { data, error } = await db.from("ai_usage_events").upsert({
     ...event,
     input_tokens: event.input_tokens ?? 0,
     output_tokens: event.output_tokens ?? 0,
     attempts: event.attempts ?? 1,
     units_generated: event.units_generated ?? 0,
     units_approved: event.units_approved ?? 0,
-  }, { onConflict: "organization_id,provider,source_event_id" }).select("id").single();
+  }, { onConflict: "organization_id,provider,source_event_id", ignoreDuplicates: true }).select("id").maybeSingle();
 
-  if (error || !data?.id) throw new Error(`AI usage capture failed: ${error?.message ?? "missing id"}`);
-  return data.id as string;
+  if (error) throw new Error(`AI usage capture failed: ${error.message}`);
+  if (data?.id) return data.id as string;
+
+  // ON CONFLICT DO NOTHING returns no row. Resolve the existing ID using the
+  // complete idempotency key, including organization, without updating it.
+  const { data: existing, error: existingError } = await db.from("ai_usage_events")
+    .select("id")
+    .eq("organization_id", event.organization_id)
+    .eq("provider", event.provider)
+    .eq("source_event_id", event.source_event_id).single();
+  if (existingError || !existing?.id) throw new Error(`AI usage capture failed: ${existingError?.message ?? "missing id"}`);
+  return existing.id as string;
 }
 
 /** Update quality only after human validation; do not award approval at generation time. */
@@ -88,7 +100,11 @@ export async function recordAiUsageOutcome(args: {
   if (readError || !event) throw new Error("AI usage event not found");
   if (args.approved > event.units_generated) throw new Error("Approved results exceed generated results");
   const { error } = await adminDb().from("ai_usage_events")
-    .update({ units_approved: args.approved, minutes_saved: args.minutes_saved ?? null })
+    .update({
+      units_approved: args.approved,
+      ...(args.minutes_saved !== undefined ? { minutes_saved: args.minutes_saved } : {}),
+    })
     .eq("organization_id", args.organization_id).eq("id", args.usage_event_id);
   if (error) throw new Error(`AI usage outcome failed: ${error.message}`);
 }
+
