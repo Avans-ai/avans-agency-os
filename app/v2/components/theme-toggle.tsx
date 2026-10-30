@@ -25,12 +25,17 @@ function subscribe(onChange: () => void) {
   };
 }
 
-export function ThemeToggle({ className = "avans-theme-toggle" }: { className?: string }) {
+/** Applies the saved theme on every /v2 page, even when no toggle is mounted. */
+export function ThemeSync() {
   const theme = useSyncExternalStore<Theme>(subscribe, readTheme, () => "light");
-
   useEffect(() => {
     document.documentElement.dataset.avansTheme = theme;
   }, [theme]);
+  return null;
+}
+
+export function ThemeToggle({ className = "avans-theme-toggle" }: { className?: string }) {
+  const theme = useSyncExternalStore<Theme>(subscribe, readTheme, () => "light");
 
   function toggle() {
     const next: Theme = theme === "light" ? "dark" : "light";

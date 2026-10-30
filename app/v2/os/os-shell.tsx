@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { ThemeToggle } from "../components/theme-toggle";
+import { ThemeSync, ThemeToggle } from "../components/theme-toggle";
 import { osAreas, osSettingsItems, type OsNavArea } from "../navigation";
 import { AvansIcon, AvansIsotipo, AvansWordmark } from "./brand";
 import { Glyph } from "./glyphs";
@@ -316,6 +316,7 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
       </nav>
       {sheet ? <MobileSheet active={active} onClose={() => setSheet(false)} /> : null}
       <OSToastViewport />
+      <ThemeSync />
     </div>
   );
 }

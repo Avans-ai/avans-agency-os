@@ -24,12 +24,13 @@
 .taskTitle strong{font-weight:400;font-size:15px}
 .taskTitle span{font-size:13px;color:var(--av-text-muted)}
 .dueCell{min-width:84px;text-align:right}
+.taskSide{display:contents}
 @media (max-width:767px){
   .taskRow{grid-template-columns:auto minmax(0,1fr) auto;gap:12px;padding:14px 16px}
   .taskRow .openLink{display:none}
-  .taskSide{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+  .taskSide{display:flex;flex-direction:column-reverse;align-items:flex-end;gap:4px}
+  .dueCell{min-width:0}
 }
-.taskSide{display:contents}
 
 .approvalRow{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;padding:18px 20px;border-bottom:1px solid var(--av-border)}
 .approvalRow:last-child{border-bottom:0}
@@ -58,8 +59,8 @@
 .selectWrap{display:flex;align-items:center;gap:10px;font-size:15px}
 .selectWrap select{min-height:40px;border:1px solid var(--av-text);background:var(--av-bg-raised);color:var(--av-text);font:inherit;padding:0 12px}
 .clientCell{display:flex;align-items:center;gap:12px;min-width:150px}
-.initials{width:32px;height:32px;flex:none;display:inline-flex;align-items:center;justify-content:center;background:var(--av-bg-cool);color:var(--av-cocoa);font-size:13px;font-weight:600}
-.initialsAccent{background:var(--av-accent-soft)}
+.initials{width:32px;height:32px;flex:none;display:inline-flex;align-items:center;justify-content:center;background:var(--av-bg-cool);color:var(--av-text);font-size:13px;font-weight:600}
+.initialsAccent{background:var(--av-accent-soft);color:var(--av-accent-ink)}
 .tableFoot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:14px 16px;font-size:14px;color:var(--av-text-muted);background:var(--av-bg-raised);border-top:1px solid var(--av-border)}
 .overdue{color:var(--av-error)}
 .mobileList{display:none;list-style:none;margin:0;padding:0;background:var(--av-bg-raised)}

@@ -193,9 +193,10 @@
 .dueToday{color:var(--av-text);font-weight:500}
 .dueLate{color:var(--av-error)}
 
-.avatar{width:24px;height:24px;flex:none;display:inline-flex;align-items:center;justify-content:center;background:var(--av-bg-cool);color:var(--av-cocoa);font-size:12px;font-weight:600}
+.avatar{width:24px;height:24px;flex:none;display:inline-flex;align-items:center;justify-content:center;background:var(--av-bg-cool);color:var(--av-text);font-size:12px;font-weight:600}
 .avatarMd{width:32px;height:32px;font-size:13px}
 .avatarDark{background:var(--av-cocoa);color:var(--av-paper)}
+html[data-avans-theme="dark"] .avatarDark{background:var(--av-umber)}
 .avatarAccent{background:var(--av-coral-300);color:var(--av-cocoa)}
 
 .surface{background:var(--av-bg-raised)}

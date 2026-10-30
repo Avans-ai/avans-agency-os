@@ -203,7 +203,19 @@ function Summary({ client, depth, onProjectsTab }: { client: OsClient; depth?: C
 function ProjectsTable({ projects, progress }: { projects: ReturnType<typeof projectsOf>; progress: (slug: string) => number }) {
   if (!projects.length) return <OSEmptyState icon="registro" title="Esta cuenta todavía no tiene proyectos" />;
   return (
-    <div className={s.tableWrap}>
+    <>
+    <ul className={sc.mobileList}>
+      {projects.map(project => (
+        <li key={project.slug}>
+          <Link href={`/v2/proyectos/${project.slug}`}>
+            <strong style={{ fontWeight: 500 }}>{project.name}</strong>
+            <OSStatus status={project.status} />
+            <small>{progress(project.slug)}% · Entrega {project.delivery}</small>
+          </Link>
+        </li>
+      ))}
+    </ul>
+    <div className={cx(s.tableWrap, sc.desktopTable)}>
       <table className={s.table}>
         <thead><tr><th scope="col">Proyecto</th><th scope="col">Responsable</th><th scope="col">Avance</th><th scope="col">Estado</th><th scope="col">Entrega</th></tr></thead>
         <tbody>
@@ -219,6 +231,7 @@ function ProjectsTable({ projects, progress }: { projects: ReturnType<typeof pro
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
