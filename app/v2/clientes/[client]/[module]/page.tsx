@@ -19,15 +19,15 @@ export default async function ClientAgencyWorkspace({
 }) {
   const { client: clientSlug, module: moduleSlug } = await params;
   const client = avansClients.find((item) => item.slug === clientSlug);
-  const module = modules.includes(moduleSlug as AgencyModuleSlug) ? moduleSlug as AgencyModuleSlug : null;
+  const workModule = modules.includes(moduleSlug as AgencyModuleSlug) ? moduleSlug as AgencyModuleSlug : null;
 
-  if (!client || !module) notFound();
+  if (!client || !workModule) notFound();
 
-  const config = agencyModuleConfig[module];
+  const config = agencyModuleConfig[workModule];
   const canStart = config.preflight.every((item) => item.state === "Listo");
 
   return (
-    <V2Chrome active={module} title={`${client.name} · ${config.label}`}>
+    <V2Chrome active={workModule} title={`${client.name} · ${config.label}`}>
       <div className={styles.workspaceWrap}>
         <section className={styles.clientHero}>
           <div className={styles.clientIdentity}>
@@ -43,7 +43,7 @@ export default async function ClientAgencyWorkspace({
               </div>
             </div>
           </div>
-          <Link href={`/v2/${module}`} className={styles.switchClient}>
+          <Link href={`/v2/${workModule}`} className={styles.switchClient}>
             <ArrowLeft size={13} /> Cambiar cliente
           </Link>
         </section>
@@ -54,7 +54,7 @@ export default async function ClientAgencyWorkspace({
             <Link
               key={item}
               href={`/v2/clientes/${client.slug}/${item}`}
-              className={item === module ? styles.activeTab : ""}
+              className={item === workModule ? styles.activeTab : ""}
             >
               {agencyModuleConfig[item].label}
             </Link>
@@ -146,7 +146,7 @@ export default async function ClientAgencyWorkspace({
           </aside>
         </section>
 
-        <AgencyDepth clientName={client.name} clientSlug={client.slug} module={module} />
+        <AgencyDepth clientName={client.name} clientSlug={client.slug} module={workModule} />
       </div>
     </V2Chrome>
   );

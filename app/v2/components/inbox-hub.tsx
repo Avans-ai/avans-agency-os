@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CircleAlert, CheckCircle2, Clock3, Filter, ShieldCheck, UserCheck } from "lucide-react";
+import { ArrowRight, CircleAlert, Clock3, Filter, ShieldCheck, UserCheck } from "lucide-react";
 import { attentionItems } from "../data";
 import styles from "../command-inbox-hub.module.css";
 
