@@ -1,8 +1,8 @@
 export type V2NavItem = { label: string; slug: string; href: string; children?: V2NavItem[] };
 export type V2NavGroup = { group: string; items: V2NavItem[] };
 
-/** Approved owner revision: five business areas; Clients belongs to Operations.
- * Existing URLs are intentionally preserved to avoid breaking account/deep links.
+/** Approved hierarchy: Operations > Clients > Benchmark.
+ * Existing URLs stay unchanged; hierarchy does not require a route migration.
  */
 export const v2NavGroups: V2NavGroup[] = [
   { group: "General", items: [
@@ -11,8 +11,9 @@ export const v2NavGroups: V2NavGroup[] = [
   ] },
   { group: "Áreas de Avans", items: [
     { label: "Operaciones", slug: "operaciones", href: "/v2/operaciones", children: [
-      { label: "Clientes", slug: "clientes", href: "/v2/clientes" },
-      { label: "Benchmark", slug: "benchmark", href: "/v2/benchmark" },
+      { label: "Clientes", slug: "clientes", href: "/v2/clientes", children: [
+        { label: "Benchmark", slug: "benchmark", href: "/v2/benchmark" },
+      ] },
     ] },
     { label: "Ventas", slug: "ventas", href: "/v2/ventas" },
     { label: "Finanzas", slug: "finanzas", href: "/v2/finanzas" },
@@ -49,11 +50,34 @@ export const v2CapabilityItems: V2NavItem[] = [
   { label: "Estado del producto", slug: "estado-producto", href: "/v2/estado-producto" },
 ];
 const visibleItems = v2NavGroups.flatMap(group => group.items);
+// Keep static route generation stable: /v2/benchmark has its own page.
 export const v2NavItems = [...visibleItems, ...v2CapabilityItems].filter((item, index, items) => items.findIndex(candidate => candidate.slug === item.slug) === index);
 export const v2ParentBySlug: Record<string, string> = {
-  clientes: "operaciones", benchmark: "operaciones",
+  clientes: "operaciones", benchmark: "clientes",
   procesos: "operaciones", proyectos: "operaciones", reuniones: "operaciones", contenido: "operaciones", campanas: "operaciones",
   leads: "ventas", discovery: "ventas", oportunidades: "ventas", propuestas: "ventas",
   insights: "gerencia", reportes: "gerencia", aprendizajes: "gerencia",
   agentes: "automatizaciones", workflows: "automatizaciones", guardrails: "seguridad", "estado-producto": "salud-sistema",
 };
+
+function flattenNavigation(items: V2NavItem[]): V2NavItem[] {
+  return items.flatMap(item => [item, ...flattenNavigation(item.children ?? [])]);
+}
+const navigationIndex = new Map<string, V2NavItem>([
+  ...flattenNavigation(visibleItems), ...v2CapabilityItems,
+].map(item => [item.slug, item]));
+
+/** Root-first ancestor chain, used by both breadcrumbs and active navigation. */
+export function getV2Ancestors(slug: string): V2NavItem[] {
+  const ancestors: V2NavItem[] = [];
+  const visited = new Set<string>([slug]);
+  let parentSlug = v2ParentBySlug[slug];
+  while (parentSlug && !visited.has(parentSlug)) {
+    visited.add(parentSlug);
+    const parent = navigationIndex.get(parentSlug);
+    if (!parent) break;
+    ancestors.unshift(parent);
+    parentSlug = v2ParentBySlug[parentSlug];
+  }
+  return ancestors;
+}
