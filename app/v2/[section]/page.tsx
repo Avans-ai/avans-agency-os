@@ -1,13 +1,29 @@
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { notFound } from "next/navigation";
+import { avansClients, type AgencyModuleSlug } from "../agency-client-data";
+import { architectureAreas } from "../architecture-data";
 import { AgencyClientGate } from "../components/agency-client-gate";
+import { AuditHub } from "../components/audit-hub";
+import { ArchitectureHub } from "../components/architecture-hub";
+import { ClientHub } from "../components/client-hub";
+import { FinanceHub } from "../components/finance-hub";
+import { HrHub } from "../components/hr-hub";
+import { InboxHub } from "../components/inbox-hub";
+import { HealthHub } from "../components/health-hub";
+import { IntegrationsHub } from "../components/integrations-hub";
+import { AutomationHub } from "../components/automation-hub";
+import { ManagementHub } from "../components/management-hub";
 import { ModuleDepth } from "../components/module-depth";
+import { OperationsHub } from "../components/operations-hub";
+import { ProductReadinessHub } from "../components/product-readiness-hub";
+import { SalesHub } from "../components/sales-hub";
+import { SecurityHub } from "../components/security-hub";
+import { UsersAccessHub } from "../components/users-access-hub";
 import { V2Chrome } from "../components/v2-chrome";
-import { v2NavItems } from "../navigation";
+import { v2NavItems, v2ParentBySlug } from "../navigation";
 import { getOperationalObjectForRow } from "../object-data";
 import { sectionData } from "../section-data";
-import { avansClients, type AgencyModuleSlug } from "../agency-client-data";
 import styles from "../v2.module.css";
 
 const clientScopedAgencyModules = new Set<AgencyModuleSlug>(["contenido", "campanas", "reportes"]);
@@ -25,9 +41,135 @@ export default async function V2SectionPage({
 }) {
   const { section } = await params;
   const navItem = v2NavItems.find((item) => item.slug === section);
-  const data = sectionData[section];
+  const architectureArea = architectureAreas[section];
 
-  if (!navItem || !data) notFound();
+  if (!navItem) notFound();
+
+  if (section === "inbox") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <InboxHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "clientes") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <ClientHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "operaciones") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <OperationsHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "ventas") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <SalesHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "finanzas") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <FinanceHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "rrhh") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <HrHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "usuarios") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <UsersAccessHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "seguridad") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <SecurityHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "auditoria") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <AuditHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "salud-sistema") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <HealthHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "estado-producto") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <ProductReadinessHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "integraciones") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <IntegrationsHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "automatizaciones") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <AutomationHub />
+      </V2Chrome>
+    );
+  }
+
+  if (section === "gerencia") {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <ManagementHub />
+      </V2Chrome>
+    );
+  }
+
+  if (architectureArea) {
+    return (
+      <V2Chrome active={section} title={navItem.label}>
+        <ArchitectureHub area={architectureArea} />
+      </V2Chrome>
+    );
+  }
+
+  const data = sectionData[section];
+  if (!data) notFound();
+
+  const parentSlug = v2ParentBySlug[section];
+  const parentNavItem = parentSlug ? v2NavItems.find((item) => item.slug === parentSlug) : null;
 
   if (clientScopedAgencyModules.has(section as AgencyModuleSlug)) {
     return (
@@ -40,16 +182,29 @@ export default async function V2SectionPage({
   return (
     <V2Chrome active={section} title={navItem.label}>
       <div className={styles.content}>
+        {parentNavItem ? (
+          <div className={styles.capabilityContext}>
+            <div>
+              <span>CAPACIDAD INTERNA DE</span>
+              <strong>{parentNavItem.label}</strong>
+              <span>· Se conserva como profundidad operativa, no como área principal.</span>
+            </div>
+            <Link href={parentNavItem.href}>
+              Volver a {parentNavItem.label}
+              <ArrowRight size={13} />
+            </Link>
+          </div>
+        ) : null}
         <section className={styles.moduleHero}>
           <div>
             <span className={styles.eyebrow}>{data.eyebrow}</span>
             <h1>{data.title}</h1>
             <p>{data.description}</p>
           </div>
-          <button className={styles.primaryAction}>
-            {data.action}
-            <ArrowRight size={15} />
-          </button>
+          <div className={styles.demoAction}>
+            <strong>{data.action}</strong>
+            <small>Simulado · requiere backend</small>
+          </div>
         </section>
 
         <section className={styles.moduleStats}>

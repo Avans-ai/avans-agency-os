@@ -1,0 +1,90 @@
+html[data-avans-theme="dark"] [class*="depth-module"][class*="page"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="page"]{
+  color:#f7f7f7!important;
+}
+
+html[data-avans-theme="dark"] [class*="depth-module"][class*="metric"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="panel"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="sidePanel"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="lane"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="signalCard"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="metrics"] article,
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="panel"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="knowledgeRow"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="sourceCard"]{
+  background:#191919!important;
+  border-color:#303030!important;
+}
+
+html[data-avans-theme="dark"] [class*="depth-module"][class*="areaCard"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="clientArchitecture"] article,
+html[data-avans-theme="dark"] [class*="depth-module"][class*="activityRow"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="capabilityCard"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="summaryGrid"]>div{
+  background:#202020!important;
+  border-color:#343434!important;
+}
+
+html[data-avans-theme="dark"] [class*="depth-module"] h1,
+html[data-avans-theme="dark"] [class*="depth-module"] h2,
+html[data-avans-theme="dark"] [class*="depth-module"] h3,
+html[data-avans-theme="dark"] [class*="depth-module"] strong,
+html[data-avans-theme="dark"] [class*="client-profile-module"] h1,
+html[data-avans-theme="dark"] [class*="client-profile-module"] h2,
+html[data-avans-theme="dark"] [class*="client-profile-module"] h3,
+html[data-avans-theme="dark"] [class*="client-profile-module"] strong{
+  color:#fff!important;
+}
+
+html[data-avans-theme="dark"] [class*="depth-module"] p,
+html[data-avans-theme="dark"] [class*="depth-module"] small,
+html[data-avans-theme="dark"] [class*="client-profile-module"] p,
+html[data-avans-theme="dark"] [class*="client-profile-module"] small{
+  color:#b9b9b9!important;
+}
+
+html[data-avans-theme="dark"] [class*="depth-module"][class*="clientRow"]:hover,
+html[data-avans-theme="dark"] [class*="depth-module"][class*="portfolioRow"]:hover,
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="workstreamRow"]:hover{
+  background:#241b18!important;
+}
+
+html[data-avans-theme="dark"] [class*="depth-module"][class*="clientList"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="portfolioList"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="coverageList"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="capacityList"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="exceptionList"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="workstreamList"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="actionList"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="timeline"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="commercialList"]{
+  border-color:#303030!important;
+}
+
+html[data-avans-theme="dark"] [class*="depth-module"][class*="clientRow"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="portfolioRow"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="coverageRow"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="capacityRow"],
+html[data-avans-theme="dark"] [class*="depth-module"][class*="exceptionRow"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="workstreamRow"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="actionRow"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="timelineItem"],
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="commercialList"]>div{
+  border-color:#303030!important;
+}
+
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="tabs"]{
+  background:rgba(23,23,23,.94)!important;
+  border-color:#303030!important;
+}
+
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="tabs"] a:first-child,
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="tabs"] a:hover{
+  background:#2a1b17!important;
+  color:#ff9d87!important;
+}
+
+html[data-avans-theme="dark"] [class*="client-profile-module"][class*="commercialNote"]{
+  background:#2a1b17!important;
+  color:#d9a89d!important;
+}

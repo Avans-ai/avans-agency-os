@@ -24,7 +24,7 @@ const standardMetrics = [
 
 export const sectionData: Record<string, SectionConfig> = {
   inbox: {
-    eyebrow: "INTELLIGENT INBOX",
+    eyebrow: "BANDEJA TRANSVERSAL",
     title: "Atención requerida",
     description: "Aprobaciones, bloqueos, alertas, decisiones y aprendizajes que necesitan intervención humana en una sola bandeja.",
     action: "Priorizar bandeja",
@@ -34,16 +34,16 @@ export const sectionData: Record<string, SectionConfig> = {
       { label: "Bloqueos", value: "2", detail: "Con impacto operativo" },
     ],
     rows: [
-      { title: "Epsa · Revisión de campaña", meta: "Alerta · Performance", detail: "Variación relevante detectada. Requiere criterio antes de modificar inversión.", status: "Crítica" },
-      { title: "ACA · Insumo pendiente", meta: "Bloqueo · Proceso", detail: "El workflow quedó detenido hasta completar una precondición necesaria.", status: "Alta" },
-      { title: "Grupo Portland · Validación de propuesta", meta: "Aprobación · Comercial", detail: "Alcance e inversión esperan decisión de Dirección.", status: "Alta" },
-      { title: "Edinovo · Aprendizaje sugerido", meta: "Aprendizaje · Memoria", detail: "Nuevo patrón detectado listo para validación antes de incorporarse al contexto.", status: "Media" },
+      { title: "Epsa · Campaña requiere revisión", meta: "Alerta · Performance", detail: "Variación relevante detectada. Requiere criterio antes de modificar inversión.", status: "Crítica" },
+      { title: "ACA · Proceso bloqueado por información pendiente", meta: "Bloqueo · Proceso", detail: "El workflow quedó detenido hasta completar una precondición necesaria.", status: "Alta" },
+      { title: "Grupo Portland · Propuesta lista para validar", meta: "Aprobación · Comercial", detail: "Alcance e inversión esperan decisión de Dirección.", status: "Alta" },
+      { title: "Edinovo · Nuevo aprendizaje para validar", meta: "Aprendizaje · Memoria", detail: "Nuevo patrón detectado listo para validación antes de incorporarse al contexto.", status: "Media" },
     ],
     sideTitle: "Criterio de prioridad",
     sideItems: ["Impacto en negocio", "Urgencia y deadline", "Dependencias bloqueadas", "Riesgo de ejecución", "Responsable humano"],
   },
   clientes: {
-    eyebrow: "CLIENT INTELLIGENCE HUB",
+    eyebrow: "CLIENTES · CONTEXTO 360°",
     title: "Clientes",
     description: "Una vista 360° por cuenta: contexto, servicios, proyectos, documentos, decisiones, feedback, resultados y memoria operativa.",
     action: "Nuevo cliente",
@@ -63,7 +63,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Contexto confirmado", "Documentos y fuentes", "Proyectos y responsables", "Aprobaciones y decisiones", "Aprendizajes versionados"],
   },
   procesos: {
-    eyebrow: "PROCESS ENGINE",
+    eyebrow: "OPERACIONES · PROCESOS",
     title: "Procesos",
     description: "Eventos, reglas, precondiciones, responsables y automatizaciones modeladas como procesos de negocio reutilizables.",
     action: "Nuevo proceso",
@@ -91,7 +91,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Hitos próximos", "Tareas sin owner", "Dependencias", "Bloqueos", "Desvíos de fecha", "Próxima mejor acción"],
   },
   reuniones: {
-    eyebrow: "MEETING INTELLIGENCE",
+    eyebrow: "OPERACIONES · REUNIONES",
     title: "Reuniones",
     description: "De la conversación al dato operativo: decisiones, compromisos, señales y actualizaciones de contexto vinculadas a cada cuenta.",
     action: "Procesar reunión",
@@ -109,7 +109,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Resumen estructurado", "Decisiones", "Compromisos", "Pendientes", "Señales de cuenta", "Cambios de contexto a validar"],
   },
   insights: {
-    eyebrow: "INTELLIGENCE LAYER",
+    eyebrow: "GERENCIA · INSIGHTS",
     title: "Insights",
     description: "Análisis explicables sobre operación y performance. Cada insight conserva fuente, contexto y motivo de la recomendación.",
     action: "Generar análisis",
@@ -127,7 +127,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Qué cambió", "Desde cuándo", "Qué datos usa", "Por qué importa", "Acción sugerida", "Nivel de confianza"],
   },
   oportunidades: {
-    eyebrow: "OPPORTUNITY INTELLIGENCE",
+    eyebrow: "GERENCIA / VENTAS · OPORTUNIDADES",
     title: "Oportunidades",
     description: "Cruza señales externas e internas para detectar oportunidades comerciales, de marketing, operación o eficiencia.",
     action: "Explorar oportunidades",
@@ -145,7 +145,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Comercial", "Marketing", "Operativa", "Financiera", "Competitiva", "Estratégica"],
   },
   aprendizajes: {
-    eyebrow: "LEARNING ENGINE",
+    eyebrow: "GERENCIA · MEMORIA Y APRENDIZAJE",
     title: "Aprendizajes",
     description: "Feedback, decisiones y resultados se convierten en conocimiento versionado. Nada modifica el contexto crítico sin validación.",
     action: "Revisar aprendizajes",
@@ -163,9 +163,9 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Inferido", "Propuesto", "Validado", "Aplicado", "En medición", "Descartado"],
   },
   leads: {
-    eyebrow: "AGENCY PACK · COMMERCIAL",
+    eyebrow: "VENTAS · FLUJO COMERCIAL",
     title: "Leads",
-    description: "Captación y priorización comercial de Avans como capacidad vertical conectada al Intelligence Core.",
+    description: "Captación y priorización comercial de Avans como capacidad vertical conectada a Avans OS.",
     action: "Nuevo lead",
     metrics: standardMetrics,
     rows: [
@@ -173,11 +173,11 @@ export const sectionData: Record<string, SectionConfig> = {
       { title: "Discovery pendiente", meta: "Lead calificado", detail: "La información disponible permite iniciar relevamiento estructurado.", status: "Calificado" },
       { title: "Seguimiento comercial", meta: "Lead activo", detail: "Próximo contacto sugerido a partir del estado del pipeline.", status: "Seguimiento" },
     ],
-    sideTitle: "El Core aporta",
+    sideTitle: "Avans OS aporta",
     sideItems: ["Contexto unificado", "Priorización", "Próxima acción", "Trazabilidad", "Automatización de seguimiento"],
   },
   discovery: {
-    eyebrow: "AGENCY PACK · DISCOVERY",
+    eyebrow: "VENTAS · DIAGNÓSTICO",
     title: "Discovery",
     description: "Relevamiento estructurado que transforma respuestas, reuniones y documentos en diagnóstico, preguntas pendientes y oportunidades.",
     action: "Nuevo discovery",
@@ -191,7 +191,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Situación actual", "Problemas", "Riesgos", "Oportunidades", "Preguntas pendientes", "Brief interno"],
   },
   propuestas: {
-    eyebrow: "AGENCY PACK · COMMERCIAL",
+    eyebrow: "VENTAS · FLUJO COMERCIAL",
     title: "Propuestas",
     description: "La IA estructura alcance y entregables; precio, exclusiones y compromisos sensibles permanecen bajo validación humana.",
     action: "Nueva propuesta",
@@ -205,7 +205,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Precio", "Alcance", "Exclusiones", "Plazos", "Compromisos", "Versión final"],
   },
   contenido: {
-    eyebrow: "AGENCY PACK · CONTENT",
+    eyebrow: "OPERACIONES · CONTENIDO",
     title: "Contenido",
     description: "Planificación y producción asistidas por contexto, performance, memoria de marca y aprobación antes de publicación.",
     action: "Nueva pieza",
@@ -219,7 +219,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Contexto", "Investigación", "Planificación", "Producción", "Revisión", "Aprobación", "Medición"],
   },
   campanas: {
-    eyebrow: "AGENCY PACK · CAMPAIGN INTELLIGENCE",
+    eyebrow: "OPERACIONES · CAMPAÑAS",
     title: "Campañas",
     description: "Gestión por excepción: reglas detectan anomalías, la IA interpreta contexto y el especialista decide qué acción aplicar.",
     action: "Revisar alertas",
@@ -233,7 +233,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Regla detecta", "IA interpreta", "Especialista valida", "Avans ejecuta si está habilitado", "Resultado se mide"],
   },
   reportes: {
-    eyebrow: "AGENCY PACK · DATA & REPORTING",
+    eyebrow: "GERENCIA · REPORTES",
     title: "Reportes",
     description: "Fuentes conectadas y datos propios se convierten en interpretación, decisiones y próximos pasos, no sólo en gráficos.",
     action: "Nuevo reporte",
@@ -247,7 +247,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Datos", "Evolución", "Interpretación", "Insight", "Próxima acción", "Aprendizaje"],
   },
   integraciones: {
-    eyebrow: "SYSTEM · DATA SOURCES",
+    eyebrow: "PLATAFORMA · INTEGRACIONES",
     title: "Integraciones",
     description: "Avans conecta herramientas existentes y normaliza la información necesaria sin obligar a reemplazar sistemas que ya funcionan.",
     action: "Nueva integración",
@@ -259,13 +259,13 @@ export const sectionData: Record<string, SectionConfig> = {
     rows: [
       { title: "Google Workspace", meta: "Productividad", detail: "Documentos, reuniones y administración de accesos según permisos disponibles.", status: "Disponible" },
       { title: "CRM", meta: "Comercial", detail: "Leads, oportunidades, clientes y eventos comerciales normalizados en la capa de datos.", status: "Disponible" },
-      { title: "Ads & Analytics", meta: "Performance", detail: "Métricas e histórico utilizados por reglas, reporting e Intelligence Layer.", status: "Disponible" },
+      { title: "Ads & Analytics", meta: "Performance", detail: "Métricas e histórico utilizados por reglas, reporting  y análisis del sistema.", status: "Disponible" },
     ],
     sideTitle: "Principio",
     sideItems: ["Integrar antes de reconstruir", "Guardar histórico propio", "Normalizar datos", "Registrar procedencia", "Respetar permisos del origen"],
   },
   agentes: {
-    eyebrow: "SYSTEM · AGENT LAYER",
+    eyebrow: "AUTOMATIZACIONES E IA · AGENTES",
     title: "Agentes",
     description: "Capacidades internas vinculadas a procesos. El usuario ve resultados y decisiones; los agentes quedan como infraestructura observable.",
     action: "Configurar agente",
@@ -283,7 +283,7 @@ export const sectionData: Record<string, SectionConfig> = {
     sideItems: ["Objetivo", "Fuentes", "Herramientas", "Acciones permitidas", "Guardrails", "Aprobaciones", "Coste y trazabilidad"],
   },
   workflows: {
-    eyebrow: "SYSTEM · ORCHESTRATION",
+    eyebrow: "AUTOMATIZACIONES E IA · WORKFLOWS",
     title: "Workflows",
     description: "Orquestación entre sistemas, reglas, agentes y personas. El workflow representa el proceso; la herramienta es intercambiable.",
     action: "Nuevo workflow",
@@ -326,7 +326,7 @@ export const sectionData: Record<string, SectionConfig> = {
     ],
     rows: [
       { title: "Acción automática completada", meta: "Process Engine", detail: "Origen, regla, hora y resultado guardados para trazabilidad.", status: "OK" },
-      { title: "Recomendación aprobada", meta: "Decision Center", detail: "Se conserva quién aprobó, qué se autorizó y qué ocurrió después.", status: "OK" },
+      { title: "Recomendación aprobada", meta: "Bandeja · decisión", detail: "Se conserva quién aprobó, qué se autorizó y qué ocurrió después.", status: "OK" },
       { title: "Aprendizaje aplicado", meta: "Learning Engine", detail: "Versión anterior y nueva del contexto quedan disponibles para auditoría.", status: "OK" },
     ],
     sideTitle: "Trazabilidad",

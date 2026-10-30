@@ -20,7 +20,7 @@ export const agencyModuleConfig: Record<AgencyModuleSlug, {
 }> = {
   contenido: {
     label: "Contenido",
-    eyebrow: "AGENCY PACK · CONTENT",
+    eyebrow: "OPERACIONES · CONTENIDO",
     description: "La producción empieza dentro del contexto de una cuenta. Antes de generar una pieza, Avans consulta memoria, objetivos, fuentes, performance y criterios aprobados.",
     startAction: "Crear tarea de contenido",
     preflightTitle: "Antes de producir",
@@ -39,7 +39,7 @@ export const agencyModuleConfig: Record<AgencyModuleSlug, {
   },
   campanas: {
     label: "Campañas",
-    eyebrow: "AGENCY PACK · CAMPAIGN INTELLIGENCE",
+    eyebrow: "OPERACIONES · CAMPAÑAS",
     description: "Cada análisis de campaña parte de una cuenta seleccionada, sus objetivos, histórico y reglas. Avans detecta excepciones antes de recomendar o ejecutar cambios.",
     startAction: "Analizar campaña",
     preflightTitle: "Antes de recomendar",
@@ -58,7 +58,7 @@ export const agencyModuleConfig: Record<AgencyModuleSlug, {
   },
   reportes: {
     label: "Reportes",
-    eyebrow: "AGENCY PACK · REPORTING",
+    eyebrow: "GERENCIA · REPORTES",
     description: "El reporte se construye desde la ficha del cliente para combinar fuentes, objetivos, decisiones y contexto. No es una exportación genérica de métricas.",
     startAction: "Generar reporte",
     preflightTitle: "Antes de generar",
