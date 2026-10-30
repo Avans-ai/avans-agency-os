@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Fragment, type ElementType, type ReactNode } from "react";
 import { Activity, BrainCircuit, BriefcaseBusiness, ChartNoAxesCombined, FileChartColumn, Gauge, Inbox, Network, Settings2, ShieldCheck, Users, Workflow } from "lucide-react";
 import { AvansLogo } from "../../components/avans-logo";
-import { v2NavGroups, v2ParentBySlug } from "../navigation";
+import { getV2Ancestors, v2NavGroups, type V2NavItem } from "../navigation";
 import { isRevisionArea } from "../owner-revision-data";
 import { OwnerRevisionWorkspace } from "./owner-revision-workspace";
 import { ThemeToggle } from "./theme-toggle";
@@ -16,10 +16,22 @@ const iconMap: Record<string, ElementType> = {
   seguridad: ShieldCheck, auditoria: BrainCircuit, "salud-sistema": Activity,
 };
 
+function NestedNavigation({ parent, selected, ancestors }: { parent: V2NavItem; selected: string; ancestors: Set<string> }) {
+  if (!parent.children?.length) return null;
+  return <div className={revision.subnav} role="group" aria-label={`Secciones de ${parent.label}`}>
+    {parent.children.map(child => <Fragment key={child.slug}>
+      <Link href={child.href} aria-current={selected === child.slug ? "page" : ancestors.has(child.slug) ? "location" : undefined}>{child.label}</Link>
+      <NestedNavigation parent={child} selected={selected} ancestors={ancestors}/>
+    </Fragment>)}
+  </div>;
+}
+
 export function V2Chrome({ active, title, children }: { active: string; title: string; children: ReactNode }) {
+  // Compatibility with existing client benchmark pages: URLs and props stay valid.
   const effectiveActive = active === "clientes" && title.toLocaleLowerCase("es").includes("benchmark") ? "benchmark" : active;
-  const activeNav = v2ParentBySlug[effectiveActive] ?? effectiveActive;
-  const parent = v2NavGroups.flatMap(group => group.items).find(item => item.slug === activeNav);
+  const ancestors = getV2Ancestors(effectiveActive);
+  const ancestorSlugs = new Set(ancestors.map(item => item.slug));
+  const activeNav = ancestors[0]?.slug ?? effectiveActive;
   return (
     <main className={`${styles.shell} avans-v2-shell`}>
       <aside className={`${styles.sidebar} avans-v2-sidebar`}>
@@ -29,10 +41,10 @@ export function V2Chrome({ active, title, children }: { active: string; title: s
           {v2NavGroups.map(({ group, items }) => <div key={group} className={styles.navGroup}><span>{group}</span>{items.map(item => {
             const Icon = iconMap[item.slug];
             return <Fragment key={item.slug}>
-              <Link href={item.href} className={activeNav === item.slug ? styles.activeNav : ""} aria-current={active === item.slug ? "page" : activeNav === item.slug ? "location" : undefined}>
+              <Link href={item.href} className={activeNav === item.slug ? styles.activeNav : ""} aria-current={effectiveActive === item.slug ? "page" : activeNav === item.slug ? "location" : undefined}>
                 {Icon ? <Icon size={15} aria-hidden="true"/> : <span className={styles.dot}/>}<span>{item.label}</span>
               </Link>
-              {item.children && <div className={revision.subnav} role="group" aria-label={`Secciones de ${item.label}`}>{item.children.map(child => <Link key={child.slug} href={child.href} aria-current={effectiveActive === child.slug ? "page" : undefined}>{child.label}</Link>)}</div>}
+              <NestedNavigation parent={item} selected={effectiveActive} ancestors={ancestorSlugs}/>
             </Fragment>;
           })}</div>)}
         </nav>
@@ -40,7 +52,7 @@ export function V2Chrome({ active, title, children }: { active: string; title: s
       </aside>
       <section className={`${styles.workspaceMain} avans-v2-main`}>
         <header className={`${styles.topbar} avans-v2-topbar`}>
-          <div className={revision.crumb}><Link href="/v2">Avans OS</Link><span>/</span>{parent && activeNav !== effectiveActive && <><Link href={parent.href}>{parent.label}</Link><span>/</span></>}<strong>{title}</strong></div>
+          <div className={revision.crumb}><Link href="/v2">Avans OS</Link><span>/</span>{ancestors.map(parent => <Fragment key={parent.slug}><Link href={parent.href}>{parent.label}</Link><span>/</span></Fragment>)}<strong>{title}</strong></div>
           <div className={styles.topStatus}><span className={styles.liveDot}/><Link href="/v2/estado-producto" title="Ver estado real del producto">Preview · estado del producto</Link><ThemeToggle/></div>
         </header>
         {isRevisionArea(active) ? <OwnerRevisionWorkspace area={active}>{children}</OwnerRevisionWorkspace> : children}
