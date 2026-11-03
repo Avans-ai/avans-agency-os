@@ -43,3 +43,13 @@ Esta iteración nace del pedido del usuario de continuar la rama de Claude, no d
 7. Comparar etapas, responsables, disparadores, aprobaciones y entregables con el manual real en cuanto se obtenga acceso; **no dar esa validación por hecha**.
 
 La rama de esta iteración nace del commit de Claude `2775a2f`, no de `main`, para preservar su trabajo. El PR de Claude #14 permanece en revisión mientras se valida este cambio.
+
+## QA realizada en Preview (03/11/2026)
+
+- Deployment de Vercel de la iteración: **READY**. Build Next.js y TypeScript terminan correctamente.
+- Rutas respondieron HTTP 200: `/v2`, `/v2/operaciones`, `/v2/clientes/edinovo/servicios/audiovisuales`, `/v2/clientes/aca/servicios/contenidos`, `/v2/clientes/aca/servicios/audiovisuales`, `/v2/clientes/aca/contenido`.
+- Una sesión de navegador de QA confirmó: Audiovisuales activo para Edinovo, bloqueo del flujo para ACA cuando no lo contrató, navegación y ausencia de desborde evidente.
+- **Regresión detectada:** la automatización de navegador no consiguió confirmar el rechazo visual de guardado vacío, el avance del contador de etapas ni la persistencia en sesión al cambiar de pestaña. Se corrigió código para registrar etapas confirmadas separadas del formulario, rechazar estados vacíos, y guardar borradores del Discovery en el store al editar con mensajes visibles.
+- Una segunda ejecución del navegador automatizado **siguió reportando fallas o evidencia insuficiente** para esos escenarios. Los chunks JS del preview responden 200, pero la prueba no determina si se trata de hidratación, sesiones Vercel protegidas, interacción del robot o defecto del producto.
+- **Estado de aceptación:** pendiente de prueba interactiva independiente y reproducible desde un navegador autenticado con consola/Network y/o Playwright sobre servidor local de producción. **No mergear este PR basándose sólo en HTTP 200 o build.**
+- Auditoría de dependencias en logs Vercel: 22 vulnerabilidades reportadas (16 moderadas, 5 altas, 1 crítica); investigar antes de producción, no ejecutar `npm audit fix --force` ciegamente.
