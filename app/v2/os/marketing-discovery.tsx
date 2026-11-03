@@ -7,17 +7,17 @@ import { marketingDiscoverySections, totalDiscoveryFields } from "./marketing-di
 import styles from "./marketing-discovery.module.css";
 
 export function MarketingDiscovery({client}:{client:OsClient}) {
-  const {discoveryOf,saveDiscovery}=useOsStore();
+  const {discoveryOf,saveDiscovery,setDiscoveryDraft}=useOsStore();
   const [fields,setFields]=useState<Record<string,string>>(()=>({...discoveryOf(client.slug)}));
   const [error,setError]=useState("");
   const [saved,setSaved]=useState(false);
   const complete=marketingDiscoverySections.reduce((count,section)=>count+section.fields.filter(f=>Boolean(fields[f.key]?.trim())).length,0);
 
-  const update=(key:string,value:string)=>{setFields(p=>({...p,[key]:value}));setError("");setSaved(false);};
+  const update=(key:string,value:string)=>{const next={...fields,[key]:value};setFields(next);setDiscoveryDraft(client.slug,next);setError("");setSaved(false);};
   const save=(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
-    if(!complete){setError("Completá al menos un campo del Marketing Discovery para guardar un borrador.");return;}
-    if(!fields.sourceKind?.trim()||!fields.sourceReference?.trim()){setError("Indicá la procedencia y referencia de la información antes de guardar.");return;}
+    if(!complete){setError("Completá al menos un campo del Marketing Discovery para guardar un borrador.");document.getElementById("marketing-discovery-feedback")?.scrollIntoView({block:"center",behavior:"smooth"});return;}
+    if(!fields.sourceKind?.trim()||!fields.sourceReference?.trim()){setError("Indicá la procedencia y referencia de la información antes de guardar.");document.getElementById("marketing-discovery-feedback")?.scrollIntoView({block:"center",behavior:"smooth"});return;}
     saveDiscovery(client.slug,Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,v.trim()])));
     setSaved(true);setError("");
   };
@@ -32,13 +32,14 @@ export function MarketingDiscovery({client}:{client:OsClient}) {
       <Link href={`/v2/clientes/${client.slug}?tab=benchmark`}><strong>02 · Benchmark</strong><small>Competencia, observación y evidencia</small></Link>
       <Link href={`/v2/clientes/${client.slug}?tab=estrategia`}><strong>03 · Plan MKT</strong><small>Objetivos, canales y lineamientos</small></Link>
     </div>
-    <div className={styles.info}><strong>Borrador interno, no validado.</strong> Los datos que escribas se conservan únicamente durante esta sesión del navegador. Todavía no hay sincronización con Drive, documentos ni transcripciones; las propuestas de IA deberán ser revisadas antes de cambiar conocimiento vigente. No ingreses información sensible en este demo.</div>
+    <div className={styles.info}><strong>Borrador interno, no validado.</strong> Los datos que escribas se conservan al cambiar de pestaña dentro de esta visita, pero se pierden al recargar. Todavía no hay sincronización con Drive, documentos ni transcripciones; las propuestas de IA deberán ser revisadas antes de cambiar conocimiento vigente. No ingreses información sensible en este demo.</div>
     <details className={styles.context}>
       <summary>Contexto general de la cuenta existente en el demo (no validado)</summary>
       <p>{client.context.text}</p>
       <p><strong>Objetivo del ejemplo:</strong> {client.context.objective}</p>
     </details>
     <form onSubmit={save}>
+      <div id="marketing-discovery-feedback" aria-live="polite">{error&&<p role="alert" className={styles.error}>{error}</p>}{saved&&<p role="status" className={styles.success}>Borrador confirmado sólo dentro de esta sesión. No se actualizó ninguna fuente externa.</p>}</div>
       <div className={styles.source}>
         <label>Origen del dato
           <select value={fields.sourceKind??""} onChange={e=>update("sourceKind",e.target.value)}>
@@ -57,7 +58,7 @@ export function MarketingDiscovery({client}:{client:OsClient}) {
         </label>)}</div>
       </fieldset>)}
       {error&&<p role="alert" className={styles.error}>{error}</p>}
-      {saved&&<p role="status" className={styles.success}>Se guardó el borrador sólo en la sesión actual. No se actualizó ninguna fuente externa.</p>}
+      {saved&&<p role="status" className={styles.success}>Borrador confirmado en la sesión (simulado). Conservado al cambiar de pestaña.</p>}
       <div className={styles.footer}><button type="submit">Guardar borrador en esta demo</button><span>La conformidad del responsable y el versionado persistente requieren backend.</span></div>
     </form>
   </section>;
