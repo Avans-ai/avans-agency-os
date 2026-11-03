@@ -12,13 +12,14 @@ import { CURRENT_USER, ideas as seedIdeas, osClients, osTasks, serviceLabel, typ
 export type PreviewRole = "admin" | "operativo";
 export type Toast = { id: number; message: string; tone: "default" | "success" | "error"; undo?: OsTask[] };
 
-type State = { tasks: OsTask[]; seq: number; role: PreviewRole; toast: Toast | null; toastSeq: number; services: Record<string, ServiceId[]>; ideas: Idea[]; ideaSeq: number };
+type State = { tasks: OsTask[]; seq: number; role: PreviewRole; toast: Toast | null; toastSeq: number; services: Record<string, ServiceId[]>; ideas: Idea[]; ideaSeq: number; discovery: Record<string, Record<string,string>> };
 type Action =
   | { type: "replace"; tasks: OsTask[]; toast?: Omit<Toast, "id"> | null; seq?: number }
   | { type: "toast"; toast: Omit<Toast, "id"> | null }
   | { type: "role"; role: PreviewRole }
   | { type: "services"; clientSlug: string; services: ServiceId[]; message: string }
-  | { type: "ideas"; ideas: Idea[]; ideaSeq?: number; message: string };
+  | { type: "ideas"; ideas: Idea[]; ideaSeq?: number; message: string }
+  | { type: "discovery"; clientSlug: string; fields: Record<string,string> };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -36,6 +37,11 @@ function reducer(state: State, action: Action): State {
       const toastSeq = state.toastSeq + 1;
       return { ...state, services: { ...state.services, [action.clientSlug]: action.services }, toastSeq, toast: { id: toastSeq, message: action.message, tone: "success" } };
     }
+    case "discovery": {
+      const toastSeq = state.toastSeq + 1;
+      return { ...state, discovery: { ...state.discovery, [action.clientSlug]: action.fields }, toastSeq,
+        toast: { id: toastSeq, tone: "success", message: "Marketing Discovery: borrador actualizado en esta sesión (simulado)" } };
+    }
     case "ideas": {
       const toastSeq = state.toastSeq + 1;
       return { ...state, ideas: action.ideas, ideaSeq: action.ideaSeq ?? state.ideaSeq, toastSeq, toast: { id: toastSeq, message: action.message, tone: "default" } };
@@ -52,6 +58,8 @@ type Store = {
   role: PreviewRole;
   toast: Toast | null;
   ideas: Idea[];
+  discoveryOf: (clientSlug: string) => Record<string,string>;
+  saveDiscovery: (clientSlug: string, fields: Record<string,string>) => void;
   servicesOf: (clientSlug: string) => ServiceId[];
   setServices: (clientSlug: string, services: ServiceId[]) => void;
   addIdea: (clientSlug: string, title: string, detail: string) => void;
@@ -75,7 +83,7 @@ const StoreContext = createContext<Store | null>(null);
 export function OsStoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, {
     tasks: osTasks, seq: 150, role: "admin", toast: null, toastSeq: 0,
-    services: Object.fromEntries(osClients.map(client => [client.slug, client.services])), ideas: seedIdeas, ideaSeq: 40,
+    services: Object.fromEntries(osClients.map(client => [client.slug, client.services])), ideas: seedIdeas, ideaSeq: 40, discovery: {},
   });
 
   const update = useCallback((id: string, change: (task: OsTask) => OsTask, message: string, tone: Toast["tone"] = "default", undoable = false) => {
@@ -88,6 +96,8 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
     role: state.role,
     toast: state.toast,
     ideas: state.ideas,
+    discoveryOf: clientSlug => state.discovery[clientSlug] ?? {},
+    saveDiscovery: (clientSlug, fields) => dispatch({ type: "discovery", clientSlug, fields }),
     servicesOf: clientSlug => state.services[clientSlug] ?? [],
     setServices: (clientSlug, services) => {
       const before = state.services[clientSlug] ?? [];
