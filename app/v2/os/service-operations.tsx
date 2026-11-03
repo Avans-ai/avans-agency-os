@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useOsStore } from "./os-store";
 import type { OsClient } from "./os-data";
 import { serviceProcesses, type WorkflowService } from "./service-process-data";
@@ -18,17 +18,19 @@ export function ServiceOperations({ client, service }: { client: OsClient; servi
   const contracted = servicesOf(client.slug).includes(service);
   const [selected, setSelected] = useState(0);
   const [entries, setEntries] = useState<Record<string, StageEntry>>({});
+  const [confirmed, setConfirmed] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
   const current = process.stages[selected];
   const entry = entries[current.id] ?? empty();
-  const completed = useMemo(() => process.stages.filter(s => entries[s.id]?.status === "Validada en demo").length, [entries, process.stages]);
-  const previousComplete = selected === 0 || process.stages.slice(0, selected).every(s => entries[s.id]?.status === "Validada en demo");
+  const completed = confirmed.length;
+  const previousComplete = selected === 0 || process.stages.slice(0, selected).every(s => confirmed.includes(s.id));
 
   function update(fields: Partial<StageEntry>) {
     if(fields.status === "Validada en demo" && (!previousComplete || !entry.owner.trim() || !entry.reference.trim() || current.checks.some(check => !entry.checks.includes(check)))) {
       setFeedback({type:"error", message:"No se puede validar: cerrá las etapas previas y completá responsable, evidencia y todos los controles."});
       return;
     }
+    setConfirmed(list => list.filter(id => process.stages.findIndex(stage => stage.id === id) < selected));
     setEntries(p => {
       const old = p[current.id] ?? empty();
       // Editing an already validated stage invalidates its prior validation.
@@ -42,11 +44,18 @@ export function ServiceOperations({ client, service }: { client: OsClient; servi
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const stage = process.stages[selected];
+    if (entry.status === "Pendiente" && !entry.owner.trim() && !entry.reference.trim() && !entry.notes.trim() && entry.checks.length === 0) {
+      setFeedback({ type: "error", message: "No hay ningún avance para registrar. Agregá información o cambiá el estado a En preparación." });
+      return;
+    }
     if (entry.status === "Validada en demo") {
       if (!previousComplete) { setFeedback({ type: "error", message: "La etapa anterior sigue sin validar. No podés cerrar esta etapa fuera de secuencia." }); return; }
       if (!entry.owner.trim() || !entry.reference.trim() || stage.checks.some(c => !entry.checks.includes(c))) {
         setFeedback({ type: "error", message: "Para validar una etapa en la demo indicá responsable, referencia a la evidencia y completá todos los controles." }); return;
       }
+      setConfirmed(prev => prev.includes(current.id) ? prev : [...prev,current.id]);
+    } else {
+      setConfirmed(prev => prev.filter(id => id !== current.id));
     }
     setFeedback({ type:"success", message:"Estado registrado únicamente en esta visita (demo). No se guardó ni se aprobó nada fuera de Avans OS." });
   }
@@ -62,7 +71,7 @@ export function ServiceOperations({ client, service }: { client: OsClient; servi
     <div className={styles.layout}>
       <nav className={styles.stageNav} aria-label={`Etapas de ${process.label}`}>
         {process.stages.map((step,index) => <button key={step.id} type="button" className={index===selected?styles.active:""} onClick={() => {setSelected(index);setFeedback(null);}} aria-current={index===selected?"step":undefined}>
-          <span>{String(index+1).padStart(2,"0")}</span><strong>{step.title}</strong><small>{entries[step.id]?.status ?? "Pendiente"}</small>
+          <span>{String(index+1).padStart(2,"0")}</span><strong>{step.title}</strong><small>{confirmed.includes(step.id) ? "Validada en demo" : entries[step.id]?.status === "Validada en demo" ? "Por registrar" : entries[step.id]?.status ?? "Pendiente"}</small>
         </button>)}
       </nav>
       <section className={styles.card} aria-labelledby="stage-title">
