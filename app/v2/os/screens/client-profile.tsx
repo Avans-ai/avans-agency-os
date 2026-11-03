@@ -2,41 +2,52 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useRef, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { ClientBenchmark } from "../../benchmark-data";
 import type { ClientDepth } from "../../client-depth-data";
-import { AvansIcon, type AvansIconName } from "../brand";
+import { AvansIcon, AvansModuleIcon, type AvansIconName } from "../brand";
 import { Glyph } from "../glyphs";
-import { knowledgeByClient, type OsClient } from "../os-data";
+import { IDEA_STATES, knowledgeByClient, serviceCatalog, serviceLabel, strategyByClient, supportRequests, type IdeaState, type OsClient, type ServiceId } from "../os-data";
 import { useOsStore } from "../os-store";
 import { formatMoney, getProject, pendingApprovals, projectProgress, projectsOf, tasksOf } from "../selectors";
+import { OSModal } from "../overlays";
 import { ApprovalRow } from "../task-blocks";
-import { Avatar, Badge, buttonClass, cx, LinkButton, OSEmptyState, OSStatus, Progress, RestrictedValue, Rotulo } from "../ui";
+import { Avatar, Badge, buttonClass, cx, LinkButton, OSEmptyState, OSPriority, OSStatus, Progress, RestrictedValue, Rotulo } from "../ui";
 import s from "../os.module.css";
 import sc from "../screens.module.css";
 
 const TABS = [
   { id: "resumen", label: "Resumen" },
-  { id: "proyectos", label: "Proyectos" },
-  { id: "conocimiento", label: "Conocimiento" },
+  { id: "conocimiento", label: "Discovery / Conocimiento" },
   { id: "benchmark", label: "Benchmark" },
-  { id: "aprobaciones", label: "Aprobaciones", iteration: true },
-  { id: "reportes", label: "Reportes", iteration: true },
+  { id: "estrategia", label: "Estrategia y plan MKT" },
+  { id: "proyectos", label: "Proyectos y centro de ideas" },
+  { id: "servicios", label: "Servicios activos" },
+  { id: "reportes", label: "Reportes" },
+  { id: "soporte", label: "Soporte" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
+/** Links shared before this menu existed keep working. */
+const TAB_ALIASES: Record<string, TabId> = { aprobaciones: "proyectos", discovery: "conocimiento", ideas: "proyectos" };
 
 const SOURCE_ICON: Record<string, AvansIconName> = { Contexto: "registro", Resultados: "datos", Reuniones: "plazo", Memoria: "idea" };
 
 export function ClientProfile({ client, depth, benchmark }: { client: OsClient; depth?: ClientDepth; benchmark?: ClientBenchmark }) {
-  const { tasks, notify } = useOsStore();
+  const { notify, servicesOf } = useOsStore();
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const requested = params.get("tab");
-  const tab: TabId = TABS.some(item => item.id === requested) ? requested as TabId : "resumen";
+  const requested = params.get("tab") ?? "";
+  const tab: TabId = TABS.some(item => item.id === requested) ? requested as TabId : TAB_ALIASES[requested] ?? "resumen";
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const projects = projectsOf(client.slug);
-  const approvals = pendingApprovals(tasks).filter(item => getProject(item.projectSlug)?.clientSlug === client.slug);
+  useEffect(() => {
+    // Keep the selected tab visible in the scrollable strip (mobile/tablet).
+    const node = tabRefs.current[tab];
+    const strip = node?.parentElement;
+    if (node && strip) strip.scrollLeft = Math.max(0, node.offsetLeft - strip.offsetLeft - 16);
+  }, [tab]);
+  const openSupport = supportRequests.filter(item => item.clientSlug === client.slug && item.status !== "Resuelta").length;
 
   function select(id: TabId, focus = false) {
     const next = new URLSearchParams(params.toString());
@@ -73,7 +84,7 @@ export function ClientProfile({ client, depth, benchmark }: { client: OsClient; 
         </div>
         <div className={sc.tabs} role="tablist" aria-label={`Secciones de ${client.name}`}>
           {TABS.map((item, index) => {
-            const count = item.id === "proyectos" ? projects.length : item.id === "aprobaciones" ? approvals.length : null;
+            const count = item.id === "proyectos" ? projects.length : item.id === "servicios" ? servicesOf(client.slug).length : item.id === "soporte" && openSupport ? openSupport : null;
             return (
               <button
                 key={item.id}
@@ -90,7 +101,6 @@ export function ClientProfile({ client, depth, benchmark }: { client: OsClient; 
               >
                 {item.label}
                 {count !== null ? <span className={sc.tabCount}>{count}</span> : null}
-                {"iteration" in item ? <span className={sc.iterTag}>Iteración 2</span> : null}
               </button>
             );
           })}
@@ -98,37 +108,21 @@ export function ClientProfile({ client, depth, benchmark }: { client: OsClient; 
       </div>
 
       <div id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`} tabIndex={0} className={cx(sc.profileBody, tab !== "resumen" && sc.profileBodyFull)}>
-        {tab === "resumen" ? <Summary client={client} depth={depth} onProjectsTab={() => select("proyectos")} /> : null}
-        {tab === "proyectos" ? <Projects client={client} depth={depth} /> : null}
+        {tab === "resumen" ? <Summary client={client} depth={depth} onProjectsTab={() => select("proyectos")} onServicesTab={() => select("servicios")} /> : null}
         {tab === "conocimiento" ? <Knowledge client={client} depth={depth} /> : null}
         {tab === "benchmark" ? <Benchmark client={client} benchmark={benchmark} /> : null}
-        {tab === "aprobaciones" ? (
-          <div className={sc.stack}>
-            <p className={s.demoNote} style={{ margin: 0 }}>Vista provisoria: el diseño de esta pestaña corresponde a la iteración 2. Muestra las aprobaciones pendientes de los proyectos de {client.name}.</p>
-            <section className={s.surface} aria-label="Aprobaciones pendientes">
-              {approvals.length ? approvals.map(item => <ApprovalRow key={item.id} item={item} actions="decide" />) : <OSEmptyState icon="chispa" title="No hay aprobaciones pendientes">Cuando el equipo pida revisar una entrega de esta cuenta, aparece acá.</OSEmptyState>}
-            </section>
-          </div>
-        ) : null}
-        {tab === "reportes" ? (
-          <div className={sc.stack}>
-            <p className={s.demoNote} style={{ margin: 0 }}>Vista provisoria: el diseño de esta pestaña corresponde a la iteración 2. Los espacios de trabajo existentes por cliente se conservan.</p>
-            <div className={sc.settingsGrid}>
-              {[
-                { href: `/v2/clientes/${client.slug}/reportes`, title: "Reportes operativos", text: "Cierre del período, fuentes, insights y versión cliente." },
-                { href: `/v2/clientes/${client.slug}/contenido`, title: "Producción", text: "Planificación, piezas en revisión y feedback de la cuenta." },
-                { href: `/v2/clientes/${client.slug}/campanas`, title: "Campañas", text: "Objetivos, guardrails, señales y recomendaciones." },
-              ].map(item => <Link key={item.href} href={item.href} className={sc.settingsCard}><h2>{item.title}</h2><p>{item.text}</p><span className={s.kpiCta}>Abrir <Glyph name="arrow-right" size={13} /></span></Link>)}
-            </div>
-          </div>
-        ) : null}
+        {tab === "estrategia" ? <Strategy client={client} benchmark={benchmark} /> : null}
+        {tab === "proyectos" ? <ProjectsAndIdeas client={client} depth={depth} /> : null}
+        {tab === "servicios" ? <Services client={client} /> : null}
+        {tab === "reportes" ? <Reports client={client} /> : null}
+        {tab === "soporte" ? <Support client={client} /> : null}
       </div>
     </>
   );
 }
 
-function Summary({ client, depth, onProjectsTab }: { client: OsClient; depth?: ClientDepth; onProjectsTab: () => void }) {
-  const { tasks, role } = useOsStore();
+function Summary({ client, depth, onProjectsTab, onServicesTab }: { client: OsClient; depth?: ClientDepth; onProjectsTab: () => void; onServicesTab: () => void }) {
+  const { tasks, role, servicesOf } = useOsStore();
   const projects = projectsOf(client.slug);
   return (
     <>
@@ -170,8 +164,8 @@ function Summary({ client, depth, onProjectsTab }: { client: OsClient; depth?: C
           <ul className={sc.people}>{client.contacts.map(person => <li key={person.name}><div><strong>{person.name}</strong>{person.role}</div></li>)}</ul>
         </section>
         <section className={s.surface} aria-labelledby="services-title">
-          <div className={s.cardHead} style={{ borderBottom: 0 }}><h2 id="services-title" style={{ fontSize: 18 }}>Servicios contratados</h2></div>
-          <div className={sc.serviceTags}>{client.services.map(service => <Badge key={service} tone="stone">{service}</Badge>)}</div>
+          <div className={s.cardHead} style={{ borderBottom: 0 }}><h2 id="services-title" style={{ fontSize: 18 }}>Servicios contratados</h2><button type="button" className={buttonClass("ghost")} onClick={onServicesTab}>Ver módulos</button></div>
+          <div className={sc.serviceTags}>{servicesOf(client.slug).map(service => <Badge key={service} tone="stone">{serviceLabel(service)}</Badge>)}</div>
         </section>
         {role === "admin" ? (
           <section className={sc.commercial} aria-labelledby="commercial-title">
@@ -235,15 +229,23 @@ function ProjectsTable({ projects, progress }: { projects: ReturnType<typeof pro
   );
 }
 
-function Projects({ client, depth }: { client: OsClient; depth?: ClientDepth }) {
+function ProjectsAndIdeas({ client, depth }: { client: OsClient; depth?: ClientDepth }) {
   const { tasks } = useOsStore();
   const projects = projectsOf(client.slug);
+  const approvals = pendingApprovals(tasks).filter(item => getProject(item.projectSlug)?.clientSlug === client.slug);
   return (
     <div className={sc.stack}>
       <section className={s.surface} aria-labelledby="projects-title">
         <div className={s.cardHead}><h2 id="projects-title">Proyectos de {client.name}</h2><span className={s.cardMeta}>{projects.reduce((sum, project) => sum + tasksOf(tasks, project.slug).length, 0)} tareas registradas</span></div>
         <ProjectsTable projects={projects} progress={slug => projectProgress(slug, tasks)} />
       </section>
+      {approvals.length ? (
+        <section className={s.surface} aria-labelledby="client-approvals">
+          <div className={s.cardHead}><h2 id="client-approvals">Aprobaciones pendientes</h2><Link className={s.link} href="/v2/aprobaciones">Ver todas las de la agencia</Link></div>
+          {approvals.map(item => <ApprovalRow key={item.id} item={item} actions="decide" />)}
+        </section>
+      ) : null}
+      <IdeasCenter client={client} />
       {depth ? (
         <div className={sc.twoCols}>
           <section className={s.surface} aria-labelledby="streams-title">
@@ -276,8 +278,21 @@ function Knowledge({ client, depth }: { client: OsClient; depth?: ClientDepth })
     (acc[source.category] ??= []).push(source);
     return acc;
   }, {})).map(([category, items]) => ({ title: category, icon: SOURCE_ICON[category] ?? "registro", count: items.length, source: items.map(item => item.origin).join(" · "), items: items.map(item => ({ label: item.title, meta: item.updated })) })) : []);
+  const business = depth?.knowledge.find(item => item.label === "Negocio y objetivos");
   return (
     <div className={sc.stack}>
+      <section className={s.surface} aria-labelledby="discovery-title">
+        <div className={s.cardHead}><h2 id="discovery-title">Discovery</h2><Link className={s.link} href="/v2/discovery">Abrir Discovery en Ventas</Link></div>
+        <div className={sc.cardBody}>
+          <p style={{ margin: 0, lineHeight: 1.55 }}>{depth?.primaryObjective ?? client.context.text}</p>
+          <div className={sc.contextFacts}>
+            <div><span>Objetivo del trimestre</span><strong style={{ fontWeight: 400 }}>{client.context.objective}</strong></div>
+            <div><span>Canales principales</span><strong style={{ fontWeight: 400 }}>{client.context.channels}</strong></div>
+            <div><span>Negocio y objetivos</span><strong style={{ fontWeight: 400 }}>{business ? `${business.completeness}% documentado · ${business.provenance}` : "Por relevar"}</strong></div>
+          </div>
+          <p className={s.demoNote} style={{ margin: 0 }}>El discovery comercial se hace en Ventas; al cerrar la venta, su resultado queda en esta ficha. No se duplica la información.</p>
+        </div>
+      </section>
       <div className={s.pageHead}>
         <div><h2 style={{ margin: 0, fontSize: 22, fontWeight: 400 }}>Conocimiento del cliente</h2><p>Dónde está cada cosa. Los archivos viven en su herramienta de origen; acá se indexan y se enlazan.</p></div>
         <button type="button" className={buttonClass("secondary", true)} onClick={() => notify("Agregar referencia: pendiente de implementación")}><AvansIcon name="enlace" size={18} />Agregar referencia</button>
@@ -383,6 +398,242 @@ function Benchmark({ client, benchmark }: { client: OsClient; benchmark?: Client
           ) : null}
         </section>
       </div>
+    </div>
+  );
+}
+
+function IdeasCenter({ client }: { client: OsClient }) {
+  const { ideas, addIdea, setIdeaState, notify } = useOsStore();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [detail, setDetail] = useState("");
+  const [error, setError] = useState("");
+  const own = ideas.filter(idea => idea.clientSlug === client.slug);
+  const tone = (state: IdeaState) => state === "Aprobada" ? "cool" : state === "En evaluación" ? "peach" : state === "Descartada" ? "stone" : "info";
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!title.trim()) { setError("Escribí un título para la idea"); return; }
+    addIdea(client.slug, title.trim(), detail.trim());
+    setTitle(""); setDetail(""); setError(""); setOpen(false);
+  }
+  return (
+    <section className={s.surface} aria-labelledby="ideas-title">
+      <div className={s.cardHead}>
+        <h2 id="ideas-title">Centro de ideas</h2>
+        <button type="button" className={buttonClass("secondary", true)} aria-expanded={open} onClick={() => setOpen(value => !value)}><AvansIcon name="idea" size={18} />Nueva idea</button>
+      </div>
+      {open ? (
+        <form onSubmit={submit} noValidate className={sc.cardBody} style={{ borderBottom: "1px solid var(--av-border)" }}>
+          <label className={s.field}>
+            <span>Idea <span className={s.req} aria-hidden="true">*</span></span>
+            <input className={s.input} value={title} maxLength={140} aria-invalid={Boolean(error)} aria-describedby={error ? "idea-error" : undefined} onChange={event => { setTitle(event.target.value); setError(""); }} placeholder="Qué proponés" />
+            {error ? <span className={s.fieldError} id="idea-error"><Glyph name="alert" size={15} />{error}</span> : null}
+          </label>
+          <label className={s.field}>
+            <span>Por qué (opcional)</span>
+            <textarea className={s.input} rows={2} value={detail} maxLength={500} onChange={event => setDetail(event.target.value)} placeholder="Dato, aprendizaje o pedido que la origina" />
+          </label>
+          <div className={s.actions}><button type="submit" className={buttonClass("dark", true)}>Agregar idea</button><button type="button" className={buttonClass("ghost")} onClick={() => setOpen(false)}>Cancelar</button></div>
+        </form>
+      ) : null}
+      {own.length ? own.map(idea => (
+        <div className={sc.projectItem} key={idea.id}>
+          <div className={sc.projectTop}><span>{idea.id} · {idea.title}</span><Badge tone={tone(idea.state)}>{idea.state}</Badge></div>
+          {idea.detail ? <span>{idea.detail}</span> : null}
+          <span className={sc.meta}>{idea.source} · {idea.author} · {idea.when}</span>
+          <div className={s.actions}>
+            <label className={sc.selectWrap} style={{ fontSize: 14 }}>Estado
+              <select value={idea.state} onChange={event => setIdeaState(idea.id, event.target.value as IdeaState)}>{IDEA_STATES.map(state => <option key={state}>{state}</option>)}</select>
+            </label>
+            {idea.state === "Aprobada" ? <button type="button" className={buttonClass("ghost")} onClick={() => notify("Convertir en proyecto: pendiente de implementación (requiere persistencia)")}>Convertir en proyecto</button> : null}
+          </div>
+        </div>
+      )) : <OSEmptyState icon="idea" title="Todavía no hay ideas para esta cuenta">Sumá propuestas que surgen de reuniones, benchmark o aprendizajes; las aprobadas se convierten en proyectos.</OSEmptyState>}
+    </section>
+  );
+}
+
+function Strategy({ client, benchmark }: { client: OsClient; benchmark?: ClientBenchmark }) {
+  const { notify } = useOsStore();
+  const plan = strategyByClient[client.slug];
+  const head = (
+    <div className={s.pageHead}>
+      <div><h2 style={{ margin: 0, fontSize: 22, fontWeight: 400 }}>Estrategia y plan de marketing</h2><p>{plan ? `${plan.period} · Actualizado ${plan.updated}` : "Objetivo, posicionamiento, audiencias, canales y KPIs de la cuenta."}</p></div>
+      <button type="button" className={buttonClass("secondary", true)} onClick={() => notify("Editar plan: pendiente de implementación (requiere persistencia)")}>{plan ? "Editar plan" : "Cargar plan"}</button>
+    </div>
+  );
+  if (!plan) {
+    return (
+      <div className={sc.stack}>
+        {head}
+        <div className={sc.contextFacts} style={{ background: "var(--av-bg-raised)" }}>
+          <div><span>Objetivo del trimestre</span><strong style={{ fontWeight: 400 }}>{client.context.objective}</strong></div>
+          <div><span>Canales principales</span><strong style={{ fontWeight: 400 }}>{client.context.channels}</strong></div>
+          <div><span>Responsable</span><strong style={{ fontWeight: 400 }}>{client.owner}</strong></div>
+        </div>
+        <OSEmptyState icon="objetivo" title="El plan de marketing está en preparación">
+          Se completa con posicionamiento, audiencias, pilares, canales, KPIs e hitos. {benchmark ? `Ya hay ${benchmark.opportunities.length} oportunidades del benchmark para tomar como insumo.` : ""}
+        </OSEmptyState>
+      </div>
+    );
+  }
+  return (
+    <div className={sc.stack}>
+      {head}
+      <section className={sc.commercial} aria-label="Posicionamiento">
+        <p className={s.rotulo} style={{ color: "var(--av-coral-200)" }}>Posicionamiento</p>
+        <p style={{ fontSize: 18, color: "var(--av-paper)", lineHeight: 1.45 }}>{plan.positioning}</p>
+      </section>
+      <div className={sc.twoCols}>
+        <section className={s.surface} aria-labelledby="audiences-title">
+          <div className={s.cardHead}><h2 id="audiences-title">Audiencias</h2></div>
+          {plan.audiences.map(item => <div className={sc.projectItem} key={item.name}><span style={{ fontWeight: 500 }}>{item.name}</span><span className={sc.meta}>{item.insight}</span></div>)}
+        </section>
+        <section className={s.surface} aria-labelledby="pillars-title">
+          <div className={s.cardHead}><h2 id="pillars-title">Pilares de mensaje</h2></div>
+          {plan.pillars.map(item => <div className={sc.projectItem} key={item.title}><span style={{ fontWeight: 500 }}>{item.title}</span><span className={sc.meta}>{item.detail}</span></div>)}
+        </section>
+      </div>
+      <div className={sc.twoCols}>
+        <section className={s.surface} aria-label="Canales">
+          <div className={s.tableWrap}>
+            <table className={s.table}>
+              <thead><tr><th scope="col">Canal</th><th scope="col">Rol</th><th scope="col" className={s.num}>Inversión</th></tr></thead>
+              <tbody>{plan.channels.map(item => <tr key={item.channel}><td>{item.channel}</td><td>{item.role}</td><td className={s.num}>{item.share}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+        <section className={s.surface} aria-label="KPIs">
+          <div className={s.tableWrap}>
+            <table className={s.table}>
+              <thead><tr><th scope="col">KPI</th><th scope="col">Meta</th><th scope="col">Hoy</th></tr></thead>
+              <tbody>{plan.kpis.map(item => <tr key={item.label}><td>{item.label}</td><td>{item.target}</td><td className={s.cellSub}>{item.current}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      <section className={s.surface} aria-labelledby="milestones-title">
+        <div className={s.cardHead}><h2 id="milestones-title">Hitos del plan</h2></div>
+        <ol className={sc.stepList}>{plan.milestones.map((item, index) => <li key={item.what}><span className={sc.stepNum}>{String(index + 1).padStart(2, "0")}</span><span>{item.what}</span><span /><span>{item.when}</span></li>)}</ol>
+      </section>
+    </div>
+  );
+}
+
+function Services({ client }: { client: OsClient }) {
+  const { servicesOf, setServices } = useOsStore();
+  const [configuring, setConfiguring] = useState(false);
+  const active = servicesOf(client.slug);
+  const activeDefs = serviceCatalog.filter(service => active.includes(service.id));
+  const inactive = serviceCatalog.filter(service => !active.includes(service.id));
+  return (
+    <div className={sc.stack}>
+      <div className={s.pageHead}>
+        <div><h2 style={{ margin: 0, fontSize: 22, fontWeight: 400 }}>Módulos de servicios activos</h2><p>Cada servicio contratado activa su módulo de trabajo en esta ficha.</p></div>
+        <button type="button" className={buttonClass("secondary", true)} onClick={() => setConfiguring(true)}><AvansIcon name="ajuste" size={18} />Configurar servicios</button>
+      </div>
+      {activeDefs.length ? (
+        <div className={sc.settingsGrid}>
+          {activeDefs.map(service => {
+            const body = (
+              <>
+                <span className={sc.serviceIcon}><AvansModuleIcon name={service.icon} size={40} /></span>
+                <h2>{service.label}</h2>
+                <p>{service.workspace ? "Módulo operativo disponible: planificación, revisión y seguimiento del servicio." : "Módulo pendiente de documentación: el flujo de este servicio todavía no está definido."}</p>
+                <span style={{ marginTop: "auto" }}>{service.workspace ? <span className={s.kpiCta}>Abrir módulo <Glyph name="arrow-right" size={13} /></span> : <Badge tone="stone">Pendiente</Badge>}</span>
+              </>
+            );
+            return service.workspace
+              ? <Link key={service.id} href={`/v2/clientes/${client.slug}/${service.workspace}`} className={sc.settingsCard}>{body}</Link>
+              : <div key={service.id} className={sc.settingsCard}>{body}</div>;
+          })}
+        </div>
+      ) : <OSEmptyState icon="ajuste" title="Esta cuenta no tiene servicios activos" actions={<button type="button" className={buttonClass("primary", true)} onClick={() => setConfiguring(true)}>Configurar servicios</button>}>Activá los servicios contratados para habilitar sus módulos.</OSEmptyState>}
+      {inactive.length ? (
+        <section aria-labelledby="catalog-title" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <h3 id="catalog-title" className={cx(s.rotulo, s.rotuloInk)}>No contratados</h3>
+          <div className={s.tagRow}>{inactive.map(service => <span key={service.id} className={cx(s.badge, s.toneStone)}>{service.label}</span>)}</div>
+        </section>
+      ) : null}
+      {configuring ? <ServicesModal client={client} initial={active} onClose={() => setConfiguring(false)} onSave={next => { setServices(client.slug, next); setConfiguring(false); }} /> : null}
+    </div>
+  );
+}
+
+function ServicesModal({ client, initial, onClose, onSave }: { client: OsClient; initial: ServiceId[]; onClose: () => void; onSave: (services: ServiceId[]) => void }) {
+  const [selected, setSelected] = useState<ServiceId[]>(initial);
+  const toggle = (id: ServiceId) => setSelected(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+  return (
+    <OSModal
+      title={`Servicios de ${client.name}`}
+      titleId="services-modal-title"
+      onClose={onClose}
+      footer={<><button type="button" className={buttonClass("ghost")} onClick={onClose}>Cancelar</button><button type="button" className={buttonClass("primary")} onClick={() => onSave(serviceCatalog.map(item => item.id).filter(id => selected.includes(id)))}>Guardar</button></>}
+    >
+      <fieldset style={{ border: 0, margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+        <legend className={s.hint} style={{ marginBottom: 8 }}>Marcá los servicios contratados. Cada uno activa su módulo en la ficha.</legend>
+        {serviceCatalog.map(service => (
+          <label key={service.id} className={sc.checkRow}>
+            <input type="checkbox" className={sc.check} checked={selected.includes(service.id)} onChange={() => toggle(service.id)} />
+            <span>{service.label}</span>
+          </label>
+        ))}
+      </fieldset>
+      <p className={s.demoNote} style={{ margin: 0 }}>El cambio se aplica solo en esta sesión: todavía no hay base de datos conectada.</p>
+    </OSModal>
+  );
+}
+
+function Reports({ client }: { client: OsClient }) {
+  const plan = strategyByClient[client.slug];
+  return (
+    <div className={sc.stack}>
+      <div className={s.pageHead}><div><h2 style={{ margin: 0, fontSize: 22, fontWeight: 400 }}>Reportes</h2><p>Cierre del período, fuentes, insights y versión para el cliente.</p></div></div>
+      <div className={sc.settingsGrid}>
+        <Link href={`/v2/clientes/${client.slug}/reportes`} className={sc.settingsCard}><h2>Reporte del período</h2><p>Preparar fuentes, normalizar métricas, revisar insights y generar el borrador para validación.</p><span className={s.kpiCta} style={{ marginTop: "auto" }}>Abrir <Glyph name="arrow-right" size={13} /></span></Link>
+        <Link href="/v2/reportes" className={sc.settingsCard}><h2>Reportes operativos de la agencia</h2><p>Estado de reportes de todas las cuentas en Operaciones.</p><span className={s.kpiCta} style={{ marginTop: "auto" }}>Abrir <Glyph name="arrow-right" size={13} /></span></Link>
+      </div>
+      {plan ? (
+        <section className={s.surface} aria-label="KPIs del plan">
+          <div className={s.cardHead}><h2>KPIs que mide el reporte</h2><span className={s.cardMeta}>Del plan de marketing</span></div>
+          <div className={s.tableWrap}><table className={s.table}><thead><tr><th scope="col">KPI</th><th scope="col">Meta</th><th scope="col">Hoy</th></tr></thead><tbody>{plan.kpis.map(item => <tr key={item.label}><td>{item.label}</td><td>{item.target}</td><td className={s.cellSub}>{item.current}</td></tr>)}</tbody></table></div>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function Support({ client }: { client: OsClient }) {
+  const { notify } = useOsStore();
+  const requests = supportRequests.filter(item => item.clientSlug === client.slug);
+  const tone = (status: string) => status === "Abierta" ? "peach" : status === "En curso" ? "info" : "cool";
+  return (
+    <div className={sc.stack}>
+      <div className={s.pageHead}>
+        <div><h2 style={{ margin: 0, fontSize: 22, fontWeight: 400 }}>Soporte</h2><p>Pedidos del cliente fuera de los proyectos: cambios, incidencias y consultas.</p></div>
+        <button type="button" className={buttonClass("secondary", true)} onClick={() => notify("Nueva solicitud de soporte: pendiente de implementación")}><AvansIcon name="mensaje" size={18} />Nueva solicitud</button>
+      </div>
+      {requests.length ? (
+        <section className={s.surface} aria-label="Solicitudes de soporte">
+          <div className={cx(s.tableWrap, sc.desktopTable)}>
+            <table className={s.table}>
+              <thead><tr><th scope="col">ID</th><th scope="col">Solicitud</th><th scope="col">Pidió</th><th scope="col">Canal</th><th scope="col">Responsable</th><th scope="col">Prioridad</th><th scope="col">Estado</th></tr></thead>
+              <tbody>{requests.map(item => (
+                <tr key={item.id}>
+                  <td className={s.cellSub}>{item.id}</td>
+                  <td><span className={s.cellMain}><span>{item.title}</span><span className={s.cellSub}>Abierta {item.opened}</span></span></td>
+                  <td>{item.requester}</td><td>{item.channel}</td><td>{item.owner}</td>
+                  <td><OSPriority prio={item.prio} /></td>
+                  <td><Badge tone={tone(item.status)}>{item.status}</Badge></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <ul className={sc.mobileList}>{requests.map(item => (
+            <li key={item.id}><div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: "6px 12px", padding: "14px 16px" }}><span>{item.title}</span><Badge tone={tone(item.status)}>{item.status}</Badge><small className={s.cellSub} style={{ gridColumn: "1 / -1" }}>{item.id} · {item.requester} · {item.opened}</small></div></li>
+          ))}</ul>
+        </section>
+      ) : <OSEmptyState icon="mensaje" title="Sin solicitudes de soporte">Cuando el cliente pida un cambio o reporte una incidencia, queda registrado acá con responsable y estado.</OSEmptyState>}
     </div>
   );
 }

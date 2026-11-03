@@ -76,8 +76,8 @@
 .identity h1{margin:0;font-size:26px;line-height:1.2;font-weight:500;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .identity p{margin:6px 0 0;font-size:15px;color:var(--av-text-muted)}
 .identity p strong{color:var(--av-text);font-weight:600}
-.tabs{display:flex;gap:4px;overflow-x:auto;margin:0 -16px;padding:0 16px;scrollbar-width:thin}
-.tab{position:relative;display:inline-flex;align-items:center;gap:8px;padding:12px 16px 14px;border:0;background:transparent;color:var(--av-text-muted);font:inherit;font-size:16px;cursor:pointer;white-space:nowrap}
+.tabs{display:flex;gap:2px;overflow-x:auto;margin:0 -16px;padding:0 16px;scrollbar-width:thin}
+.tab{position:relative;display:inline-flex;align-items:center;gap:8px;padding:12px 11px 14px;border:0;background:transparent;color:var(--av-text-muted);font:inherit;font-size:15px;cursor:pointer;white-space:nowrap}
 .tab[aria-selected="true"]{color:var(--av-text);font-weight:500}
 .tab[aria-selected="true"]::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--av-coral-300)}
 .tabCount{font-size:12px;background:var(--av-bg-sunken);color:var(--av-text);padding:1px 6px}
@@ -216,3 +216,7 @@
 .mapGrid ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:15px}
 @media (max-width:1100px){.settingsGrid,.mapGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:767px){.settingsGrid,.mapGrid{grid-template-columns:minmax(0,1fr)}}
+
+/* Servicios activos */
+.serviceIcon{color:var(--av-coral-300)}
+.checkRow{display:flex;align-items:center;gap:12px;min-height:44px;padding:4px 0;font-size:16px;color:var(--av-text);cursor:pointer}

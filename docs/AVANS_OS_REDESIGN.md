@@ -67,9 +67,16 @@ Modificados:
   Esperan tu aprobación; Proyectos con alertas; Bloqueos activos; Actividad. Móvil: pestañas Mi trabajo / Agencia y KPIs 2×2.
 - **Clientes**: búsqueda, filtros por estado, burbuja, orden por cliente / proyectos / fee (`aria-sort`), estado vacío con «Limpiar filtros»,
   fee oculto según rol, lista compacta en móvil, primera columna fija en tablet.
-- **Ficha**: cabecera, pestañas con teclado (flechas, Inicio/Fin) y `?tab=`; Resumen (contexto, proyectos, próximos pasos, equipo, contactos,
-  servicios, datos comerciales o bloque restringido); Proyectos (+ frentes y acciones abiertas existentes); Conocimiento (grupos de referencias,
-  memoria y decisiones existentes); Benchmark (datos existentes de `benchmark-data.ts` + enlace al hub completo); Aprobaciones y Reportes provisorios.
+- **Ficha del cliente** (menú definido por Avans, `?tab=`, navegable con flechas e Inicio/Fin):
+  1. **Resumen** (`resumen`): contexto, proyectos activos, próximos pasos, equipo, contactos, servicios contratados y datos comerciales o bloque restringido.
+  2. **Discovery / Conocimiento** (`conocimiento`): discovery de la cuenta (enlaza al Discovery de Ventas, sin duplicarlo), referencias por grupo, memoria y decisiones existentes.
+  3. **Benchmark** (`benchmark`): datos existentes de `benchmark-data.ts` + enlace al hub completo.
+  4. **Estrategia y plan MKT** (`estrategia`): posicionamiento, audiencias, pilares, canales, KPIs e hitos. Solo EPSA tiene plan cargado; el resto muestra «plan en preparación».
+  5. **Proyectos y centro de ideas** (`proyectos`): proyectos, aprobaciones pendientes del cliente, centro de ideas (alta con validación y cambio de estado), frentes y acciones abiertas.
+  6. **Servicios activos** (`servicios`): módulos de los servicios contratados, configurables desde «Configurar servicios» sobre el catálogo de 10 servicios de Avans. Publicidad digital y Contenidos abren los espacios existentes (Campañas y Producción); el resto figura como «pendiente de documentación».
+  7. **Reportes** (`reportes`): espacio de reportes del cliente, reportes operativos de la agencia y KPIs del plan.
+  8. **Soporte** (`soporte`): solicitudes del cliente fuera de los proyectos, con estado, prioridad y responsable.
+  Enlaces anteriores: `?tab=aprobaciones` y `?tab=ideas` abren Proyectos y centro de ideas; `?tab=discovery` abre Discovery / Conocimiento.
 - **Proyecto**: resumen (responsable, fechas, avance calculado, tareas, alertas), Kanban/Lista (`?view=lista`), filtros, búsqueda,
   panel de tarea (`?task=T-142`) con estado, prioridad, desbloqueo, comentarios, actividad y aprobar / pedir cambios; modal «Nueva tarea» con validación.
   Aprobar T-142 desbloquea T-144. Proyectos sin tareas muestran el estado vacío del diseño.
@@ -93,7 +100,8 @@ y no es control de acceso.
   en el hub actual: se reemplazó por Insights y Aprendizajes, que ya existían. Burbujas, Contractors, Talento, Forecast y Planificación se conservan.
 - La pestaña Benchmark usa los datos existentes del módulo (dimensiones, competidores, señales, oportunidades) en lugar de las cifras del prototipo
   (seguidores, posts, share of voice), para no reemplazar datos del sistema con los del prototipo. No hay selector 30/90 días porque los datos no tienen períodos.
-- Aprobaciones y Reportes de la ficha mantienen la marca «Iteración 2» pero ya muestran contenido útil (aprobaciones del cliente y accesos a los espacios existentes).
+- La ficha sigue el menú de 8 secciones pedido por Avans en lugar de las 6 pestañas del artboard. Aprobaciones dejó de ser pestaña: las del cliente aparecen en Proyectos y centro de ideas, y las de toda la agencia en Operaciones › Aprobaciones. «Módulos de servicios activos» se rotula «Servicios activos» en la pestaña para que el menú entre a 1440 px.
+- Los emblemas de servicio (`ModuleIcon` del sistema) solo se usan a gran tamaño en las tarjetas, como indica el sistema; no en línea con texto.
 - Se mantuvo el modo oscuro existente con un remapeo de tokens (el sistema Avans no define tema oscuro): queda como propuesta a validar.
 - Botones con peso 500 en lugar de 600 para igualar la lectura visual de los artboards.
 - Selectores nativos con flecha CSS en lugar del chevron del prototipo.
@@ -113,7 +121,9 @@ y no es control de acceso.
 | Notificaciones reales | Lista estática enlazada |
 | Nuevo cliente / proyecto, exportar, adjuntar, Drive, registrar reunión, actualizar benchmark, usar plantilla, pedir acceso | Aviso «pendiente» |
 | Selector de fecha completo en «Nueva tarea» | Lista de fechas de la demo |
-| Diseño de pestañas Aprobaciones y Reportes de la ficha | Iteración 2 |
+| Flujos de los módulos de servicio (salvo Publicidad digital y Contenidos, que reutilizan Campañas y Producción) | Falta la documentación de cada servicio |
+| Persistir servicios contratados, ideas, plan de marketing y solicitudes de soporte | Hoy son cambios de sesión «(simulado)» |
+| Convertir idea en proyecto, editar plan, nueva solicitud de soporte | Aviso «pendiente» |
 | Rediseño profundo de Ventas, Finanzas, RRHH, Gerencia y plataforma con componentes OS | Próxima iteración |
 | Alta de las extensiones OS* en el sistema Avans | Requiere autorización del equipo de marca |
 
@@ -122,7 +132,7 @@ y no es control de acceso.
 - `npm run typecheck`: OK.
 - `npm run lint`: 0 errores; 2 avisos en el MVP anterior (`/`), sin cambios.
 - `npm run build`: OK, 224 páginas estáticas.
-- No hay suite de pruebas en el repositorio. Se ejecutó un recorrido con Playwright (20 verificaciones: aprobar y deshacer, desbloqueo,
+- No hay suite de pruebas en el repositorio. Se ejecutó un recorrido con Playwright (24 verificaciones: aprobar y deshacer, desbloqueo, enlaces viejos de pestañas, alta de ideas, activación de servicios,
   validación del modal, panel con Esc y retorno de foco, `?view`, `?tab`, filtros, búsqueda Ctrl K, vacío, rol restringido): todas pasan, sin errores de página.
 - Revisión visual a 1440, 1024, 768 y 390 px de Inicio, Clientes, ficha, proyecto, panel, Finanzas, Ventas, Configuración y 404;
   sin desborde horizontal. Modo oscuro revisado en ficha y Ventas.

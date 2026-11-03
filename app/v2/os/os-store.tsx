@@ -7,16 +7,18 @@
  * «Datos de demostración». Replace the reducer actions with server actions or
  * API calls once persistence and permissions exist. */
 import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from "react";
-import { CURRENT_USER, osTasks, type DueKind, type OsTask, type Priority, type TaskStatus } from "./os-data";
+import { CURRENT_USER, ideas as seedIdeas, osClients, osTasks, serviceLabel, type DueKind, type Idea, type IdeaState, type OsTask, type Priority, type ServiceId, type TaskStatus } from "./os-data";
 
 export type PreviewRole = "admin" | "operativo";
 export type Toast = { id: number; message: string; tone: "default" | "success" | "error"; undo?: OsTask[] };
 
-type State = { tasks: OsTask[]; seq: number; role: PreviewRole; toast: Toast | null; toastSeq: number };
+type State = { tasks: OsTask[]; seq: number; role: PreviewRole; toast: Toast | null; toastSeq: number; services: Record<string, ServiceId[]>; ideas: Idea[]; ideaSeq: number };
 type Action =
   | { type: "replace"; tasks: OsTask[]; toast?: Omit<Toast, "id"> | null; seq?: number }
   | { type: "toast"; toast: Omit<Toast, "id"> | null }
-  | { type: "role"; role: PreviewRole };
+  | { type: "role"; role: PreviewRole }
+  | { type: "services"; clientSlug: string; services: ServiceId[]; message: string }
+  | { type: "ideas"; ideas: Idea[]; ideaSeq?: number; message: string };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -30,6 +32,14 @@ function reducer(state: State, action: Action): State {
     }
     case "role":
       return { ...state, role: action.role };
+    case "services": {
+      const toastSeq = state.toastSeq + 1;
+      return { ...state, services: { ...state.services, [action.clientSlug]: action.services }, toastSeq, toast: { id: toastSeq, message: action.message, tone: "success" } };
+    }
+    case "ideas": {
+      const toastSeq = state.toastSeq + 1;
+      return { ...state, ideas: action.ideas, ideaSeq: action.ideaSeq ?? state.ideaSeq, toastSeq, toast: { id: toastSeq, message: action.message, tone: "default" } };
+    }
   }
 }
 
@@ -41,6 +51,11 @@ type Store = {
   tasks: OsTask[];
   role: PreviewRole;
   toast: Toast | null;
+  ideas: Idea[];
+  servicesOf: (clientSlug: string) => ServiceId[];
+  setServices: (clientSlug: string, services: ServiceId[]) => void;
+  addIdea: (clientSlug: string, title: string, detail: string) => void;
+  setIdeaState: (id: string, state: IdeaState) => void;
   setRole: (role: PreviewRole) => void;
   setStatus: (id: string, status: TaskStatus) => void;
   setPriority: (id: string, prio: Priority) => void;
@@ -58,7 +73,10 @@ type Store = {
 const StoreContext = createContext<Store | null>(null);
 
 export function OsStoreProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, { tasks: osTasks, seq: 150, role: "admin", toast: null, toastSeq: 0 });
+  const [state, dispatch] = useReducer(reducer, {
+    tasks: osTasks, seq: 150, role: "admin", toast: null, toastSeq: 0,
+    services: Object.fromEntries(osClients.map(client => [client.slug, client.services])), ideas: seedIdeas, ideaSeq: 40,
+  });
 
   const update = useCallback((id: string, change: (task: OsTask) => OsTask, message: string, tone: Toast["tone"] = "default", undoable = false) => {
     const next = state.tasks.map(item => (item.id === id ? change({ ...item }) : item));
@@ -69,6 +87,21 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
     tasks: state.tasks,
     role: state.role,
     toast: state.toast,
+    ideas: state.ideas,
+    servicesOf: clientSlug => state.services[clientSlug] ?? [],
+    setServices: (clientSlug, services) => {
+      const before = state.services[clientSlug] ?? [];
+      const added = services.filter(id => !before.includes(id)).map(serviceLabel);
+      const removed = before.filter(id => !services.includes(id)).map(serviceLabel);
+      const parts = [added.length ? `Activado: ${added.join(", ")}` : "", removed.length ? `Desactivado: ${removed.join(", ")}` : ""].filter(Boolean);
+      dispatch({ type: "services", clientSlug, services, message: `${parts.join(" · ") || "Sin cambios en los servicios"} (simulado)` });
+    },
+    addIdea: (clientSlug, title, detail) => {
+      const id = `I-${state.ideaSeq}`;
+      const idea: Idea = { id, clientSlug, title, detail, source: "Carga manual", author: CURRENT_USER.name, when: "Ahora", state: "Nueva" };
+      dispatch({ type: "ideas", ideas: [idea, ...state.ideas], ideaSeq: state.ideaSeq + 1, message: `${id} agregada al centro de ideas (simulado)` });
+    },
+    setIdeaState: (id, ideaState) => dispatch({ type: "ideas", ideas: state.ideas.map(idea => (idea.id === id ? { ...idea, state: ideaState } : idea)), message: `${id}: ${ideaState} (simulado)` }),
     setRole: role => dispatch({ type: "role", role }),
     setStatus: (id, status) => update(id, item => ({ ...item, status, activity: [now(`cambió el estado de ${item.status} a ${status}`), ...item.activity] }), `Estado actualizado: ${status} (simulado)`, "default", true),
     setPriority: (id, prio) => update(id, item => ({ ...item, prio, activity: [now(`cambió la prioridad a ${prio}`), ...item.activity] }), "Prioridad actualizada (simulado)"),

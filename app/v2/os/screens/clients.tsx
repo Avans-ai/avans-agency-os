@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AvansIcon } from "../brand";
 import { Glyph } from "../glyphs";
-import { osClients, type ClientStatus } from "../os-data";
+import { osClients, serviceLabel, type ClientStatus } from "../os-data";
 import { useOsStore } from "../os-store";
 import { formatMoney, projectsOf } from "../selectors";
 import { buttonClass, cx, OSEmptyState, OSStatus, PageHead } from "../ui";
@@ -22,7 +22,7 @@ const BUBBLES = ["Todas", ...Array.from(new Set(osClients.map(client => client.b
 type SortKey = "name" | "projects" | "fee";
 
 export function ClientsScreen() {
-  const { role, notify } = useOsStore();
+  const { role, notify, servicesOf } = useOsStore();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("todos");
   const [bubble, setBubble] = useState("Todas");
@@ -35,12 +35,12 @@ export function ClientsScreen() {
       .map(client => ({ client, projects: projectsOf(client.slug).length }))
       .filter(({ client }) => filter === "todos" || client.status === filter)
       .filter(({ client }) => bubble === "Todas" || client.bubble === bubble)
-      .filter(({ client }) => !q || `${client.name} ${client.services.join(" ")} ${client.owner}`.toLocaleLowerCase("es").includes(q))
+      .filter(({ client }) => !q || `${client.name} ${servicesOf(client.slug).map(serviceLabel).join(" ")} ${client.owner}`.toLocaleLowerCase("es").includes(q))
       .sort((a, b) => {
         const value = sort.key === "name" ? a.client.name.localeCompare(b.client.name, "es") : sort.key === "projects" ? a.projects - b.projects : a.client.feeMonthly - b.client.feeMonthly;
         return value * sort.dir;
       });
-  }, [query, filter, bubble, sort]);
+  }, [query, filter, bubble, sort, servicesOf]);
 
   function toggleSort(key: SortKey) {
     setSort(current => ({ key, dir: current.key === key ? (current.dir === 1 ? -1 : 1) : 1 }));
@@ -104,7 +104,7 @@ export function ClientsScreen() {
                         <span className={s.cellMain}><Link href={`/v2/clientes/${client.slug}`} className={s.linkInk} style={{ fontSize: 16 }}>{client.name}</Link><span className={s.cellSub}>Cliente desde {client.since}</span></span>
                       </div>
                     </td>
-                    <td>{client.services.join(" · ")}</td>
+                    <td>{servicesOf(client.slug).map(serviceLabel).join(" · ")}</td>
                     <td><span className={s.cellMain}><span>{client.owner}</span><span className={s.cellSub}>Burbuja {client.bubble}</span></span></td>
                     <td className={s.num}>{projects}</td>
                     <td><OSStatus status={client.status} /></td>

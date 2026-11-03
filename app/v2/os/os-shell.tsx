@@ -7,7 +7,7 @@ import { ThemeSync, ThemeToggle } from "../components/theme-toggle";
 import { osAreas, osSettingsItems, type OsNavArea } from "../navigation";
 import { AvansIcon, AvansIsotipo, AvansWordmark } from "./brand";
 import { Glyph } from "./glyphs";
-import { CURRENT_USER, notifications, osClients, osProjects } from "./os-data";
+import { CURRENT_USER, notifications, osClients, osProjects, serviceLabel } from "./os-data";
 import { useOsStore } from "./os-store";
 import { OSToastViewport } from "./overlays";
 import { myApprovals, pendingApprovals } from "./selectors";
@@ -87,7 +87,7 @@ function GlobalSearch() {
     const match = (text: string) => text.toLocaleLowerCase("es").includes(q);
     const modules = [...osAreas.flatMap(area => [{ label: area.label, href: area.href, type: "Área" }, ...area.items.map(item => ({ label: item.label, href: item.href, type: area.label }))]), ...osSettingsItems.map(item => ({ label: item.label, href: item.href, type: "Configuración" }))];
     return [
-      ...osClients.filter(client => match(`${client.name} ${client.owner} ${client.services.join(" ")}`)).map(client => ({ label: client.name, href: `/v2/clientes/${client.slug}`, type: "Cliente" })),
+      ...osClients.filter(client => match(`${client.name} ${client.owner} ${client.services.map(serviceLabel).join(" ")}`)).map(client => ({ label: client.name, href: `/v2/clientes/${client.slug}`, type: "Cliente" })),
       ...osProjects.filter(project => match(project.name)).map(project => ({ label: project.name, href: `/v2/proyectos/${project.slug}`, type: "Proyecto" })),
       ...tasks.filter(item => match(`${item.id} ${item.title} ${item.owner}`)).map(item => ({ label: `${item.id} ${item.title}`, href: `/v2/proyectos/${item.projectSlug}?task=${item.id}`, type: "Tarea" })),
       ...modules.filter(item => match(item.label)),

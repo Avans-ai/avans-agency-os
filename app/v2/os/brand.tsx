@@ -38,9 +38,26 @@ const ICON_PATHS = {
   "dialogo": "<rect x=\"6\" y=\"5\" width=\"14\" height=\"14\"/><rect x=\"15\" y=\"20.8\" width=\"12\" height=\"2.4\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"24\" cy=\"17\" r=\"2.4\" fill=\"currentColor\" stroke=\"none\"/>",
   "captura": "<rect x=\"7\" y=\"8\" width=\"18\" height=\"18\"/><circle cx=\"16\" cy=\"17\" r=\"5\" fill=\"currentColor\" stroke=\"none\"/><rect x=\"12\" y=\"5.5\" width=\"8\" height=\"3\" fill=\"currentColor\" stroke=\"none\"/>",
   "falla": "<circle cx=\"16\" cy=\"16\" r=\"8\"/><path d=\"M16 4L16 8\"/><path d=\"M16 24L16 28\"/><path d=\"M4 16L8 16\"/><path d=\"M24 16L28 16\"/><path d=\"M12.6 12.6L19.4 19.4M19.4 12.6L12.6 19.4\"/>",
+  "mensaje": "<rect x=\"6\" y=\"5\" width=\"18\" height=\"18\"/><rect x=\"6\" y=\"24.8\" width=\"10\" height=\"2.4\" fill=\"currentColor\" stroke=\"none\"/>",
+  "soporte": "<path d=\"M6 18 a10 10 0 0 1 20 0\"/><rect x=\"4\" y=\"18\" width=\"4\" height=\"8\" fill=\"currentColor\" stroke=\"none\"/><rect x=\"24\" y=\"18\" width=\"4\" height=\"8\" fill=\"currentColor\" stroke=\"none\"/>",
 } as const;
 
 export type AvansIconName = keyof typeof ICON_PATHS;
+/** Emblemas de módulo (ModuleIcon del sistema): lienzo 100, relleno. Solo a gran tamaño, nunca en línea con texto. */
+const MODULE_EMBLEMS = {
+  "estrategia-y-consultoria": "<g><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"10\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"><circle cx=\"50\" cy=\"50\" r=\"37\"/></g><circle cx=\"50\" cy=\"50\" r=\"15\"/></g>",
+  "diseno-de-marca": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"10\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"><circle cx=\"39\" cy=\"50\" r=\"25.5\"/><circle cx=\"61\" cy=\"50\" r=\"25.5\"/></g>",
+  "publicidad-digital": "<g><circle cx=\"20\" cy=\"50\" r=\"14\"/><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"10\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"><path d=\"M44 28a28 28 0 0 1 0 44\"/><path d=\"M62 16a46 46 0 0 1 0 68\"/></g></g>",
+  "contenidos": "<g><circle cx=\"50\" cy=\"34\" r=\"26\"/><rect x=\"38\" y=\"68\" width=\"24\" height=\"9\"/><rect x=\"42\" y=\"83\" width=\"16\" height=\"9\"/></g>",
+  "audiovisuales": "<g><path fill-rule=\"evenodd\" d=\"M10 28h58v44H10Z M39 39a11 11 0 1 0 0 22 11 11 0 0 0 0-22Z\"/><path d=\"M76 36 92 24v52L76 64Z\"/></g>",
+  "desarrollo-web": "<g><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"10\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"><path d=\"M34 26 14 50l20 24\"/><path d=\"M66 26 86 50 66 74\"/></g><circle cx=\"50\" cy=\"50\" r=\"10\"/></g>",
+  "implementacion-de-crm": "<g><circle cx=\"22\" cy=\"38\" r=\"13\"/><circle cx=\"50\" cy=\"38\" r=\"13\"/><circle cx=\"78\" cy=\"38\" r=\"13\"/><rect x=\"9\" y=\"66\" width=\"82\" height=\"10\"/></g>",
+  "ia-y-automatizaciones": "<g><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"10\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"><path d=\"M50 26 22 76h56Z\"/></g><circle cx=\"50\" cy=\"26\" r=\"12\"/><circle cx=\"22\" cy=\"76\" r=\"12\"/><circle cx=\"78\" cy=\"76\" r=\"12\"/></g>",
+  "soluciones-graficas": "<g><rect x=\"12\" y=\"12\" width=\"42\" height=\"42\"/><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"10\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"><circle cx=\"66\" cy=\"66\" r=\"21\"/></g></g>",
+  "mercado-libre": "<g><rect x=\"9\" y=\"18\" width=\"82\" height=\"12\"/><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"10\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"><path d=\"M21 43v38h58V43\"/></g><circle cx=\"50\" cy=\"62\" r=\"9\"/></g>",
+} as const;
+export type AvansModuleName = keyof typeof MODULE_EMBLEMS;
+
 
 /** Isologo. `light` = palabra en Paper para fondos Graphite; el "7" siempre en Coral. */
 export function AvansWordmark({ width = 104, variant = "dark" }: { width?: number; variant?: "dark" | "light" }) {
@@ -81,6 +98,22 @@ export function AvansIcon({ name, size = 20, title, style }: { name: AvansIconNa
       aria-label={title}
       style={{ display: "block", flex: "none", ...style }}
       dangerouslySetInnerHTML={{ __html: ICON_PATHS[name] }}
+    />
+  );
+}
+
+export function AvansModuleIcon({ name, size = 40, label }: { name: AvansModuleName; size?: number; label?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      fill="currentColor"
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      style={{ display: "block", flex: "none" }}
+      dangerouslySetInnerHTML={{ __html: MODULE_EMBLEMS[name] }}
     />
   );
 }

@@ -35,12 +35,41 @@ export function shortName(name: string) {
   return last ? `${first} ${last[0]}.` : first;
 }
 
+/** Servicios que Avans puede contratar con un cliente. Cada servicio contratado
+ * activa su módulo en la ficha («Servicios activos»). Etiquetas según el sitio de Avans. */
+export type ServiceId =
+  | "estrategia" | "diseno-marca" | "publicidad-digital" | "contenidos" | "audiovisuales"
+  | "desarrollo-web" | "crm" | "ia-automatizaciones" | "soluciones-graficas" | "mercado-libre";
+export type ServiceDef = {
+  id: ServiceId;
+  label: string;
+  icon: "estrategia-y-consultoria" | "diseno-de-marca" | "publicidad-digital" | "contenidos" | "audiovisuales" | "desarrollo-web" | "implementacion-de-crm" | "ia-y-automatizaciones" | "soluciones-graficas" | "mercado-libre";
+  /** Existing per-client workspace that already implements this service. */
+  workspace?: "contenido" | "campanas";
+};
+export const serviceCatalog: ServiceDef[] = [
+  { id: "estrategia", label: "Estrategia y coordinación", icon: "estrategia-y-consultoria" },
+  { id: "diseno-marca", label: "Diseño de marca", icon: "diseno-de-marca" },
+  { id: "publicidad-digital", label: "Publicidad digital", icon: "publicidad-digital", workspace: "campanas" },
+  { id: "contenidos", label: "Contenidos", icon: "contenidos", workspace: "contenido" },
+  { id: "audiovisuales", label: "Audiovisuales", icon: "audiovisuales" },
+  { id: "desarrollo-web", label: "Desarrollo web", icon: "desarrollo-web" },
+  { id: "crm", label: "Implementación de CRM", icon: "implementacion-de-crm" },
+  { id: "ia-automatizaciones", label: "IA y automatizaciones", icon: "ia-y-automatizaciones" },
+  { id: "soluciones-graficas", label: "Soluciones gráficas y merchandising", icon: "soluciones-graficas" },
+  { id: "mercado-libre", label: "Mercado Libre", icon: "mercado-libre" },
+];
+export function serviceLabel(id: ServiceId) {
+  return serviceCatalog.find(service => service.id === id)?.label ?? id;
+}
+
 export type OsClient = {
   slug: string;
   name: string;
   initials: string;
   since: string;
-  services: string[];
+  /** Servicios contratados: definen los módulos activos de la ficha. */
+  services: ServiceId[];
   owner: string;
   bubble: string;
   status: ClientStatus;
@@ -57,7 +86,7 @@ export type OsClient = {
 export const osClients: OsClient[] = [
   {
     slug: "aca", name: "ACA", initials: "AC", since: "ago 2023",
-    services: ["Publicidad digital", "Contenidos"], owner: "Sofía Ramírez", bubble: "Norte", status: "al-dia",
+    services: ["publicidad-digital", "contenidos"], owner: "Sofía Ramírez", bubble: "Norte", status: "al-dia",
     nextMilestone: { label: "Reporte mensual octubre", date: "4 nov" }, feeMonthly: 2450000, contractUntil: "Dic 2026",
     context: { text: "Cuenta de servicios con campañas always-on de captación. El foco del trimestre es bajar el costo por lead sin perder volumen y sostener la grilla de contenidos.", updated: "20 oct por Sofía Ramírez", objective: "Reducir 15 % el costo por lead", channels: "Google · Meta", nextMeeting: "Mié 4 nov · 11:00 · Reporte" },
     team: [{ name: "Sofía Ramírez", role: "Responsable de cuenta · Performance" }, { name: "Lucía Benítez", role: "Contenidos" }],
@@ -66,7 +95,7 @@ export const osClients: OsClient[] = [
   },
   {
     slug: "edinovo", name: "Edinovo", initials: "ED", since: "feb 2025",
-    services: ["Contenidos", "Audiovisuales"], owner: "Lucía Benítez", bubble: "Norte", status: "en-riesgo",
+    services: ["contenidos", "audiovisuales"], owner: "Lucía Benítez", bubble: "Norte", status: "en-riesgo",
     nextMilestone: { label: "Aprobación de guiones", date: "Vencido 29 oct", overdue: true }, feeMonthly: 2100000, contractUntil: "Feb 2027",
     context: { text: "Serie educativa en video para posicionar la oferta académica. La producción depende de que el cliente apruebe los guiones; la grabación ya está reprogramada una vez.", updated: "28 oct por Lucía Benítez", objective: "Publicar 4 episodios antes de diciembre", channels: "YouTube · Instagram", nextMeeting: "Lun 2 nov · 15:00 · Guiones" },
     team: [{ name: "Lucía Benítez", role: "Responsable de cuenta · Contenidos" }, { name: "Tomás Aguirre", role: "Diseño" }],
@@ -75,7 +104,7 @@ export const osClients: OsClient[] = [
   },
   {
     slug: "epsa", name: "EPSA / Line Up", initials: "EP", since: "mar 2024",
-    services: ["Estrategia", "Publicidad digital", "Contenidos"], owner: "Valentina Ríos", bubble: "B2B", status: "atencion",
+    services: ["estrategia", "publicidad-digital", "contenidos"], owner: "Valentina Ríos", bubble: "B2B", status: "atencion",
     nextMilestone: { label: "Lanzamiento campaña Line Up", date: "12 nov" }, feeMonthly: 3200000, contractUntil: "Jun 2027",
     context: { text: "Cuenta B2B con foco en posicionamiento de marca y generación de demanda. Line Up es la línea de producto que se lanza en noviembre: la campaña concentra el esfuerzo del trimestre. El cliente decide por comité; las aprobaciones pasan por Marketing y luego por Dirección Comercial.", updated: "22 oct por Valentina Ríos", objective: "Lanzar Line Up con 300 leads calificados", channels: "LinkedIn · Meta · Web", nextMeeting: "Mar 3 nov · 10:00 · Comité" },
     team: [{ name: "Valentina Ríos", role: "Responsable de cuenta · Estrategia" }, { name: "Martín Ledesma", role: "Paid media" }, { name: "Lucía Benítez", role: "Contenidos" }, { name: "Tomás Aguirre", role: "Diseño" }],
@@ -84,7 +113,7 @@ export const osClients: OsClient[] = [
   },
   {
     slug: "grupo-portland", name: "Grupo Portland", initials: "GP", since: "jun 2025",
-    services: ["Estrategia", "Desarrollo web"], owner: "Julián Paz", bubble: "Sur", status: "atencion",
+    services: ["estrategia", "desarrollo-web"], owner: "Julián Paz", bubble: "Sur", status: "atencion",
     nextMilestone: { label: "Sitio en staging", date: "8 nov" }, feeMonthly: 1900000, contractUntil: "Mar 2027",
     context: { text: "Rediseño del sitio corporativo con nueva arquitectura de contenidos. El desarrollo está listo para staging; faltan los textos institucionales que debe entregar el cliente.", updated: "27 oct por Julián Paz", objective: "Publicar el sitio nuevo en noviembre", channels: "Web · LinkedIn", nextMeeting: "Jue 5 nov · 16:00 · Estado del sitio" },
     team: [{ name: "Julián Paz", role: "Responsable de cuenta · Desarrollo web" }, { name: "Valentina Ríos", role: "Estrategia" }],
@@ -93,7 +122,7 @@ export const osClients: OsClient[] = [
   },
   {
     slug: "lider-energy", name: "Lider Energy", initials: "LE", since: "oct 2026",
-    services: ["Publicidad digital", "Implementación de CRM"], owner: "Martín Ledesma", bubble: "B2B", status: "onboarding",
+    services: ["publicidad-digital", "crm"], owner: "Martín Ledesma", bubble: "B2B", status: "onboarding",
     nextMilestone: { label: "Kickoff de CRM", date: "4 nov" }, feeMonthly: 1650000, contractUntil: "Oct 2027",
     context: { text: "Cuenta nueva en onboarding. Primera etapa: implementar el CRM y conectar los formularios de campañas para medir el embudo completo.", updated: "26 oct por Martín Ledesma", objective: "CRM operativo antes de diciembre", channels: "Google · LinkedIn", nextMeeting: "Mié 4 nov · 09:30 · Kickoff CRM" },
     team: [{ name: "Martín Ledesma", role: "Responsable de cuenta · Paid media" }, { name: "Julián Paz", role: "Integraciones" }],
@@ -209,3 +238,67 @@ export const knowledgeByClient: Record<string, KnowledgeGroup[]> = {
     { title: "Aprendizajes", icon: "idea", count: 5, source: "Lo que funcionó y lo que no, cargado por el equipo", items: [{ label: "Los videos cortos de producto duplican el CTR", meta: "Jul 2026" }, { label: "Las aprobaciones demoran 4 días hábiles en promedio", meta: "Sep 2026" }] },
   ],
 };
+
+/* Estrategia y plan de marketing. Solo EPSA tiene plan cargado en la demo;
+ * el resto muestra el estado «plan en preparación». */
+export type StrategyPlan = {
+  period: string;
+  updated: string;
+  positioning: string;
+  audiences: { name: string; insight: string }[];
+  pillars: { title: string; detail: string }[];
+  channels: { channel: string; role: string; share: string }[];
+  kpis: { label: string; target: string; current: string }[];
+  milestones: { when: string; what: string }[];
+};
+export const strategyByClient: Record<string, StrategyPlan> = {
+  epsa: {
+    period: "Q4 2026 · Lanzamiento Line Up",
+    updated: "22 oct por Valentina Ríos",
+    positioning: "Line Up: la línea técnica que se elige por confiabilidad y se sostiene con un servicio posventa que la competencia no comunica.",
+    audiences: [
+      { name: "Gerentes de compras industriales", insight: "Comparan por costo total y riesgo de parada, no solo por precio." },
+      { name: "Jefes de mantenimiento", insight: "Valoran disponibilidad de repuestos y respuesta técnica." },
+    ],
+    pillars: [
+      { title: "Confiabilidad técnica", detail: "Casos y especificaciones comparables, en lenguaje de compras." },
+      { title: "Servicio posventa", detail: "Territorio libre detectado en el benchmark: nadie lo comunica." },
+      { title: "Lanzamiento con comité", detail: "Piezas y pauta alineadas a las aprobaciones de Marketing y Dirección Comercial." },
+    ],
+    channels: [
+      { channel: "LinkedIn", role: "Generación de demanda B2B", share: "55 %" },
+      { channel: "Meta", role: "Alcance y remarketing", share: "25 %" },
+      { channel: "Web / landing", role: "Conversión a lead calificado", share: "20 %" },
+    ],
+    kpis: [
+      { label: "Leads calificados", target: "300", current: "Lanzamiento 12 nov" },
+      { label: "Costo por lead", target: "≤ USD 45", current: "Sin datos aún" },
+      { label: "Tasa de aprobación al primer envío", target: "≥ 70 %", current: "58 % (Q3)" },
+    ],
+    milestones: [
+      { when: "3 nov", what: "Comité: plan de pauta y key visual" },
+      { when: "6 nov", what: "Landing y medición listas" },
+      { when: "12 nov", what: "Salida al aire de Line Up" },
+    ],
+  },
+};
+
+/* Centro de ideas: iniciativas antes de convertirse en proyecto. */
+export type IdeaState = "Nueva" | "En evaluación" | "Aprobada" | "Descartada";
+export type Idea = { id: string; clientSlug: string; title: string; detail: string; source: string; author: string; when: string; state: IdeaState };
+export const IDEA_STATES: IdeaState[] = ["Nueva", "En evaluación", "Aprobada", "Descartada"];
+export const ideas: Idea[] = [
+  { id: "I-21", clientSlug: "epsa", title: "Serie de videos cortos de producto Line Up", detail: "Los videos cortos duplicaron el CTR en julio; aplicarlo al lanzamiento.", source: "Aprendizajes", author: "Martín Ledesma", when: "24 oct", state: "En evaluación" },
+  { id: "I-22", clientSlug: "epsa", title: "Campaña de posventa como diferencial", detail: "Nadie en la categoría comunica posventa: territorio libre según el benchmark.", source: "Benchmark", author: "Valentina Ríos", when: "21 oct", state: "Aprobada" },
+  { id: "I-23", clientSlug: "epsa", title: "Webinar técnico con clientes actuales", detail: "Caso de éxito en vivo para compras industriales.", source: "Reunión de comité", author: "Lucía Benítez", when: "15 oct", state: "Nueva" },
+  { id: "I-31", clientSlug: "aca", title: "Landing de captación por segmento", detail: "Separar mensajes para bajar el costo por lead.", source: "Reporte de septiembre", author: "Sofía Ramírez", when: "18 oct", state: "En evaluación" },
+];
+
+/* Soporte: pedidos del cliente fuera de los proyectos (cambios, incidencias, consultas). */
+export type SupportRequest = { id: string; clientSlug: string; title: string; requester: string; channel: string; opened: string; status: "Abierta" | "En curso" | "Resuelta"; prio: Priority; owner: string };
+export const supportRequests: SupportRequest[] = [
+  { id: "S-108", clientSlug: "epsa", title: "Actualizar precios en el catálogo PDF", requester: "Carolina Méndez", channel: "Email", opened: "29 oct", status: "En curso", prio: "Media", owner: "Tomás Aguirre" },
+  { id: "S-104", clientSlug: "epsa", title: "Acceso al tablero de resultados para Dirección Comercial", requester: "Diego Fernández", channel: "WhatsApp", opened: "26 oct", status: "Abierta", prio: "Alta", owner: "Valentina Ríos" },
+  { id: "S-097", clientSlug: "epsa", title: "Corrección de logo en firma de email", requester: "Carolina Méndez", channel: "Email", opened: "14 oct", status: "Resuelta", prio: "Baja", owner: "Tomás Aguirre" },
+  { id: "S-110", clientSlug: "aca", title: "Pausar anuncio con promoción vencida", requester: "Contacto de marketing", channel: "Email", opened: "30 oct", status: "Abierta", prio: "Alta", owner: "Sofía Ramírez" },
+];
