@@ -45,14 +45,16 @@ export type ServiceDef = {
   label: string;
   icon: "estrategia-y-consultoria" | "diseno-de-marca" | "publicidad-digital" | "contenidos" | "audiovisuales" | "desarrollo-web" | "implementacion-de-crm" | "ia-y-automatizaciones" | "soluciones-graficas" | "mercado-libre";
   /** Existing per-client workspace that already implements this service. */
-  workspace?: "contenido" | "campanas";
+  workspace?: "contenido" | "campanas" | "servicios/contenidos" | "servicios/audiovisuales";
+  /** Marked in cyan in the Avans service catalog: priority for the PLATFORM, not client subscription. */
+  platformPriority?: boolean;
 };
 export const serviceCatalog: ServiceDef[] = [
-  { id: "estrategia", label: "Estrategia y coordinación", icon: "estrategia-y-consultoria" },
-  { id: "diseno-marca", label: "Diseño de marca", icon: "diseno-de-marca" },
-  { id: "publicidad-digital", label: "Publicidad digital", icon: "publicidad-digital", workspace: "campanas" },
-  { id: "contenidos", label: "Contenidos", icon: "contenidos", workspace: "contenido" },
-  { id: "audiovisuales", label: "Audiovisuales", icon: "audiovisuales" },
+  { id: "estrategia", label: "Estrategia y coordinación", icon: "estrategia-y-consultoria", platformPriority: true },
+  { id: "diseno-marca", label: "Diseño de marca", icon: "diseno-de-marca", platformPriority: true },
+  { id: "publicidad-digital", label: "Publicidad digital", icon: "publicidad-digital", workspace: "campanas", platformPriority: true },
+  { id: "contenidos", label: "Contenidos", icon: "contenidos", workspace: "servicios/contenidos", platformPriority: true },
+  { id: "audiovisuales", label: "Audiovisuales", icon: "audiovisuales", workspace: "servicios/audiovisuales", platformPriority: true },
   { id: "desarrollo-web", label: "Desarrollo web", icon: "desarrollo-web" },
   { id: "crm", label: "Implementación de CRM", icon: "implementacion-de-crm" },
   { id: "ia-automatizaciones", label: "IA y automatizaciones", icon: "ia-y-automatizaciones" },

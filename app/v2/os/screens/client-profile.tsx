@@ -9,6 +9,7 @@ import { AvansIcon, AvansModuleIcon, type AvansIconName } from "../brand";
 import { Glyph } from "../glyphs";
 import { IDEA_STATES, knowledgeByClient, serviceCatalog, serviceLabel, strategyByClient, supportRequests, type IdeaState, type OsClient, type ServiceId } from "../os-data";
 import { useOsStore } from "../os-store";
+import { MarketingDiscovery } from "../marketing-discovery";
 import { formatMoney, getProject, pendingApprovals, projectProgress, projectsOf, tasksOf } from "../selectors";
 import { OSModal } from "../overlays";
 import { ApprovalRow } from "../task-blocks";
@@ -290,9 +291,10 @@ function Knowledge({ client, depth }: { client: OsClient; depth?: ClientDepth })
             <div><span>Canales principales</span><strong style={{ fontWeight: 400 }}>{client.context.channels}</strong></div>
             <div><span>Negocio y objetivos</span><strong style={{ fontWeight: 400 }}>{business ? `${business.completeness}% documentado · ${business.provenance}` : "Por relevar"}</strong></div>
           </div>
-          <p className={s.demoNote} style={{ margin: 0 }}>El discovery comercial se hace en Ventas; al cerrar la venta, su resultado queda en esta ficha. No se duplica la información.</p>
+          <p className={s.demoNote} style={{ margin: 0 }}>El discovery de prospectos se usa en Ventas. El Marketing Discovery de la cuenta se completa y revisa acá, con un enlace a las fuentes comerciales, sin duplicarlas.</p>
         </div>
       </section>
+      <MarketingDiscovery client={client} />
       <div className={s.pageHead}>
         <div><h2 style={{ margin: 0, fontSize: 22, fontWeight: 400 }}>Conocimiento del cliente</h2><p>Dónde está cada cosa. Los archivos viven en su herramienta de origen; acá se indexan y se enlazan.</p></div>
         <button type="button" className={buttonClass("secondary", true)} onClick={() => notify("Agregar referencia: pendiente de implementación")}><AvansIcon name="enlace" size={18} />Agregar referencia</button>
@@ -343,7 +345,7 @@ function Benchmark({ client, benchmark }: { client: OsClient; benchmark?: Client
   return (
     <div className={sc.stack}>
       <div className={s.pageHead}>
-        <div><h2 style={{ margin: 0, fontSize: 22, fontWeight: 400 }}>Benchmark competitivo</h2><p>Último relevamiento: {benchmark.lastScan} · {benchmark.monitoredCompetitors} competidores monitoreados. {benchmark.summary}</p></div>
+        <div><h2 style={{ margin: 0, fontSize: 22, fontWeight: 400 }}>Benchmark competitivo</h2><p>Último relevamiento de la demo: {benchmark.lastScan} · {benchmark.monitoredCompetitors} competidores del ejemplo. Escaneo semanal acordado, automatización aún pendiente. {benchmark.summary}</p></div>
         <div className={s.actions}>
           <button type="button" className={buttonClass("secondary", true)} onClick={() => notify("Actualizar relevamiento: pendiente de integración")}><Glyph name="retry" size={16} />Actualizar relevamiento</button>
           <LinkButton href={`/v2/clientes/${client.slug}/benchmark`} variant="dark" small>Abrir benchmark completo</LinkButton>
@@ -529,7 +531,7 @@ function Services({ client }: { client: OsClient }) {
   return (
     <div className={sc.stack}>
       <div className={s.pageHead}>
-        <div><h2 style={{ margin: 0, fontSize: 22, fontWeight: 400 }}>Módulos de servicios activos</h2><p>Cada servicio contratado activa su módulo de trabajo en esta ficha.</p></div>
+        <div><h2 style={{ margin: 0, fontSize: 22, fontWeight: 400 }}>Módulos de servicios activos</h2><p>Cada servicio contratado activa su módulo de trabajo en esta ficha. Las cinco marcas celestes del catálogo señalan prioridades para desarrollar, no servicios automáticamente contratados.</p></div>
         <button type="button" className={buttonClass("secondary", true)} onClick={() => setConfiguring(true)}><AvansIcon name="ajuste" size={18} />Configurar servicios</button>
       </div>
       {activeDefs.length ? (
@@ -539,7 +541,7 @@ function Services({ client }: { client: OsClient }) {
               <>
                 <span className={sc.serviceIcon}><AvansModuleIcon name={service.icon} size={40} /></span>
                 <h2>{service.label}</h2>
-                <p>{service.workspace ? "Módulo operativo disponible: planificación, revisión y seguimiento del servicio." : "Módulo pendiente de documentación: el flujo de este servicio todavía no está definido."}</p>
+                <p>{service.id === "contenidos" || service.id === "audiovisuales" ? "Proceso de demostración para revisar con el manual de Operaciones. Controles, responsables y evidencia; todavía no es un flujo aprobado." : service.id === "publicidad-digital" ? "Espacio de Campañas disponible. Proceso operativo pendiente de relevamiento con Gabi." : "Módulo pendiente de documentación: el flujo de este servicio todavía no está definido."}</p>
                 <span style={{ marginTop: "auto" }}>{service.workspace ? <span className={s.kpiCta}>Abrir módulo <Glyph name="arrow-right" size={13} /></span> : <Badge tone="stone">Pendiente</Badge>}</span>
               </>
             );
@@ -575,7 +577,7 @@ function ServicesModal({ client, initial, onClose, onSave }: { client: OsClient;
         {serviceCatalog.map(service => (
           <label key={service.id} className={sc.checkRow}>
             <input type="checkbox" className={sc.check} checked={selected.includes(service.id)} onChange={() => toggle(service.id)} />
-            <span>{service.label}</span>
+            <span>{service.label}{service.platformPriority ? <small style={{ display: "block", fontSize: 11, color: "var(--av-text-muted)" }}>Prioridad de plataforma · no implica contratación</small> : null}</span>
           </label>
         ))}
       </fieldset>
