@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
-import { useOsStore } from "../os-store";
-import type { OsClient } from "../os-data";
-import { serviceProcesses, type WorkflowService } from "../service-process-data";
+import { useOsStore } from "./os-store";
+import type { OsClient } from "./os-data";
+import { serviceProcesses, type WorkflowService } from "./service-process-data";
 import styles from "./service-operations.module.css";
 
 type StageStatus = "Pendiente" | "En preparación" | "En revisión" | "Validada en demo";
