@@ -1,73 +1,123 @@
-export type V2NavItem = { label: string; slug: string; href: string; children?: V2NavItem[] };
-export type V2NavGroup = { group: string; items: V2NavItem[] };
+import type { AvansIconName } from "./os/brand";
 
-/** Approved hierarchy: Operations > Clients > Benchmark.
- * Existing URLs stay unchanged; hierarchy does not require a route migration.
+export type V2NavItem = { label: string; slug: string; href: string; children?: V2NavItem[] };
+
+/** Sidebar leaf. `slug` is the route section that marks it active; hash links never do. */
+export type OsNavLeaf = { label: string; href: string; slug?: string; badge?: "approvals" };
+export type OsNavArea = {
+  slug: "operaciones" | "ventas" | "finanzas" | "rrhh" | "gerencia";
+  label: string;
+  icon: AvansIconName;
+  href: string;
+  /** Lock = visibility depends on role (Finanzas y Gerencia). */
+  restricted?: boolean;
+  items: OsNavLeaf[];
+};
+
+/**
+ * Arquitectura acordada el 3 nov 2026: Operaciones comienza en Clientes.
+ * Proyectos, producción, campañas, aprobaciones y reportes conservan sus URLs
+ * para enlaces contextuales y el Inicio personal, pero dejan de competir como
+ * entradas globales de la navegación operativa.
  */
-export const v2NavGroups: V2NavGroup[] = [
-  { group: "General", items: [
-    { label: "Command Center", slug: "command-center", href: "/v2" },
-    { label: "Bandeja", slug: "inbox", href: "/v2/inbox" },
+export const osAreas: OsNavArea[] = [
+  { slug: "operaciones", label: "Operaciones", icon: "flujo", href: "/v2/clientes", items: [
+    { label: "Clientes", href: "/v2/clientes", slug: "clientes" },
   ] },
-  { group: "Áreas de Avans", items: [
-    { label: "Operaciones", slug: "operaciones", href: "/v2/operaciones", children: [
-      { label: "Clientes", slug: "clientes", href: "/v2/clientes", children: [
-        { label: "Benchmark", slug: "benchmark", href: "/v2/benchmark" },
-      ] },
-    ] },
-    { label: "Ventas", slug: "ventas", href: "/v2/ventas" },
-    { label: "Finanzas", slug: "finanzas", href: "/v2/finanzas" },
-    { label: "RRHH", slug: "rrhh", href: "/v2/rrhh" },
-    { label: "Gerencia", slug: "gerencia", href: "/v2/gerencia" },
+  { slug: "ventas", label: "Ventas", icon: "embudo", href: "/v2/ventas", items: [
+    { label: "Prospectos", href: "/v2/leads", slug: "leads" },
+    { label: "Discovery", href: "/v2/discovery", slug: "discovery" },
+    { label: "Oportunidades", href: "/v2/oportunidades", slug: "oportunidades" },
+    { label: "Propuestas", href: "/v2/propuestas", slug: "propuestas" },
+    { label: "Seguimiento comercial", href: "/v2/ventas", slug: "ventas" },
   ] },
-  { group: "Plataforma", items: [
-    { label: "Usuarios y roles", slug: "usuarios", href: "/v2/usuarios" },
-    { label: "Integraciones", slug: "integraciones", href: "/v2/integraciones" },
-    { label: "Automatizaciones e IA", slug: "automatizaciones", href: "/v2/automatizaciones" },
-    { label: "Seguridad", slug: "seguridad", href: "/v2/seguridad" },
-    { label: "Auditoría", slug: "auditoria", href: "/v2/auditoria" },
-    { label: "Salud del sistema", slug: "salud-sistema", href: "/v2/salud-sistema" },
+  { slug: "finanzas", label: "Finanzas", icon: "cartera", href: "/v2/finanzas", restricted: true, items: [
+    { label: "Ingresos y gastos", href: "/v2/finanzas#costos" },
+    { label: "Facturación y cobranzas", href: "/v2/finanzas#cobranzas" },
+    { label: "Rentabilidad", href: "/v2/finanzas#rentabilidad" },
+    { label: "Forecast", href: "/v2/finanzas#forecast" },
+  ] },
+  { slug: "rrhh", label: "RRHH", icon: "grupo", href: "/v2/rrhh", items: [
+    { label: "Equipo", href: "/v2/rrhh#equipo" },
+    { label: "Roles y habilidades", href: "/v2/rrhh#habilidades" },
+    { label: "Burbujas de trabajo", href: "/v2/rrhh#burbujas" },
+    { label: "Contractors", href: "/v2/rrhh#contractors" },
+    { label: "Talento", href: "/v2/rrhh#talentos" },
+    { label: "Disponibilidad", href: "/v2/rrhh#capacidad" },
+  ] },
+  { slug: "gerencia", label: "Gerencia", icon: "objetivo", href: "/v2/gerencia", restricted: true, items: [
+    { label: "Planificación", href: "/v2/gerencia#planificacion" },
+    { label: "Indicadores generales", href: "/v2/gerencia" },
+    { label: "Decisiones", href: "/v2/gerencia#decisiones" },
+    { label: "Insights", href: "/v2/insights", slug: "insights" },
+    { label: "Aprendizajes", href: "/v2/aprendizajes", slug: "aprendizajes" },
+    { label: "Uso y eficiencia de IA", href: "/v2/automatizaciones" },
   ] },
 ];
 
-export const v2CapabilityItems: V2NavItem[] = [
-  { label: "Clientes", slug: "clientes", href: "/v2/clientes" },
+/** Configuración (utility, not an area): platform modules kept from the previous demo. */
+export const osSettingsItems: V2NavItem[] = [
+  { label: "Usuarios y roles", slug: "usuarios", href: "/v2/usuarios" },
+  { label: "Integraciones", slug: "integraciones", href: "/v2/integraciones" },
+  { label: "Automatizaciones e IA", slug: "automatizaciones", href: "/v2/automatizaciones" },
+  { label: "Seguridad", slug: "seguridad", href: "/v2/seguridad" },
+  { label: "Auditoría", slug: "auditoria", href: "/v2/auditoria" },
+  { label: "Salud del sistema", slug: "salud-sistema", href: "/v2/salud-sistema" },
+  { label: "Estado del producto", slug: "estado-producto", href: "/v2/estado-producto" },
+];
+
+/** Every section rendered by app/v2/[section]. Dedicated folders (clientes,
+ * proyectos, aprobaciones, mis-tareas, configuracion, benchmark) are excluded. */
+export const v2NavItems: V2NavItem[] = [
+  { label: "Bandeja de excepciones", slug: "inbox", href: "/v2/inbox" },
+  ...osAreas.map(area => ({ label: area.label, slug: area.slug, href: area.href })),
+  ...osSettingsItems,
   { label: "Procesos", slug: "procesos", href: "/v2/procesos" },
-  { label: "Proyectos", slug: "proyectos", href: "/v2/proyectos" },
   { label: "Reuniones", slug: "reuniones", href: "/v2/reuniones" },
   { label: "Insights", slug: "insights", href: "/v2/insights" },
   { label: "Oportunidades", slug: "oportunidades", href: "/v2/oportunidades" },
   { label: "Aprendizajes", slug: "aprendizajes", href: "/v2/aprendizajes" },
-  { label: "Leads", slug: "leads", href: "/v2/leads" },
+  { label: "Prospectos", slug: "leads", href: "/v2/leads" },
   { label: "Discovery", slug: "discovery", href: "/v2/discovery" },
   { label: "Propuestas", slug: "propuestas", href: "/v2/propuestas" },
-  { label: "Contenido", slug: "contenido", href: "/v2/contenido" },
+  { label: "Producción", slug: "contenido", href: "/v2/contenido" },
   { label: "Campañas", slug: "campanas", href: "/v2/campanas" },
-  { label: "Reportes", slug: "reportes", href: "/v2/reportes" },
+  { label: "Reportes operativos", slug: "reportes", href: "/v2/reportes" },
   { label: "Agentes", slug: "agentes", href: "/v2/agentes" },
   { label: "Workflows", slug: "workflows", href: "/v2/workflows" },
   { label: "Guardrails", slug: "guardrails", href: "/v2/guardrails" },
-  { label: "Estado del producto", slug: "estado-producto", href: "/v2/estado-producto" },
 ];
-const visibleItems = v2NavGroups.flatMap(group => group.items);
-// Keep static route generation stable: /v2/benchmark has its own page.
-export const v2NavItems = [...visibleItems, ...v2CapabilityItems].filter((item, index, items) => items.findIndex(candidate => candidate.slug === item.slug) === index);
+
+const structuralItems: V2NavItem[] = [
+  { label: "Inicio", slug: "command-center", href: "/v2" },
+  { label: "Configuración", slug: "configuracion", href: "/v2/configuracion" },
+  { label: "Clientes", slug: "clientes", href: "/v2/clientes" },
+  { label: "Proyectos y tareas", slug: "proyectos", href: "/v2/proyectos" },
+  { label: "Aprobaciones", slug: "aprobaciones", href: "/v2/aprobaciones" },
+  { label: "Mis tareas", slug: "mis-tareas", href: "/v2/mis-tareas" },
+  { label: "Benchmark", slug: "benchmark", href: "/v2/benchmark" },
+];
+
 export const v2ParentBySlug: Record<string, string> = {
-  clientes: "operaciones", benchmark: "clientes",
-  procesos: "operaciones", proyectos: "operaciones", reuniones: "operaciones", contenido: "operaciones", campanas: "operaciones",
+  clientes: "operaciones", proyectos: "operaciones", contenido: "operaciones", campanas: "operaciones",
+  aprobaciones: "operaciones", reportes: "operaciones", procesos: "operaciones", reuniones: "operaciones",
+  inbox: "operaciones", "mis-tareas": "operaciones", benchmark: "clientes",
   leads: "ventas", discovery: "ventas", oportunidades: "ventas", propuestas: "ventas",
-  insights: "gerencia", reportes: "gerencia", aprendizajes: "gerencia",
-  agentes: "automatizaciones", workflows: "automatizaciones", guardrails: "seguridad", "estado-producto": "salud-sistema",
+  insights: "gerencia", aprendizajes: "gerencia",
+  usuarios: "configuracion", integraciones: "configuracion", automatizaciones: "configuracion",
+  seguridad: "configuracion", auditoria: "configuracion", "salud-sistema": "configuracion", "estado-producto": "configuracion",
+  agentes: "automatizaciones", workflows: "automatizaciones", guardrails: "seguridad",
 };
 
-function flattenNavigation(items: V2NavItem[]): V2NavItem[] {
-  return items.flatMap(item => [item, ...flattenNavigation(item.children ?? [])]);
-}
-const navigationIndex = new Map<string, V2NavItem>([
-  ...flattenNavigation(visibleItems), ...v2CapabilityItems,
-].map(item => [item.slug, item]));
+const navigationIndex = new Map<string, V2NavItem>(
+  [...structuralItems, ...v2NavItems].map(item => [item.slug, item]),
+);
 
-/** Root-first ancestor chain, used by both breadcrumbs and active navigation. */
+export function getV2NavItem(slug: string) {
+  return navigationIndex.get(slug);
+}
+
+/** Root-first ancestor chain, shared by breadcrumbs and the active sidebar area. */
 export function getV2Ancestors(slug: string): V2NavItem[] {
   const ancestors: V2NavItem[] = [];
   const visited = new Set<string>([slug]);
@@ -80,4 +130,9 @@ export function getV2Ancestors(slug: string): V2NavItem[] {
     parentSlug = v2ParentBySlug[parentSlug];
   }
   return ancestors;
+}
+
+/** Area slug (or "command-center" / "configuracion") that owns a section. */
+export function getV2RootSlug(slug: string) {
+  return getV2Ancestors(slug)[0]?.slug ?? slug;
 }

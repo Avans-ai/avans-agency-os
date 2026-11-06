@@ -48,6 +48,7 @@ Codex debe revisar `docs/VISUAL_IDENTITY.md` antes de implementar UI.
 
 ## Documentación principal
 
+- `docs/AVANS_OS_REDESIGN.md`: rediseño Claude Design aplicado a `/v2` (sistema Avans, Figtree, estados, pendientes).
 - `docs/CODEX_PROMPT.md`: prompt maestro para Codex.
 - `docs/ARCHITECTURE.md`: arquitectura funcional y técnica.
 - `docs/VISUAL_IDENTITY.md`: guía visual inicial basada en Avans.

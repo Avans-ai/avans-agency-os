@@ -37,7 +37,7 @@ export const operationsLanes: OperationsLane[] = [
     description: "Procesos, producción y campañas con responsables y próximos pasos.",
     count: 7,
     items: [
-      { title: "Operación de cuenta", client: "Epsa", status: "En curso", href: "/v2/clientes/epsa" },
+      { title: "Operación de cuenta", client: "EPSA / Line Up", status: "En curso", href: "/v2/clientes/epsa" },
       { title: "Planificación de contenido", client: "Edinovo", status: "En curso", href: "/v2/clientes/edinovo/contenido" },
     ],
   },
@@ -46,7 +46,7 @@ export const operationsLanes: OperationsLane[] = [
     description: "Puntos de control humano antes de publicar, ejecutar o comprometer alcance.",
     count: 5,
     items: [
-      { title: "Señal de performance", client: "Epsa", status: "Revisar", href: "/v2/clientes/epsa/campanas" },
+      { title: "Señal de performance", client: "EPSA / Line Up", status: "Revisar", href: "/v2/clientes/epsa/campanas" },
       { title: "Pieza final", client: "ACA", status: "Aprobación", href: "/v2/clientes/aca/contenido" },
     ],
   },
@@ -56,13 +56,13 @@ export const operationsLanes: OperationsLane[] = [
     count: 4,
     items: [
       { title: "Reporte de ciclo", client: "Edinovo", status: "Preparar", href: "/v2/clientes/edinovo/reportes" },
-      { title: "Medición de optimización", client: "Epsa", status: "Midiendo", href: "/v2/reportes" },
+      { title: "Medición de optimización", client: "EPSA / Line Up", status: "Midiendo", href: "/v2/reportes" },
     ],
   },
 ];
 
 export const operationsPortfolio: OperationsPortfolioRow[] = [
-  { client: "Epsa", workstream: "Operación y campañas", owner: "Cuentas + Performance", stage: "Ejecución", next: "Validar señal y cerrar ciclo", status: "Atención", href: "/v2/clientes/epsa" },
+  { client: "EPSA / Line Up", workstream: "Operación y campañas", owner: "Cuentas + Performance", stage: "Ejecución", next: "Validar señal y cerrar ciclo", status: "Atención", href: "/v2/clientes/epsa" },
   { client: "ACA", workstream: "Campaña y contenidos", owner: "Cuentas + Estrategia", stage: "Aprobación", next: "Resolver insumo y aprobar pieza", status: "Atención", href: "/v2/clientes/aca" },
   { client: "Grupo Portland", workstream: "Siguiente etapa", owner: "Estrategia + Dirección", stage: "Aprobación", next: "Validar propuesta", status: "Aprobación", href: "/v2/clientes/grupo-portland" },
   { client: "Edinovo", workstream: "Contenido y aprendizaje", owner: "Contenido + Estrategia", stage: "Planificación", next: "Validar patrones", status: "Saludable", href: "/v2/clientes/edinovo" },
@@ -79,7 +79,7 @@ export const operationsCapacity = [
 
 export const operationsExceptions = [
   { priority: "Alta", client: "ACA", title: "Proceso bloqueado por información pendiente", owner: "Cuentas", due: "Hoy", href: "/v2/inbox" },
-  { priority: "Alta", client: "Epsa", title: "Optimización requiere revisión antes de ejecutar", owner: "Performance", due: "Hoy", href: "/v2/clientes/epsa/campanas" },
+  { priority: "Alta", client: "EPSA / Line Up", title: "Optimización requiere revisión antes de ejecutar", owner: "Performance", due: "Hoy", href: "/v2/clientes/epsa/campanas" },
   { priority: "Media", client: "Grupo Portland", title: "Propuesta espera validación de Dirección", owner: "Dirección", due: "Esta semana", href: "/v2/propuestas" },
 ];
 
