@@ -4,7 +4,7 @@ import { getClientBenchmark } from "../../benchmark-data";
 import { getClientDepth } from "../../client-depth-data";
 import { V2Chrome } from "../../components/v2-chrome";
 import { osClients } from "../../os/os-data";
-import { ClientProfile } from "../../os/screens/client-profile";
+import { ClientWorkspace } from "../../os/screens/client-workspace";
 import { getClient } from "../../os/selectors";
 import { OSSkeletonRows } from "../../os/ui";
 
@@ -22,10 +22,10 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
       active="clientes"
       title={client.name}
       legacy={false}
-      crumbs={[{ label: "Operaciones", href: "/v2/operaciones" }, { label: "Clientes", href: "/v2/clientes" }, { label: client.name }]}
+      crumbs={[{ label: "Operaciones", href: "/v2/clientes" }, { label: "Clientes", href: "/v2/clientes" }, { label: client.name }]}
     >
       <Suspense fallback={<OSSkeletonRows rows={4} label="Cargando ficha…" />}>
-        <ClientProfile client={client} depth={getClientDepth(client.slug)} benchmark={getClientBenchmark(client.slug)} />
+        <ClientWorkspace client={client} depth={getClientDepth(client.slug)} benchmark={getClientBenchmark(client.slug)} />
       </Suspense>
     </V2Chrome>
   );
