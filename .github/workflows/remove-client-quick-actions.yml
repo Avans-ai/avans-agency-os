@@ -3,50 +3,54 @@ name: Remove Client Quick Actions
 on:
   push:
     branches:
-      - feat/avans-os-ajustes-reunion-2026-11-03
+      - "feat/avans-os-ajustes-reunion-2026-11-03"
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]'
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout branch
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: feat/avans-os-ajustes-reunion-2026-11-03
+          ref: "feat/avans-os-ajustes-reunion-2026-11-03"
           persist-credentials: true
 
       - name: Remove meeting and Drive quick actions
+        shell: bash
         run: |
-          python <<'PY'
+          python - <<'PY'
           from pathlib import Path
 
-          path = Path('app/v2/os/screens/client-workspace.tsx')
+          path = Path("app/v2/os/screens/client-workspace.tsx")
           text = path.read_text()
+          text = text.replace(
+              'import { AvansIcon, AvansModuleIcon } from "../brand";',
+              'import { AvansModuleIcon } from "../brand";',
+              1,
+          )
+          text = text.replace(
+              '  const { notify, servicesOf } = useOsStore();',
+              '  const { servicesOf } = useOsStore();',
+              1,
+          )
 
-          replacements = {
-              'import { AvansIcon, AvansModuleIcon } from "../brand";': 'import { AvansModuleIcon } from "../brand";',
-              '  const { notify, servicesOf } = useOsStore();': '  const { servicesOf } = useOsStore();',
-              '''        <div className={s.actions}>
-          <button type="button" className={buttonClass("ghost")} onClick={() => notify("Registrar reunión: integración con Google Workspace pendiente")}><AvansIcon name="dialogo" size={18} />Registrar reunión</button>
-          <button type="button" className={buttonClass("secondary")} onClick={() => notify("Carpeta en Drive: integración pendiente")}><AvansIcon name="enlace" size={18} />Carpeta en Drive</button>
-        </div>
-''': '',
-          }
+          start = '        <div className={s.actions}>\n'
+          marker = '        <div className={m.managementBlock}>'
+          if start not in text or marker not in text:
+              raise SystemExit("Client quick actions block was not found")
 
-          for old, new in replacements.items():
-              if old not in text:
-                  raise SystemExit(f'Expected block not found: {old[:80]}')
-              text = text.replace(old, new, 1)
-
-          path.write_text(text)
+          before, remainder = text.split(start, 1)
+          _, after = remainder.split(marker, 1)
+          path.write_text(before + marker + after)
           PY
 
       - name: Commit requested adjustment
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
