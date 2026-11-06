@@ -1,30 +1,31 @@
-/* Legacy bridge: modules built before the Avans OS redesign render inside
- * `.avans-v2-shell.os-legacy` (see V2Chrome). These rules align them with the
- * Avans design system (Figtree, square corners, no shadows, 12 px minimum)
- * until each module is rebuilt with the OS components. They never reach the
- * new OS screens, which use the `--av-*` tokens directly. */
+body{background:#F5F5F2;color:#0A0A0A}
+html[data-avans-theme="dark"] body{background:#0A0A0A;color:#F5F5F2}
+
 .avans-v2-shell{
-  background:var(--av-bg)!important;
-  color:var(--av-text);
-  font-family:var(--av-font-body)!important;
+  background:#F5F5F2!important;
+  font-family:var(--font-figtree),Figtree,Arial,sans-serif!important;
 }
-.avans-v2-shell *,.avans-v2-shell *::before,.avans-v2-shell *::after{border-radius:0!important}
-.avans-v2-shell button,.avans-v2-shell input,.avans-v2-shell select,.avans-v2-shell textarea{font-family:inherit}
-.avans-v2-shell :focus-visible{outline:2px solid var(--av-focus)!important;outline-offset:2px}
-.avans-v2-shell h1{letter-spacing:var(--av-tracking-display)!important;font-weight:400!important}
-.avans-v2-shell h2{letter-spacing:-.02em!important;font-weight:500!important}
-.avans-v2-shell h3{font-weight:500!important}
+
+.avans-v2-sidebar{background:#0A0A0A!important;border-right:0!important}
+.avans-v2-topbar{background:rgba(245,245,242,.94)!important;border-color:rgba(10,10,10,.12)!important}
+.avans-v2-shell nav a{border-radius:7px!important}
+.avans-v2-shell nav a:hover{background:#1D1D1D!important;color:#fff!important}
+.avans-v2-shell [class*="activeNav"]{background:#241713!important;color:#fff!important;box-shadow:inset 3px 0 0 #F86E4F!important}
+.avans-v2-shell [class*="activeNav"] svg{color:#F86E4F!important}
+.avans-v2-shell [class*="mark"]{background:#F86E4F!important;color:#0A0A0A!important}
+
+.avans-theme-toggle{border:1px solid rgba(10,10,10,.14);background:#fff;color:#4f4f4f;border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:7px;font:inherit;font-size:11px;font-weight:750;cursor:pointer;transition:.18s ease}.avans-theme-toggle:hover{transform:translateY(-1px);border-color:rgba(10,10,10,.25)}.avans-theme-toggle span{line-height:1}
 
 .avans-v2-shell small,
 .avans-v2-shell em,
 .avans-v2-shell time,
+.avans-v2-shell [class*="eyebrow"],
 .avans-v2-shell [class*="rowMeta"],
 .avans-v2-shell [class*="itemMeta"],
 .avans-v2-shell [class*="demoPill"],
-.avans-v2-shell [class*="priority"]{font-size:12px!important}
-.avans-v2-shell [class*="eyebrow"],
-.avans-v2-shell [class*="kicker"]{font-size:13px!important;font-weight:500!important;letter-spacing:var(--av-tracking-rotulo)!important;color:var(--av-link)!important}
-.avans-v2-shell [class*="kickerLight"]{color:var(--av-coral-200)!important}
+.avans-v2-shell [class*="productName"],
+.avans-v2-shell [class*="priority"],
+.avans-v2-shell [class*="navGroup"]>span{font-size:10px!important}
 
 .avans-v2-shell [class*="moduleHero"],
 .avans-v2-shell [class*="panel"],
@@ -35,11 +36,18 @@
 .avans-v2-shell [class*="stats"] article,
 .avans-v2-shell [class*="Stats"] article{box-shadow:none!important;border-color:rgba(10,10,10,.12)!important}
 
-.avans-v2-shell [class*="moduleHero"]:before{background:#ff6c4c!important}
-.avans-v2-shell [class*="primaryAction"]{background:#ff6c4c!important;box-shadow:none!important}
-.avans-v2-shell [class*="moduleRow"]:hover{background:#ffe5d4!important}
+.avans-v2-shell [class*="moduleHero"]:before{background:#F86E4F!important}
+.avans-v2-shell [class*="primaryAction"]{background:#F86E4F!important;box-shadow:none!important}
+.avans-v2-shell [class*="moduleRow"]:hover{background:#FAF4F1!important}
 
-html[data-avans-theme="dark"] .avans-v2-shell{background:var(--av-bg)!important;color:var(--av-text)!important}
+html[data-avans-theme="dark"] .avans-v2-shell{background:#0A0A0A!important;color:#F5F5F2!important}
+html[data-avans-theme="dark"] .avans-v2-sidebar{background:#0A0A0A!important;border-color:#242424!important}
+html[data-avans-theme="dark"] .avans-v2-topbar{background:rgba(21,21,21,.94)!important;border-color:rgba(255,255,255,.12)!important}
+html[data-avans-theme="dark"] .avans-theme-toggle{background:#1D1D1D;color:#F5F5F2;border-color:rgba(255,255,255,.15)}
+html[data-avans-theme="dark"] .avans-v2-shell nav a{color:#C4C4C4!important}
+html[data-avans-theme="dark"] .avans-v2-shell nav a:hover{background:#1D1D1D!important;color:#fff!important}
+html[data-avans-theme="dark"] .avans-v2-shell [class*="activeNav"]{background:#241713!important;color:#fff!important}
+html[data-avans-theme="dark"] .avans-v2-shell [class*="workspace"]{background:#151515!important;border-color:#303030!important}
 
 html[data-avans-theme="dark"] .avans-v2-shell [class*="moduleHero"],
 html[data-avans-theme="dark"] .avans-v2-shell [class*="panel"],
@@ -60,13 +68,13 @@ html[data-avans-theme="dark"] .avans-v2-shell [class*="modulesPanel"],
 html[data-avans-theme="dark"] .avans-v2-shell [class*="sidePanel"],
 html[data-avans-theme="dark"] .avans-v2-shell [class*="activityRow"],
 html[data-avans-theme="dark"] .avans-v2-shell [class*="metricsGrid"] article,
-html[data-avans-theme="dark"] .avans-v2-shell [class*="footerBand"]{background:#15171a!important;border-color:rgba(255,255,255,.12)!important;box-shadow:none!important}
+html[data-avans-theme="dark"] .avans-v2-shell [class*="footerBand"]{background:#151515!important;border-color:rgba(255,255,255,.12)!important;box-shadow:none!important}
 
 html[data-avans-theme="dark"] .avans-v2-shell [class*="moduleRow"]:hover,
 html[data-avans-theme="dark"] .avans-v2-shell [class*="moduleEntry"]:hover{background:#211916!important}
 
 html[data-avans-theme="dark"] .avans-v2-shell [class*="loopPanel"],
-html[data-avans-theme="dark"] .avans-v2-shell [class*="architecture"]{background:#15171a!important;border-color:#333!important}
+html[data-avans-theme="dark"] .avans-v2-shell [class*="architecture"]{background:#151515!important;border-color:#333!important}
 
 html[data-avans-theme="dark"] .avans-v2-shell [class*="flowStep"],
 html[data-avans-theme="dark"] .avans-v2-shell [class*="controlBox"],

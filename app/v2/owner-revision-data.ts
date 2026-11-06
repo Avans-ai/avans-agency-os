@@ -9,7 +9,7 @@ export const ownerRevisionTabs: Record<RevisionArea, { id: string; label: string
   gerencia: [{ id: "general", label: "Visión ejecutiva" }, { id: "planificacion", label: "Planificación" }],
 };
 export function isRevisionArea(area: string): area is RevisionArea { return Object.prototype.hasOwnProperty.call(ownerRevisionTabs, area); }
-export const revisionClients = ["EPSA / Line Up", "ACA", "Grupo Portland", "Edinovo", "Lider Energy"];
+export const revisionClients = ["Epsa", "ACA", "Grupo Portland", "Edinovo", "Lider Energy"];
 export const revisionModules: Record<string, RevisionModule> = {
   burbujas: {
     id: "burbujas", label: "Burbujas", description: "Equipos y clientes vinculados en un mismo espacio de trabajo.",

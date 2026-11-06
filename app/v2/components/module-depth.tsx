@@ -1,4 +1,4 @@
-import { Bot, ShieldCheck } from "lucide-react";
+import { Bot, ShieldCheck, Workflow } from "lucide-react";
 import { moduleDepthData } from "../module-depth-data";
 import styles from "./module-depth.module.css";
 

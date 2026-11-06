@@ -12,7 +12,7 @@ export type AttentionItem = {
   due: string;
 };
 
-export const avansClients = ["EPSA / Line Up", "ACA", "Grupo Portland", "Edinovo", "Lider Energy"];
+export const avansClients = ["Epsa", "ACA", "Grupo Portland", "Edinovo", "Lider Energy"];
 
 export const attentionItems: AttentionItem[] = [
   {

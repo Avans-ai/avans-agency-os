@@ -25,12 +25,12 @@ export default async function AgencyObjectPage({
 }) {
   const { client: clientSlug, module: moduleSlug, item } = await params;
   const client = avansClients.find((entry) => entry.slug === clientSlug);
-  const workModule = modules.includes(moduleSlug as AgencyModuleSlug) ? moduleSlug as AgencyModuleSlug : null;
+  const module = modules.includes(moduleSlug as AgencyModuleSlug) ? moduleSlug as AgencyModuleSlug : null;
 
-  if (!client || !workModule) notFound();
+  if (!client || !module) notFound();
 
-  const config = agencyModuleConfig[workModule];
-  const details = moduleDetails[workModule];
+  const config = agencyModuleConfig[module];
+  const details = moduleDetails[module];
   const isDecision = item.startsWith("decision-");
   const index = Number(item.split("-")[1]) - 1;
   const decision = isDecision ? details.decisions[index] : null;
@@ -42,16 +42,16 @@ export default async function AgencyObjectPage({
   const detail = decision?.detail ?? history!.detail;
   const status = decision?.status ?? history!.status;
   const actions =
-    workModule === "campanas"
+    module === "campanas"
       ? ["Aprobar recomendación", "Pedir ajuste", "Descartar", "Ejecutar demo"]
-      : workModule === "contenido"
+      : module === "contenido"
         ? ["Aprobar enfoque", "Pedir ajuste", "Validar aprendizaje", "Rechazar"]
         : ["Aprobar versión", "Pedir ajuste", "Pedir más evidencia", "Rechazar"];
 
   return (
-    <V2Chrome active={workModule} title={`${client.name} · ${config.label}`}>
+    <V2Chrome active={module} title={`${client.name} · ${config.label}`}>
       <div className={styles.wrap}>
-        <Link href={`/v2/clientes/${client.slug}/${workModule}`} className={styles.back}>
+        <Link href={`/v2/clientes/${client.slug}/${module}`} className={styles.back}>
           <ArrowLeft size={14} /> Volver a {client.name} · {config.label}
         </Link>
 
@@ -135,7 +135,7 @@ export default async function AgencyObjectPage({
               title={title}
               initialStatus={status}
               actions={actions}
-              reversible={workModule === "campanas"}
+              reversible={module === "campanas"}
             />
           </div>
 

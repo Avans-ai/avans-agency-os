@@ -80,11 +80,11 @@ html[data-avans-theme="dark"] [class*="client-profile-module"][class*="tabs"]{
 
 html[data-avans-theme="dark"] [class*="client-profile-module"][class*="tabs"] a:first-child,
 html[data-avans-theme="dark"] [class*="client-profile-module"][class*="tabs"] a:hover{
-  background:#3a2018!important;
-  color:#ffb69c!important;
+  background:#2a1b17!important;
+  color:#ff9d87!important;
 }
 
 html[data-avans-theme="dark"] [class*="client-profile-module"][class*="commercialNote"]{
-  background:#3a2018!important;
+  background:#2a1b17!important;
   color:#d9a89d!important;
 }

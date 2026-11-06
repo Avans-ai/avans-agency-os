@@ -240,7 +240,7 @@ export const hrAreaCapacity: HrAreaCapacity[] = [
 export const hrAssignments: HrAssignment[] = [
   {
     id: "assignment-epsa",
-    client: "EPSA / Line Up",
+    client: "Epsa",
     workstream: "Operación, campañas y reporting",
     team: "Cuenta 01 · Performance 01 · Contenido 01",
     plannedLoad: 76,
@@ -321,7 +321,7 @@ export const hrAbsences: HrAbsence[] = [
     seat: "Performance 01",
     period: "28 oct",
     type: "Día personal",
-    affected: "EPSA / Line Up",
+    affected: "Epsa",
     coverage: "Sin reemplazo operativo definido",
     action: "Anticipar revisión o asignar respaldo",
     status: "Requiere cobertura",

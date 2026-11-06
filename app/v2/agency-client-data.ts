@@ -1,5 +1,5 @@
 export const avansClients = [
-  { slug: "epsa", name: "EPSA / Line Up", health: "Saludable", context: 92, attention: "1 señal" },
+  { slug: "epsa", name: "Epsa", health: "Saludable", context: 92, attention: "1 señal" },
   { slug: "aca", name: "ACA", health: "Atención", context: 81, attention: "2 pendientes" },
   { slug: "grupo-portland", name: "Grupo Portland", health: "Saludable", context: 88, attention: "1 aprobación" },
   { slug: "edinovo", name: "Edinovo", health: "Saludable", context: 86, attention: "2 aprendizajes" },
@@ -58,7 +58,7 @@ export const agencyModuleConfig: Record<AgencyModuleSlug, {
   },
   reportes: {
     label: "Reportes",
-    eyebrow: "OPERACIONES · REPORTES OPERATIVOS",
+    eyebrow: "GERENCIA · REPORTES",
     description: "El reporte se construye desde la ficha del cliente para combinar fuentes, objetivos, decisiones y contexto. No es una exportación genérica de métricas.",
     startAction: "Generar reporte",
     preflightTitle: "Antes de generar",

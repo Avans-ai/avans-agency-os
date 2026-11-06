@@ -1,28 +1,28 @@
 .avans-v2-shell{
-  --avans-coral:#ff6c4c;
-  --avans-coral-hover:#c33f1e;
-  --avans-coral-dark:#c33f1e;
-  --avans-coral-soft:#ffe5d4;
-  --avans-coral-softer:#ffe5d4;
+  --avans-coral:#F86E4F;
+  --avans-coral-hover:#E86245;
+  --avans-coral-dark:#B94A36;
+  --avans-coral-soft:#FFF0EE;
+  --avans-coral-softer:#FAF4F1;
 
-  --avans-black:#15171a;
-  --avans-charcoal:#15171a;
-  --avans-text:#15171a;
+  --avans-black:#0A0A0A;
+  --avans-charcoal:#151515;
+  --avans-text:#0A0A0A;
   --avans-text-muted:#6E6E6E;
   --avans-text-soft:#8F8F8F;
 
-  --avans-bg:#f1f1ee;
+  --avans-bg:#F5F5F2;
   --avans-surface:#FFFFFF;
-  --avans-surface-soft:#f1f1ee;
+  --avans-surface-soft:#FAFAF8;
   --avans-border:rgba(10,10,10,.12);
   --avans-border-strong:rgba(10,10,10,.20);
 
-  --avans-success:#3e7a5e;
-  --avans-success-soft:#e3efe8;
-  --avans-warning:#a8761f;
-  --avans-warning-soft:#f1eddf;
-  --avans-danger:#8c2b36;
-  --avans-danger-soft:#f3e5e7;
+  --avans-success:#2C8A61;
+  --avans-success-soft:#EDF8F2;
+  --avans-warning:#BE7B21;
+  --avans-warning-soft:#FFF5E8;
+  --avans-danger:#D44F4F;
+  --avans-danger-soft:#FFF0F0;
 
   --avans-radius-sm:8px;
   --avans-radius-md:12px;
@@ -39,15 +39,15 @@
 }
 
 html[data-avans-theme="dark"] .avans-v2-shell{
-  --avans-bg:#15171a;
-  --avans-surface:#15171a;
+  --avans-bg:#0A0A0A;
+  --avans-surface:#151515;
   --avans-surface-soft:#1D1D1D;
   --avans-border:rgba(255,255,255,.12);
   --avans-border-strong:rgba(255,255,255,.20);
-  --avans-text:#f1f1ee;
+  --avans-text:#F5F5F2;
   --avans-text-muted:#B9B9B9;
   --avans-text-soft:#949494;
-  --avans-coral-soft:#3a2018;
+  --avans-coral-soft:#2A1B17;
   --avans-coral-softer:#211916;
   --avans-shadow-sm:none;
   --avans-shadow-md:none;

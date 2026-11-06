@@ -69,7 +69,7 @@ export type ClientDepth = {
 export const clientDepthData: ClientDepth[] = [
   {
     slug: "epsa",
-    name: "EPSA / Line Up",
+    name: "Epsa",
     status: "Saludable",
     healthScore: 91,
     context: 92,
