@@ -14,18 +14,15 @@ export type OsNavArea = {
   items: OsNavLeaf[];
 };
 
-/** Avans OS information architecture (Claude Design, iteración 1):
- * Inicio + five areas + Configuración as a utility. Clientes, producción,
- * campañas, aprobaciones y reportes operativos live in Operaciones; Benchmark
- * lives inside each client's profile. Existing URLs are preserved. */
+/**
+ * Arquitectura acordada el 3 nov 2026: Operaciones comienza en Clientes.
+ * Proyectos, producción, campañas, aprobaciones y reportes conservan sus URLs
+ * para enlaces contextuales y el Inicio personal, pero dejan de competir como
+ * entradas globales de la navegación operativa.
+ */
 export const osAreas: OsNavArea[] = [
-  { slug: "operaciones", label: "Operaciones", icon: "flujo", href: "/v2/operaciones", items: [
+  { slug: "operaciones", label: "Operaciones", icon: "flujo", href: "/v2/clientes", items: [
     { label: "Clientes", href: "/v2/clientes", slug: "clientes" },
-    { label: "Proyectos y tareas", href: "/v2/proyectos", slug: "proyectos" },
-    { label: "Producción", href: "/v2/contenido", slug: "contenido" },
-    { label: "Campañas", href: "/v2/campanas", slug: "campanas" },
-    { label: "Aprobaciones", href: "/v2/aprobaciones", slug: "aprobaciones", badge: "approvals" },
-    { label: "Reportes operativos", href: "/v2/reportes", slug: "reportes" },
   ] },
   { slug: "ventas", label: "Ventas", icon: "embudo", href: "/v2/ventas", items: [
     { label: "Prospectos", href: "/v2/leads", slug: "leads" },
