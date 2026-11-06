@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBenchmark } from "../../benchmark-data";
 import type { ClientDepth } from "../../client-depth-data";
-import { AvansIcon, AvansModuleIcon } from "../brand";
+import { AvansModuleIcon } from "../brand";
 import { serviceCatalog, serviceLabel, strategyByClient, type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import { recommendationsForClient, serviceHref } from "../service-workspace-data";
@@ -37,7 +37,7 @@ function recommendationTone(status: string) {
 
 export function ClientWorkspace({ client, depth, benchmark }: { client: OsClient; depth?: ClientDepth; benchmark?: ClientBenchmark }) {
   const params = useSearchParams();
-  const { notify, servicesOf } = useOsStore();
+  const { servicesOf } = useOsStore();
   const requested = params.get("view") ?? "resumen";
   const view: ManagementView = MANAGEMENT_VIEWS.some((item) => item.id === requested) ? requested as ManagementView : "resumen";
   const activeServices = serviceCatalog.filter((service) => servicesOf(client.slug).includes(service.id));
@@ -52,10 +52,6 @@ export function ClientWorkspace({ client, depth, benchmark }: { client: OsClient
             <h1>{client.name} <OSStatus status={client.status} /></h1>
             <p>Cliente desde {client.since} · Burbuja {client.bubble} · Responsable <strong>{client.owner}</strong> · {activeServices.length} {activeServices.length === 1 ? "servicio activo" : "servicios activos"}</p>
           </div>
-        </div>
-        <div className={s.actions}>
-          <button type="button" className={buttonClass("ghost")} onClick={() => notify("Registrar reunión: integración con Google Workspace pendiente")}><AvansIcon name="dialogo" size={18} />Registrar reunión</button>
-          <button type="button" className={buttonClass("secondary")} onClick={() => notify("Carpeta en Drive: integración pendiente")}><AvansIcon name="enlace" size={18} />Carpeta en Drive</button>
         </div>
         <div className={m.managementBlock}>
           <p className={m.levelLabel}>Nivel 1 · Gestión y contexto</p>
