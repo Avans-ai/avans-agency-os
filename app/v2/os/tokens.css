@@ -1,0 +1,105 @@
+/* Avans design system tokens (tokens.json) applied to Avans OS.
+ * Values copied from the Avans design system; only the dark-mode remap is OS-specific. */
+:root {
+  --av-coral-100: #ffe5d4;
+  --av-coral-200: #ffb69c;
+  --av-coral-300: #ff6c4c;
+  --av-coral-400: #c33f1e;
+  --av-coral-500: #7a2510;
+  --av-paper: #f1f1ee;
+  --av-stone: #dededa;
+  --av-ash: #adaeab;
+  --av-umber: #4e4f4d;
+  --av-cocoa: #15171a;
+  --av-graphite: var(--av-cocoa);
+  --av-white: #ffffff;
+  --av-teal-100: #e9edeb;
+  --av-teal-200: #c3ccc9;
+  --av-teal-300: #7e8d89;
+  --av-teal-400: #2f3b38;
+  --av-success: #3e7a5e;
+  --av-success-soft: #e3efe8;
+  --av-warning: #a8761f;
+  --av-warning-soft: #f1eddf;
+  --av-error: #8c2b36;
+  --av-error-soft: #f3e5e7;
+  --av-info: #3f6560;
+  --av-info-soft: #e9edeb;
+
+  --av-bg: var(--av-paper);
+  --av-bg-raised: var(--av-white);
+  --av-bg-sunken: var(--av-stone);
+  --av-bg-inverse: var(--av-cocoa);
+  --av-bg-cool: var(--av-teal-200);
+  --av-text: var(--av-cocoa);
+  --av-text-muted: var(--av-umber);
+  --av-text-on-dark: var(--av-paper);
+  --av-border: var(--av-stone);
+  --av-border-strong: var(--av-ash);
+  --av-accent: var(--av-coral-300);
+  --av-accent-ink: var(--av-coral-500);
+  --av-accent-soft: var(--av-coral-100);
+  --av-link: var(--av-coral-400);
+  --av-focus: var(--av-coral-400);
+  /* Surfaces that stay dark in both themes (sidebar, toasts, restricted blocks). */
+  --av-chrome: var(--av-cocoa);
+  --av-chrome-hover: #2a2c2f;
+  --av-chrome-active: var(--av-umber);
+
+  --av-space-1: 4px;
+  --av-space-2: 8px;
+  --av-space-3: 12px;
+  --av-space-4: 16px;
+  --av-space-5: 22px;
+  --av-space-6: 30px;
+  --av-space-7: 40px;
+  --av-gutter: 2px;
+  --av-radius: 0px;
+  --av-tracking-display: -.035em;
+  --av-tracking-rotulo: .14em;
+  --av-font-body: "Figtree", system-ui, sans-serif;
+  --av-motion-fast: 120ms;
+  --av-motion: 200ms;
+  --av-ease: cubic-bezier(.2, .7, .3, 1);
+  --av-shadow-overlay: 0 8px 24px rgba(21, 23, 26, .12);
+}
+
+/* Dark mode keeps the existing theme toggle working with the new system.
+ * Proposal for OS (the Avans system does not define a dark theme yet). */
+html[data-avans-theme="dark"] {
+  --av-bg: #0f1113;
+  --av-bg-raised: #1b1d20;
+  --av-bg-sunken: #26292c;
+  --av-bg-cool: #2f3b38;
+  --av-text: var(--av-paper);
+  --av-text-muted: var(--av-ash);
+  --av-border: #2e3134;
+  --av-border-strong: var(--av-umber);
+  --av-accent-ink: var(--av-coral-200);
+  --av-accent-soft: #3a2018;
+  --av-link: var(--av-coral-200);
+  --av-focus: var(--av-coral-300);
+  --av-error: #e28a94;
+  --av-error-soft: #3a1d22;
+  --av-success: #8fc3a8;
+  --av-success-soft: #1d3329;
+  --av-info: #a9c4bf;
+  --av-info-soft: #1f2a28;
+  --av-chrome: #0a0b0c;
+}
+
+/* next/font exposes --font-figtree on the layout wrapper (.os-root). */
+.os-root { --av-font-body: var(--font-figtree), "Figtree", system-ui, sans-serif; font-family: var(--av-font-body); }
+
+html, body { background: var(--av-bg); color: var(--av-text); }
+body { -webkit-font-smoothing: antialiased; }
+
+/* Base reset for /v2 (the legacy MVP stylesheet now loads only on its own routes).
+ * :where() keeps specificity at zero so component classes always win. */
+html, body { margin: 0; }
+:where(.os-root) *, :where(.os-root) *::before, :where(.os-root) *::after { box-sizing: border-box; }
+:where(.os-root) { font-size: 14px; line-height: 1.45; color: var(--av-text); }
+:where(.os-root) a { color: inherit; text-decoration: none; }
+:where(.os-root) button, :where(.os-root) input, :where(.os-root) select, :where(.os-root) textarea { font: inherit; color: inherit; }
+:where(.os-root) button { cursor: pointer; }
+:where(.avans-v2-shell) button { border: 1px solid var(--av-border); background: var(--av-bg-raised); padding: 8px 11px; font-weight: 500; }
