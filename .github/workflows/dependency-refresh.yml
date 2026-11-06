@@ -28,7 +28,8 @@ jobs:
       - name: Regenerate dependency lock safely
         run: |
           npm install next@16.4.5 --save-exact --package-lock-only --ignore-scripts
-          npm audit fix --package-lock-only --omit=dev --ignore-scripts
+          npm install eslint-config-next@16.4.5 --save-dev --save-exact --package-lock-only --ignore-scripts
+          npm audit fix --package-lock-only --ignore-scripts
 
       - name: Commit generated dependency files
         run: |
@@ -39,5 +40,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
-          git commit -m "chore: patch audited production dependencies [skip ci]"
+          git commit -m "chore: align patched Next dependencies [skip ci]"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
