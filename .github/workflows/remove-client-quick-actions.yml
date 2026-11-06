@@ -1,0 +1,55 @@
+name: Remove Client Quick Actions
+
+on:
+  push:
+    branches:
+      - feat/avans-os-ajustes-reunion-2026-11-03
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feat/avans-os-ajustes-reunion-2026-11-03
+          persist-credentials: true
+
+      - name: Remove meeting and Drive quick actions
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('app/v2/os/screens/client-workspace.tsx')
+          text = path.read_text()
+
+          replacements = {
+              'import { AvansIcon, AvansModuleIcon } from "../brand";': 'import { AvansModuleIcon } from "../brand";',
+              '  const { notify, servicesOf } = useOsStore();': '  const { servicesOf } = useOsStore();',
+              '''        <div className={s.actions}>
+          <button type="button" className={buttonClass("ghost")} onClick={() => notify("Registrar reunión: integración con Google Workspace pendiente")}><AvansIcon name="dialogo" size={18} />Registrar reunión</button>
+          <button type="button" className={buttonClass("secondary")} onClick={() => notify("Carpeta en Drive: integración pendiente")}><AvansIcon name="enlace" size={18} />Carpeta en Drive</button>
+        </div>
+''': '',
+          }
+
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Expected block not found: {old[:80]}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Commit requested adjustment
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/v2/os/screens/client-workspace.tsx
+          git commit -m "fix(os): remove meeting and Drive actions from client header"
+          git push origin HEAD:feat/avans-os-ajustes-reunion-2026-11-03
