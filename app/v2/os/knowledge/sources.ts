@@ -1,27 +1,288 @@
 import { newEntity, type DiscoverySource } from "../discovery/model";
-import { type KnowledgeSource, type KnowledgeState, type MeetingArtifact, type MutationContext, newId } from "./types";
-export async function contentHash(text: string) { const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text.replace(/\r\n/g,"\n").trim())); return Array.from(new Uint8Array(bytes), n => n.toString(16).padStart(2,"0")).join(""); }
-export function newSource(clientSlug: string, context: MutationContext): KnowledgeSource { return { id:newId(),clientSlug,type:"manual",title:"",provider:"manual",externalUrl:"",occurredAt:"",importedAt:context.at,importedBy:context.actor,contentHash:"",status:"pending",rawText:"",metadata:{},version:1,owner:context.actor,lastSyncedAt:"",error:"",impactedModules:[],validationStatus:"Borrador",evidence:"",notes:"",demo:false,visibility:"team" }; }
-export function sourceFromDiscovery(s: DiscoverySource, clientSlug: string, previous?: KnowledgeSource): KnowledgeSource {
-  const typeMap: Record<string, KnowledgeSource["type"]> = { "Reunión":"meeting-manual-note","Catálogo":"catalog","Brochure":"brochure","Sitio web":"website","Documento":"document","Brief":"document","Tienda Nube":"platform" };
-  return { ...(previous ?? newSource(clientSlug,{actor:s.updatedBy,at:s.updatedAt})),id:s.id,clientSlug,title:s.name,type:previous?.type ?? typeMap[s.type] ?? "manual",externalUrl:s.reference,occurredAt:s.date,owner:s.owner,validationStatus:s.status,evidence:s.evidence,notes:s.notes,demo:s.demo,metadata:{...previous?.metadata,discoveryType:s.type,documentId:s.documentId,updatedAt:s.updatedAt,updatedBy:s.updatedBy},version:previous ? previous.version + (JSON.stringify(sourceToDiscovery(previous))===JSON.stringify(s)?0:1) : 1 };
+import {
+  type KnowledgeSource,
+  type KnowledgeState,
+  type MeetingArtifact,
+  type MutationContext,
+  newId,
+} from "./types";
+export async function contentHash(text: string) {
+  const bytes = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(text.replace(/\r\n/g, "\n").trim()),
+  );
+  return Array.from(new Uint8Array(bytes), (n) =>
+    n.toString(16).padStart(2, "0"),
+  ).join("");
 }
-export function sourceToDiscovery(s: KnowledgeSource): DiscoverySource { return { ...newEntity("sources",s.id),name:s.title,type:typeof s.metadata.discoveryType === "string" ? s.metadata.discoveryType : s.type.startsWith("meeting") ? "Reunión" : s.type === "catalog" ? "Catálogo" : s.type === "brochure" ? "Brochure" : s.type === "website" ? "Sitio web" : s.type === "manual" ? "Carga manual" : "Documento",reference:s.externalUrl,documentId:typeof s.metadata.documentId === "string" ? s.metadata.documentId : "",date:s.occurredAt,owner:s.owner,status:s.validationStatus,evidence:s.evidence,notes:s.notes,demo:s.demo,updatedAt:typeof s.metadata.updatedAt === "string" ? s.metadata.updatedAt : s.importedAt,updatedBy:typeof s.metadata.updatedBy === "string" ? s.metadata.updatedBy : s.importedBy }; }
-export function sourceVisible(s: KnowledgeSource, canManage: boolean) { return canManage || s.visibility === "team"; }
-export type ClientMatchProfile = { slug:string; aliases:string[]; emails:string[]; domains:string[]; eventIds:string[]; folderIds:string[]; documentIds:string[] };
+export function newSource(
+  clientSlug: string,
+  context: MutationContext,
+): KnowledgeSource {
+  return {
+    id: newId(),
+    clientSlug,
+    type: "manual",
+    title: "",
+    provider: "manual",
+    externalUrl: "",
+    occurredAt: "",
+    importedAt: context.at,
+    importedBy: context.actor,
+    contentHash: "",
+    status: "pending",
+    rawText: "",
+    metadata: {},
+    version: 1,
+    owner: context.actor,
+    lastSyncedAt: "",
+    error: "",
+    impactedModules: [],
+    validationStatus: "Borrador",
+    evidence: "",
+    notes: "",
+    demo: false,
+    visibility: "team",
+  };
+}
+export function sourceFromDiscovery(
+  s: DiscoverySource,
+  clientSlug: string,
+  previous?: KnowledgeSource,
+): KnowledgeSource {
+  const typeMap: Record<string, KnowledgeSource["type"]> = {
+    Reunión: "meeting-manual-note",
+    Catálogo: "catalog",
+    Brochure: "brochure",
+    "Sitio web": "website",
+    Documento: "document",
+    Brief: "document",
+    "Tienda Nube": "platform",
+  };
+  return {
+    ...(previous ??
+      newSource(clientSlug, { actor: s.updatedBy, at: s.updatedAt })),
+    id: s.id,
+    clientSlug,
+    title: s.name,
+    type: previous?.type ?? typeMap[s.type] ?? "manual",
+    externalUrl: s.reference,
+    occurredAt: s.date,
+    owner: s.owner,
+    validationStatus: s.status,
+    evidence: s.evidence,
+    notes: s.notes,
+    demo: s.demo,
+    metadata: {
+      ...previous?.metadata,
+      discoveryType: s.type,
+      documentId: s.documentId,
+      updatedAt: s.updatedAt,
+      updatedBy: s.updatedBy,
+    },
+    version: previous
+      ? previous.version +
+        (JSON.stringify(sourceToDiscovery(previous)) === JSON.stringify(s)
+          ? 0
+          : 1)
+      : 1,
+  };
+}
+export function sourceToDiscovery(s: KnowledgeSource): DiscoverySource {
+  return {
+    ...newEntity("sources", s.id),
+    name: s.title,
+    type:
+      typeof s.metadata.discoveryType === "string"
+        ? s.metadata.discoveryType
+        : s.type.startsWith("meeting")
+          ? "Reunión"
+          : s.type === "catalog"
+            ? "Catálogo"
+            : s.type === "brochure"
+              ? "Brochure"
+              : s.type === "website"
+                ? "Sitio web"
+                : s.type === "manual"
+                  ? "Carga manual"
+                  : "Documento",
+    reference: s.externalUrl,
+    documentId:
+      typeof s.metadata.documentId === "string" ? s.metadata.documentId : "",
+    date: s.occurredAt,
+    owner: s.owner,
+    status: s.validationStatus,
+    evidence: s.evidence,
+    notes: s.notes,
+    demo: s.demo,
+    updatedAt:
+      typeof s.metadata.updatedAt === "string"
+        ? s.metadata.updatedAt
+        : s.importedAt,
+    updatedBy:
+      typeof s.metadata.updatedBy === "string"
+        ? s.metadata.updatedBy
+        : s.importedBy,
+  };
+}
+export function sourceVisible(s: KnowledgeSource, canManage: boolean) {
+  return canManage || s.visibility === "team";
+}
+export type ClientMatchProfile = {
+  slug: string;
+  aliases: string[];
+  emails: string[];
+  domains: string[];
+  eventIds: string[];
+  folderIds: string[];
+  documentIds: string[];
+};
 /** Stop at the highest priority containing candidates. Multiple candidates NEVER
  * auto-associate. Contact matching is exact, domain boundary-aware; aliases use
  * word boundaries. No arbitrary note instruction can grant a client identity. */
-export function associateMeeting(m: MeetingArtifact, profiles: ClientMatchProfile[]) {
-  const passes = [profiles.filter(p=>p.slug===m.explicitClientSlug),profiles.filter(p=>m.eventId && p.eventIds.includes(m.eventId)),profiles.filter(p=>m.attendees.some(email=>p.emails.includes(email.toLowerCase()) || p.domains.includes(email.toLowerCase().split("@")[1]))),profiles.filter(p=>p.aliases.some(alias=>new RegExp(`(^|[^\\p{L}\\p{N}])${alias.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}($|[^\\p{L}\\p{N}])`,"iu").test(m.title+" "+m.summary))),profiles.filter(p=>m.folderId && p.folderIds.includes(m.folderId) || m.documentId && p.documentIds.includes(m.documentId))];
-  const index=passes.findIndex(p=>p.length); const candidates=index<0?[]:passes[index].map(p=>p.slug);
-  return { candidates, clientSlug:candidates.length===1 && index<3?candidates[0]:"", association:(candidates.length>1?"needs-review":candidates.length===1?index<3?"automatic":"suggested":"needs-review") as MeetingArtifact["association"], associationReason:index<0?"Sin coincidencia determinística; asignación manual requerida":["Cliente explícito del evento","Relación guardada con Calendar","Contacto o dominio de asistente","Alias en título o descripción","Carpeta o documento asociado"][index] };
+export function associateMeeting(
+  m: MeetingArtifact,
+  profiles: ClientMatchProfile[],
+) {
+  const passes = [
+    profiles.filter((p) => p.slug === m.explicitClientSlug),
+    profiles.filter((p) => m.eventId && p.eventIds.includes(m.eventId)),
+    profiles.filter((p) =>
+      m.attendees.some(
+        (email) =>
+          p.emails.includes(email.toLowerCase()) ||
+          p.domains.includes(email.toLowerCase().split("@")[1]),
+      ),
+    ),
+    profiles.filter((p) =>
+      p.aliases.some((alias) =>
+        new RegExp(
+          `(^|[^\\p{L}\\p{N}])${alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\p{L}\\p{N}])`,
+          "iu",
+        ).test(m.title + " " + m.summary),
+      ),
+    ),
+    profiles.filter(
+      (p) =>
+        (m.folderId && p.folderIds.includes(m.folderId)) ||
+        (m.documentId && p.documentIds.includes(m.documentId)),
+    ),
+  ];
+  const index = passes.findIndex((p) => p.length);
+  const candidates = index < 0 ? [] : passes[index].map((p) => p.slug);
+  return {
+    candidates,
+    clientSlug: candidates.length === 1 && index < 3 ? candidates[0] : "",
+    association: (candidates.length > 1
+      ? "needs-review"
+      : candidates.length === 1
+        ? index < 3
+          ? "automatic"
+          : "suggested"
+        : "needs-review") as MeetingArtifact["association"],
+    associationReason:
+      index < 0
+        ? "Sin coincidencia determinística; asignación manual requerida"
+        : [
+            "Cliente explícito del evento",
+            "Relación guardada con Calendar",
+            "Contacto o dominio de asistente",
+            "Alias en título o descripción",
+            "Carpeta o documento asociado",
+          ][index],
+  };
 }
-export function sameMeeting(a: MeetingArtifact,b: MeetingArtifact) { return ["workspaceEventId","conferenceRecordId","smartNoteName","documentId","hash"].some(key=>{ const k=key as keyof MeetingArtifact; return !!a[k]&&a[k]===b[k]; }); }
-export function importMeeting(k: KnowledgeState, meeting: MeetingArtifact, context: MutationContext): KnowledgeState {
-  if (meeting.clientSlug!==k.clientSlug) throw new Error("La reunión no pertenece a este cliente");
-  if (k.meetings.some(m=>sameMeeting(m,meeting))) return k;
-  const source: KnowledgeSource={...newSource(k.clientSlug,context),id:meeting.sourceId,type:"meeting-smart-note",title:meeting.title,provider:"manual",externalId:meeting.smartNoteName || meeting.documentId,externalUrl:meeting.documentUrl,occurredAt:meeting.occurredAt,contentHash:meeting.hash,rawText:meeting.rawText,status:"imported",owner:meeting.organizer,demo:meeting.demo,visibility:"managers",metadata:{workspaceEventId:meeting.workspaceEventId,conferenceRecordId:meeting.conferenceRecordId,smartNoteName:meeting.smartNoteName,documentId:meeting.documentId,eventId:meeting.eventId}};
-  return {...k,sources:[...k.sources,source],meetings:[...k.meetings,meeting],audit:[...k.audit,{id:newId(),at:context.at,actor:context.actor,action:"Importación manual de nota; pendiente de propuestas",sourceId:source.id}]};
+export function sameMeeting(a: MeetingArtifact, b: MeetingArtifact) {
+  return [
+    "workspaceEventId",
+    "conferenceRecordId",
+    "smartNoteName",
+    "documentId",
+    "hash",
+  ].some((key) => {
+    const k = key as keyof MeetingArtifact;
+    return !!a[k] && a[k] === b[k];
+  });
 }
-export async function demoMeeting(ambiguous=false): Promise<MeetingArtifact> { const rawText="Artefacto DEMO. No proviene de una sincronización de Google.\nCobertura: Cobertura de prueba pendiente de validar\nDecisión: Revisar los públicos antes de ajustar la pauta\nTarea: Confirmar cobertura con el cliente"; return {id:ambiguous?"demo-ambiguous":"demo-epsa",sourceId:ambiguous?"demo-source-ambiguous":"demo-source-epsa",title:ambiguous?"DEMO · EPSA y ACA · reunión compartida":"DEMO · EPSA · revisión del negocio",occurredAt:"2026-11-10",organizer:"Organizador de demostración",attendees:[],eventId:ambiguous?"demo-event-ambiguous":"demo-event-epsa",eventUrl:"",conferenceRecordId:ambiguous?"demo-conference-ambiguous":"demo-conference-epsa",smartNoteName:"",documentId:"",documentUrl:"",workspaceEventId:"",explicitClientSlug:"",folderId:"",summary:"Nota manual de prueba, sin conexión Google",decisions:["Revisar los públicos"],tasks:["Confirmar cobertura"],association:"needs-review",candidates:[],clientSlug:"",associationReason:"",demo:true,hash:await contentHash(rawText+(ambiguous?"ambiguous":"epsa")),rawText}; }
+export function importMeeting(
+  k: KnowledgeState,
+  meeting: MeetingArtifact,
+  context: MutationContext,
+): KnowledgeState {
+  if (meeting.clientSlug !== k.clientSlug)
+    throw new Error("La reunión no pertenece a este cliente");
+  if (k.meetings.some((m) => sameMeeting(m, meeting))) return k;
+  const source: KnowledgeSource = {
+    ...newSource(k.clientSlug, context),
+    id: meeting.sourceId,
+    type: meeting.smartNoteName || meeting.demo ? "meeting-smart-note" : "meeting-manual-note",
+    title: meeting.title,
+    provider: meeting.workspaceEventId ? "google" : "manual",
+    externalId: meeting.smartNoteName || meeting.documentId,
+    externalUrl: meeting.documentUrl,
+    occurredAt: meeting.occurredAt,
+    contentHash: meeting.hash,
+    rawText: meeting.rawText,
+    status: "imported",
+    owner: meeting.organizer,
+    demo: meeting.demo,
+    visibility: "managers",
+    metadata: {
+      workspaceEventId: meeting.workspaceEventId,
+      conferenceRecordId: meeting.conferenceRecordId,
+      smartNoteName: meeting.smartNoteName,
+      documentId: meeting.documentId,
+      eventId: meeting.eventId,
+    },
+  };
+  return {
+    ...k,
+    sources: [...k.sources, source],
+    meetings: [...k.meetings, meeting],
+    audit: [
+      ...k.audit,
+      {
+        id: newId(),
+        at: context.at,
+        actor: context.actor,
+        action: "Importación manual de nota; pendiente de propuestas",
+        sourceId: source.id,
+      },
+    ],
+  };
+}
+export async function demoMeeting(ambiguous = false): Promise<MeetingArtifact> {
+  const rawText =
+    "Artefacto DEMO. No proviene de una sincronización de Google.\nCobertura: Cobertura de prueba pendiente de validar\nDecisión: Revisar los públicos antes de ajustar la pauta\nTarea: Confirmar cobertura con el cliente";
+  return {
+    id: ambiguous ? "demo-ambiguous" : "demo-epsa",
+    sourceId: ambiguous ? "demo-source-ambiguous" : "demo-source-epsa",
+    title: ambiguous
+      ? "DEMO · EPSA y ACA · reunión compartida"
+      : "DEMO · EPSA · revisión del negocio",
+    occurredAt: "2026-11-10",
+    organizer: "Organizador de demostración",
+    attendees: [],
+    eventId: ambiguous ? "demo-event-ambiguous" : "demo-event-epsa",
+    eventUrl: "",
+    conferenceRecordId: ambiguous
+      ? "demo-conference-ambiguous"
+      : "demo-conference-epsa",
+    smartNoteName: "",
+    documentId: "",
+    documentUrl: "",
+    workspaceEventId: "",
+    explicitClientSlug: "",
+    folderId: "",
+    summary: "Nota manual de prueba, sin conexión Google",
+    decisions: ["Revisar los públicos"],
+    tasks: ["Confirmar cobertura"],
+    association: "needs-review",
+    candidates: [],
+    clientSlug: "",
+    associationReason: "",
+    demo: true,
+    hash: await contentHash(rawText + (ambiguous ? "ambiguous" : "epsa")),
+    rawText,
+  };
+}
