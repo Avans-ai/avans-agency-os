@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AvansIcon } from "./brand";
+import { projectServiceLabel, serviceForProject } from "./director-data";
 import { Glyph } from "./glyphs";
-import { CURRENT_USER, people, PRIORITIES, osProjects, type DueKind, type OsTask, type Priority } from "./os-data";
+import { CURRENT_USER, people, PRIORITIES, osProjects, type DueKind, type OsTask, type Priority, type ServiceId } from "./os-data";
 import { useOsStore } from "./os-store";
 import { OSModal } from "./overlays";
 import { dueLabel, getClient, getProject, waitsForMe } from "./selectors";
@@ -88,12 +89,33 @@ const DUE_OPTIONS: { label: string; due: string; kind: DueKind }[] = [
   { label: "Mar 10 nov", due: "10 nov", kind: "later" },
 ];
 
-/** OSModal «Nueva tarea» with validation. `projectSlug` fixes the project (project view). */
-export function NewTaskModal({ projectSlug, onClose, onCreated }: { projectSlug?: string; onClose: () => void; onCreated?: (id: string) => void }) {
+/** OSModal «Nueva tarea» with validation. projectSlug fixes the project; client/service scope the available projects. */
+export function NewTaskModal({
+  projectSlug,
+  clientSlug,
+  serviceId,
+  onClose,
+  onCreated,
+}: {
+  projectSlug?: string;
+  clientSlug?: string;
+  serviceId?: ServiceId;
+  onClose: () => void;
+  onCreated?: (id: string) => void;
+}) {
   const { createTask } = useOsStore();
   const titleRef = useRef<HTMLInputElement>(null);
+  const availableProjects = useMemo(() => {
+    let items = clientSlug ? osProjects.filter((item) => item.clientSlug === clientSlug) : osProjects;
+    if (serviceId) {
+      const scoped = items.filter((item) => serviceForProject(item.slug) === serviceId);
+      if (scoped.length) items = scoped;
+    }
+    return items.length ? items : osProjects;
+  }, [clientSlug, serviceId]);
+  const initialProject = projectSlug ?? availableProjects[0]?.slug ?? osProjects[0].slug;
   const [title, setTitle] = useState("");
-  const [project, setProject] = useState(projectSlug ?? osProjects[0].slug);
+  const [project, setProject] = useState(initialProject);
   const [owner, setOwner] = useState(projectSlug ? getProject(projectSlug)?.owner ?? CURRENT_USER.name : CURRENT_USER.name);
   const [prio, setPrio] = useState<Priority>("Media");
   const [due, setDue] = useState(DUE_OPTIONS[3].due);
@@ -125,7 +147,7 @@ export function NewTaskModal({ projectSlug, onClose, onCreated }: { projectSlug?
           <label className={s.field}>
             <span>Proyecto</span>
             <select className={s.input} value={project} onChange={event => setProject(event.target.value)}>
-              {osProjects.map(item => <option key={item.slug} value={item.slug}>{getClient(item.clientSlug)?.name} · {item.name}</option>)}
+              {availableProjects.map(item => <option key={item.slug} value={item.slug}>{getClient(item.clientSlug)?.name} · {projectServiceLabel(item.slug)} · {item.name}</option>)}
             </select>
           </label>
         )}
@@ -156,12 +178,22 @@ export function NewTaskModal({ projectSlug, onClose, onCreated }: { projectSlug?
   );
 }
 
-export function NewTaskButton({ projectSlug, onCreated }: { projectSlug?: string; onCreated?: (id: string) => void }) {
+export function NewTaskButton({
+  projectSlug,
+  clientSlug,
+  serviceId,
+  onCreated,
+}: {
+  projectSlug?: string;
+  clientSlug?: string;
+  serviceId?: ServiceId;
+  onCreated?: (id: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button type="button" className={buttonClass("primary")} onClick={() => setOpen(true)}><AvansIcon name="chispa" size={18} />Nueva tarea</button>
-      {open ? <NewTaskModal projectSlug={projectSlug} onClose={() => setOpen(false)} onCreated={onCreated} /> : null}
+      {open ? <NewTaskModal projectSlug={projectSlug} clientSlug={clientSlug} serviceId={serviceId} onClose={() => setOpen(false)} onCreated={onCreated} /> : null}
     </>
   );
 }
