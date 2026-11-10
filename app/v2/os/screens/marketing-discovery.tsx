@@ -5,6 +5,7 @@ import { type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import { useKnowledge } from "../knowledge/use-knowledge";
 import { discoveryOf } from "../knowledge/state";
+import { ReviewBanner } from "../knowledge/shared-ui";
 import { QuestionnaireView } from "../knowledge/questionnaire-view";
 import { OSModal, OSSidePanel } from "../overlays";
 import { Badge, buttonClass } from "../ui";
@@ -642,7 +643,7 @@ function PresentationPreview({
 export function MarketingDiscoveryView({ client }: { client: OsClient }) {
   const { role, notify } = useOsStore();
   const knowledge = useKnowledge(client);
-  const {d,editable,invalid:invalidStorage,hydrated}=knowledge;
+  const { d, editable, invalid: invalidStorage, hydrated } = knowledge;
   const [active, setActive] = useState<View>("companyProfile");
   const [editor, setEditor] = useState<Editor | null>(null);
   const [deletion, setDeletion] = useState<{
@@ -667,7 +668,11 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
     });
   }
   function latest(): MarketingDiscovery | null {
-    try { return discoveryOf(knowledge.latest()); } catch { return null; }
+    try {
+      return discoveryOf(knowledge.latest());
+    } catch {
+      return null;
+    }
   }
   function persist(next: MarketingDiscovery): boolean {
     return knowledge.persistDiscovery(next);
@@ -777,6 +782,7 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
         key={row.id}
         data-selected={selectedSegment === row.id}
       >
+        <ReviewBanner client={client} type="discovery" id={row.id} />
         <div className={m.recordHead}>
           <div>
             <span className={m.eyebrow}>
@@ -1084,7 +1090,13 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
         >
           9. Cobertura
         </button>
-        <button type="button" aria-current={active === "questionnaire" ? "page" : undefined} onClick={() => navigate("questionnaire")}>Cuestionario inicial</button>
+        <button
+          type="button"
+          aria-current={active === "questionnaire" ? "page" : undefined}
+          onClick={() => navigate("questionnaire")}
+        >
+          Cuestionario inicial
+        </button>
       </nav>
       <section
         className={m.content}
@@ -1094,22 +1106,35 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
           <div>
             <h3 ref={headingRef} tabIndex={-1} id="discovery-section-heading">
               {currentSection?.label ??
-                (active === "questionnaire" ? "Cuestionario inicial" : active === "coverage"
-                  ? "Cobertura del Marketing Discovery"
-                  : "Fuentes y trazabilidad")}
+                (active === "questionnaire"
+                  ? "Cuestionario inicial"
+                  : active === "coverage"
+                    ? "Cobertura del Marketing Discovery"
+                    : "Fuentes y trazabilidad")}
             </h3>
             <p>
               {currentSection?.hint ??
-                (active === "questionnaire" ? "Preguntas para completar junto al cliente y generar propuestas revisables." : active === "coverage"
-                  ? "Completitud de contenido y validación se evalúan por separado."
-                  : "Cada fuente puede vincularse a varios registros. La carga de archivos y la extracción continúan pendientes.")}
+                (active === "questionnaire"
+                  ? "Preguntas para completar junto al cliente y generar propuestas revisables."
+                  : active === "coverage"
+                    ? "Completitud de contenido y validación se evalúan por separado."
+                    : "Cada fuente puede vincularse a varios registros. La carga de archivos y la extracción continúan pendientes.")}
             </p>
           </div>
           {currentSection ? (
             <span className={m.eyebrow}>Filmina {currentSection.slide}</span>
           ) : null}
         </div>
-        {active === "questionnaire" ? editable ? <QuestionnaireView key={client.slug} client={client} /> : <p>El cuestionario está disponible para el administrador y el PM asignado.</p> : null}
+        {active === "questionnaire" ? (
+          editable ? (
+            <QuestionnaireView key={client.slug} client={client} />
+          ) : (
+            <p>
+              El cuestionario está disponible para el administrador y el PM
+              asignado.
+            </p>
+          )
+        ) : null}
         {active === "companyProfile"
           ? recordCard("companyProfile", d.companyProfile, 0, 1)
           : null}

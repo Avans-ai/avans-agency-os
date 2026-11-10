@@ -1,49 +1,642 @@
-import { entityFields, fields, type EditableRecord, type EntityKind, type Field } from "../discovery/schema";
-import { newEntity, putEntity, recordsOf, validateEntity, type EntityMap } from "../discovery/model";
-import { benchmarkBlueprints, findingBlueprint, planBlueprints } from "./blueprints";
+import {
+  entityFields,
+  fields,
+  type EditableRecord,
+  type EntityKind,
+  type Field,
+} from "../discovery/schema";
+import {
+  newEntity,
+  putEntity,
+  recordsOf,
+  validateEntity,
+  isValidated,
+  type EntityMap,
+} from "../discovery/model";
+import {
+  benchmarkBlueprints,
+  findingBlueprint,
+  planBlueprints,
+} from "./blueprints";
 import { validateItem } from "./benchmark";
 import { validatePlanItem } from "./plan";
-import { discoveryOf, flagDependents, replaceDiscovery, versionChange } from "./state";
+import {
+  discoveryOf,
+  flagDependents,
+  replaceDiscovery,
+  versionChange,
+} from "./state";
 import { answerPresent, questionnaireTemplate } from "./questionnaire";
 import { newSource } from "./sources";
-import { newId,type KnowledgeState,type KnowledgeChangeProposal,type MutationContext,type KnowledgeModule } from "./types";
+import {
+  newId,
+  type KnowledgeState,
+  type KnowledgeChangeProposal,
+  type MutationContext,
+  type KnowledgeModule,
+} from "./types";
 import type { ServiceId } from "../os-data";
-const kinds=Object.keys(fields) as EntityKind[];
-const highRisk=/claim|tagline|position|audience|target|icp|segment|scope|strategy|territory|insight|coverage|definition|activity|businessUnit|offering/i;
-export function proposalImpact(module:KnowledgeModule,section:string,path:string):KnowledgeChangeProposal["impact"]{return module==="marketing-plan"||highRisk.test(`${section}.${path}`)?"high":section==="sources"?"low":"medium";}
-export function proposalCurrent(k:KnowledgeState,p:KnowledgeChangeProposal):unknown {
- if(p.targetModule==="discovery"){if(!kinds.includes(p.targetSection as EntityKind))throw new Error("Sección de Discovery inválida");const row=recordsOf(discoveryOf(k),p.targetSection as EntityKind).find(r=>r.id===p.targetEntityId);return p.operation==="create"?row:row?(row as unknown as Record<string,unknown>)[p.targetFieldPath]:undefined;}
- const item=p.targetModule==="benchmark"?k.benchmark.brands.flatMap(b=>b.items).find(i=>i.id===p.targetEntityId)??k.benchmark.findings.find(i=>i.id===p.targetEntityId):Object.values(k.plan.modules).flat().find(i=>i?.id===p.targetEntityId);return p.operation==="create"?item:item?.values[p.targetFieldPath];
+const kinds = Object.keys(fields) as EntityKind[];
+const highRisk =
+  /claim|tagline|position|audience|target|icp|segment|scope|strategy|territory|insight|coverage|definition|activity|businessUnit|offering/i;
+export function proposalImpact(
+  module: KnowledgeModule,
+  section: string,
+  path: string,
+): KnowledgeChangeProposal["impact"] {
+  return module === "marketing-plan" || highRisk.test(`${section}.${path}`)
+    ? "high"
+    : section === "sources"
+      ? "low"
+      : "medium";
 }
-export function newProposal(k:KnowledgeState,sourceId:string,section:string,path:string,value:unknown,excerpt:string,ctx:MutationContext,entityId?:string,module:KnowledgeModule="discovery",operation:KnowledgeChangeProposal["operation"]="update"):KnowledgeChangeProposal {
- const id=entityId??(module==="discovery"?recordsOf(discoveryOf(k),section as EntityKind)[0]?.id:newId())??newId();const p:KnowledgeChangeProposal={id:newId(),clientSlug:k.clientSlug,sourceId,targetModule:module,targetSection:section,targetEntityId:id,targetFieldPath:path,operation,previousValue:null,proposedValue:value,explanation:"Información extraída de la fuente; requiere revisión del PM.",evidence:[{sourceId,excerpt}],confidence:0.65,impact:proposalImpact(module,section,path),status:"pending",createdAt:ctx.at,dedupKey:JSON.stringify([sourceId,module,section,id,path,value]),affectedModules:module==="discovery"?["Discovery","Benchmark","Plan de Marketing"]:module==="benchmark"?["Benchmark","Plan de Marketing"]:["Plan de Marketing"]};p.previousValue=proposalCurrent(k,p)??null;return p;
+export function proposalCurrent(
+  k: KnowledgeState,
+  p: KnowledgeChangeProposal,
+): unknown {
+  if (p.targetModule === "discovery") {
+    if (!kinds.includes(p.targetSection as EntityKind))
+      throw new Error("Sección de Discovery inválida");
+    const row = recordsOf(discoveryOf(k), p.targetSection as EntityKind).find(
+      (r) => r.id === p.targetEntityId,
+    );
+    return p.operation === "create"
+      ? row
+      : row
+        ? (row as unknown as Record<string, unknown>)[p.targetFieldPath]
+        : undefined;
+  }
+  const item =
+    p.targetModule === "benchmark"
+      ? (k.benchmark.brands
+          .flatMap((b) => b.items)
+          .find((i) => i.id === p.targetEntityId) ??
+        k.benchmark.findings.find((i) => i.id === p.targetEntityId))
+      : Object.values(k.plan.modules)
+          .flat()
+          .find((i) => i?.id === p.targetEntityId);
+  return p.operation === "create" ? item : item?.values[p.targetFieldPath];
 }
-export function addProposals(k:KnowledgeState,proposals:KnowledgeChangeProposal[]){const keys=new Set(k.proposals.map(p=>p.dedupKey));const unique=proposals.filter(p=>{if(keys.has(p.dedupKey))return false;keys.add(p.dedupKey);return true;});return {...k,proposals:[...k.proposals,...unique]};}
-export function questionnaireToProposals(k:KnowledgeState,ctx:MutationContext):KnowledgeState {
- const sourceId="questionnaire-initial";const previous=k.sources.find(s=>s.id===sourceId);const rawText=JSON.stringify(k.questionnaire.responses,null,2);const source={...(previous??newSource(k.clientSlug,ctx)),id:sourceId,type:"questionnaire" as const,title:"Cuestionario inicial",rawText,status:"processed" as const,visibility:"managers" as const,version:(previous?.version??0)+(previous?.rawText===rawText?0:1),metadata:{...previous?.metadata,templateVersion:k.questionnaire.templateVersion},impactedModules:["discovery"]};let next={...k,sources:[...k.sources.filter(s=>s.id!==sourceId),source]};const proposals:KnowledgeChangeProposal[]=[];
- for(const section of questionnaireTemplate.sections)for(const q of section.questions){const r=k.questionnaire.responses[q.id];if(!r||!answerPresent(r.value)||r.status==="draft"||r.status==="unanswered"||r.clarification)continue;const evidence=`${q.label}\n${JSON.stringify(r.value)}\nFuente: ${r.sourceReference||"Respuesta del cliente"}. Uso: ${r.permission}`;
- if(q.responseType==="repeatable"&&Array.isArray(r.value)){for(const [index,row] of r.value.entries()){if(!row||typeof row!=="object"||Array.isArray(row))continue;const id=`questionnaire-${q.sectionId}-${index}`;const exists=recordsOf(discoveryOf(next),q.sectionId as EntityKind).find(x=>x.id===id);if(exists){for(const f of fields[q.sectionId as EntityKind])if(f.key in row&&(row as Record<string,unknown>)[f.key]!==""&&JSON.stringify((exists as unknown as Record<string,unknown>)[f.key])!==JSON.stringify((row as Record<string,unknown>)[f.key]))proposals.push(newProposal(next,sourceId,q.sectionId,f.key,(row as Record<string,unknown>)[f.key],evidence,ctx,id));}else{const value={...newEntity(q.sectionId as EntityKind,id)} as unknown as EditableRecord;for(const f of fields[q.sectionId as EntityKind])if(f.key in row)value[f.key]=(row as Record<string,string|number|boolean|null|string[]>)[f.key];value.sourceIds=[sourceId];value.evidence=evidence;value.owner=ctx.actor;value.notes=`Autorización: ${r.permission}`;proposals.push(newProposal(next,sourceId,q.sectionId,"",value,evidence,ctx,id,"discovery","create"));}}}
- else if(q.sectionId==="materials"){const id=`questionnaire-material-${q.id}`;if(!next.sources.some(s=>s.id===id))proposals.push(newProposal(next,sourceId,"sources","",{...newEntity("sources",id),name:q.label,type:"Documento",reference:String(r.value),sourceIds:[sourceId],owner:ctx.actor,evidence},evidence,ctx,id,"discovery","create"));}
- else{const [kind,path]=q.targetFieldPath.split(".");const proposal=newProposal(next,sourceId,kind,path,r.value,evidence,ctx);if(JSON.stringify(proposal.previousValue)!==JSON.stringify(proposal.proposedValue))proposals.push(proposal);}}
- next=addProposals(next,proposals);return {...next,audit:[...next.audit,{id:newId(),at:ctx.at,actor:ctx.actor,sourceId,action:`Cuestionario convertido en propuestas (${next.proposals.length-k.proposals.length} nuevas)`}]};
+export function newProposal(
+  k: KnowledgeState,
+  sourceId: string,
+  section: string,
+  path: string,
+  value: unknown,
+  excerpt: string,
+  ctx: MutationContext,
+  entityId?: string,
+  module: KnowledgeModule = "discovery",
+  operation: KnowledgeChangeProposal["operation"] = "update",
+): KnowledgeChangeProposal {
+  const id =
+    entityId ??
+    (module === "discovery"
+      ? recordsOf(discoveryOf(k), section as EntityKind)[0]?.id
+      : newId()) ??
+    newId();
+  const p: KnowledgeChangeProposal = {
+    id: newId(),
+    clientSlug: k.clientSlug,
+    sourceId,
+    targetModule: module,
+    targetSection: section,
+    targetEntityId: id,
+    targetFieldPath: path,
+    operation,
+    previousValue: null,
+    proposedValue: value,
+    explanation: "Información extraída de la fuente; requiere revisión del PM.",
+    evidence: [{ sourceId, excerpt }],
+    confidence: 0.65,
+    impact: proposalImpact(module, section, path),
+    status: "pending",
+    createdAt: ctx.at,
+    dedupKey: JSON.stringify([sourceId, module, section, id, path, value]),
+    affectedModules:
+      module === "discovery"
+        ? ["Discovery", "Benchmark", "Plan de Marketing"]
+        : module === "benchmark"
+          ? ["Benchmark", "Plan de Marketing"]
+          : ["Plan de Marketing"],
+  };
+  p.previousValue = proposalCurrent(k, p) ?? null;
+  return p;
+}
+export function addProposals(
+  k: KnowledgeState,
+  proposals: KnowledgeChangeProposal[],
+) {
+  const keys = new Set(k.proposals.map((p) => p.dedupKey));
+  const unique = proposals.filter((p) => {
+    if (keys.has(p.dedupKey)) return false;
+    keys.add(p.dedupKey);
+    return true;
+  });
+  return { ...k, proposals: [...k.proposals, ...unique] };
+}
+export function questionnaireToProposals(
+  k: KnowledgeState,
+  ctx: MutationContext,
+): KnowledgeState {
+  const sourceId = "questionnaire-initial";
+  const previous = k.sources.find((s) => s.id === sourceId);
+  const rawText = JSON.stringify(k.questionnaire.responses, null, 2);
+  const source = {
+    ...(previous ?? newSource(k.clientSlug, ctx)),
+    id: sourceId,
+    type: "questionnaire" as const,
+    title: "Cuestionario inicial",
+    rawText,
+    status: "processed" as const,
+    visibility: "managers" as const,
+    version: (previous?.version ?? 0) + (previous?.rawText === rawText ? 0 : 1),
+    metadata: {
+      ...previous?.metadata,
+      templateVersion: k.questionnaire.templateVersion,
+    },
+    impactedModules: ["discovery"],
+  };
+  let next = {
+    ...k,
+    sources: [...k.sources.filter((s) => s.id !== sourceId), source],
+  };
+  const proposals: KnowledgeChangeProposal[] = [];
+  for (const section of questionnaireTemplate.sections)
+    for (const q of section.questions) {
+      const r = k.questionnaire.responses[q.id];
+      if (
+        !r ||
+        !answerPresent(r.value) ||
+        r.status === "draft" ||
+        r.status === "unanswered" ||
+        r.clarification
+      )
+        continue;
+      const evidence = `${q.label}\n${JSON.stringify(r.value)}\nFuente: ${r.sourceReference || "Respuesta del cliente"}. Uso: ${r.permission}`;
+      if (q.responseType === "repeatable" && Array.isArray(r.value)) {
+        for (const [index, row] of r.value.entries()) {
+          if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+          const id = `questionnaire-${q.sectionId}-${typeof row._id === "string" ? row._id : index}`;
+          const exists = recordsOf(
+            discoveryOf(next),
+            q.sectionId as EntityKind,
+          ).find((x) => x.id === id);
+          if (exists) {
+            for (const f of fields[q.sectionId as EntityKind])
+              if (
+                f.key in row &&
+                (row as Record<string, unknown>)[f.key] !== "" &&
+                JSON.stringify(
+                  (exists as unknown as Record<string, unknown>)[f.key],
+                ) !== JSON.stringify((row as Record<string, unknown>)[f.key])
+              )
+                proposals.push(
+                  newProposal(
+                    next,
+                    sourceId,
+                    q.sectionId,
+                    f.key,
+                    (row as Record<string, unknown>)[f.key],
+                    evidence,
+                    ctx,
+                    id,
+                  ),
+                );
+          } else {
+            const value = {
+              ...newEntity(q.sectionId as EntityKind, id),
+            } as unknown as EditableRecord;
+            for (const f of fields[q.sectionId as EntityKind])
+              if (f.key in row)
+                value[f.key] = (
+                  row as Record<
+                    string,
+                    string | number | boolean | null | string[]
+                  >
+                )[f.key];
+            value.sourceIds = [sourceId];
+            value.evidence = evidence;
+            value.owner = ctx.actor;
+            value.notes = `Autorización: ${r.permission}`;
+            proposals.push(
+              newProposal(
+                next,
+                sourceId,
+                q.sectionId,
+                "",
+                value,
+                evidence,
+                ctx,
+                id,
+                "discovery",
+                "create",
+              ),
+            );
+          }
+        }
+      } else if (q.sectionId === "materials") {
+        const id = `questionnaire-material-${q.id}`;
+        if (!next.sources.some((s) => s.id === id))
+          proposals.push(
+            newProposal(
+              next,
+              sourceId,
+              "sources",
+              "",
+              {
+                ...newEntity("sources", id),
+                name: q.label,
+                type: "Documento",
+                reference: String(r.value),
+                sourceIds: [sourceId],
+                owner: ctx.actor,
+                evidence,
+              },
+              evidence,
+              ctx,
+              id,
+              "discovery",
+              "create",
+            ),
+          );
+      } else {
+        const [kind, path] = q.targetFieldPath.split(".");
+        const proposal = newProposal(
+          next,
+          sourceId,
+          kind,
+          path,
+          r.value,
+          evidence,
+          ctx,
+        );
+        if (
+          JSON.stringify(proposal.previousValue) !==
+          JSON.stringify(proposal.proposedValue)
+        )
+          proposals.push(proposal);
+      }
+    }
+  next = addProposals(next, proposals);
+  return {
+    ...next,
+    audit: [
+      ...next.audit,
+      {
+        id: newId(),
+        at: ctx.at,
+        actor: ctx.actor,
+        sourceId,
+        action: `Cuestionario convertido en propuestas (${next.proposals.length - k.proposals.length} nuevas)`,
+      },
+    ],
+  };
 }
 /** Conservative extraction: only explicit labeled facts. Unstructured notes remain
  * available for manual proposal creation; text never executes instructions. */
-export function meetingToProposals(k:KnowledgeState,sourceId:string,ctx:MutationContext){const source=k.sources.find(s=>s.id===sourceId);if(!source)throw new Error("Fuente inexistente");const mapping:Record<string,[EntityKind,string]>={"cobertura":["companyProfile","coverage"],"nombre comercial":["companyProfile","name"],"razón social":["companyProfile","legalName"],"actividad":["companyProfile","activity"],"descripción de empresa":["companyProfile","definition"],"frase del negocio":["companyProfile","tagline"],"ciclo comercial":["salesProcess","cycleDuration"],"ticket típico":["salesProcess","averageTicket"]};const proposals:KnowledgeChangeProposal[]=[];for(const [i,line] of source.rawText.split("\n").entries()){const colon=line.indexOf(":");if(colon<0)continue;const target=mapping[line.slice(0,colon).trim().toLocaleLowerCase("es")];const value=line.slice(colon+1).trim();if(!target||!value)continue;const p=newProposal(k,sourceId,target[0],target[1],value,line,ctx);p.evidence[0].paragraph=i+1;p.confidence=0.85;if(JSON.stringify(p.previousValue)!==JSON.stringify(value))proposals.push(p);}const next=addProposals(k,proposals);return {...next,sources:next.sources.map(s=>s.id===sourceId?{...s,status:"processed" as const,impactedModules:["discovery"]}:s),audit:[...next.audit,{id:newId(),at:ctx.at,actor:ctx.actor,sourceId,action:`Extracción determinística: ${next.proposals.length-k.proposals.length} propuestas nuevas`}]};}
-function safeFieldValue(kind:EntityKind,path:string,value:unknown){const f:Field|undefined=fields[kind].find(f=>f.key===path);if(!f)throw new Error("Campo no permitido");if(f.kind==="number"&&value!==null&&(typeof value!=="number"||!Number.isFinite(value)))throw new Error("Se requiere un número");if(f.kind==="boolean"&&typeof value!=="boolean")throw new Error("Se requiere un booleano");if(f.kind==="relations"&&(!Array.isArray(value)||!value.every(x=>typeof x==="string")))throw new Error("Se requiere una lista de relaciones");if(!["number","boolean","relations"].includes(f.kind??"text")&&typeof value!=="string")throw new Error("Se requiere texto");}
-export function reviewProposal(k:KnowledgeState,id:string,decision:"approve"|"reject",ctx:MutationContext,reason="",batch=false):KnowledgeState {
- const p=k.proposals.find(x=>x.id===id);if(!p)throw new Error("Propuesta inexistente");if(p.status!=="pending")return k;if(p.clientSlug!==k.clientSlug||!k.sources.some(s=>s.id===p.sourceId&&s.clientSlug===k.clientSlug))throw new Error("La fuente no pertenece a este cliente");
- if(decision==="reject")return {...k,proposals:k.proposals.map(x=>x.id===id?{...x,status:"rejected",reviewedBy:ctx.actor,reviewedAt:ctx.at,rejectionReason:reason||"No relevante"}:x),audit:[...k.audit,{id:newId(),at:ctx.at,actor:ctx.actor,proposalId:id,sourceId:p.sourceId,action:`Propuesta rechazada: ${reason||"No relevante"}`}]};
- if(batch&&(p.impact!=="low"||proposalImpact(p.targetModule,p.targetSection,p.targetFieldPath)!=="low"))throw new Error("El lote admite únicamente cambios de bajo riesgo");
- if(!p.evidence.length||p.evidence.some(e=>e.sourceId!==p.sourceId||!e.excerpt.trim()))throw new Error("Falta evidencia de la fuente");if(JSON.stringify(proposalCurrent(k,p)??null)!==JSON.stringify(p.previousValue??null))throw new Error("El valor actual cambió desde la propuesta. Editá y revisá nuevamente antes de aprobar.");
- if(p.operation!=="create"&&p.operation!=="update")throw new Error("Esta operación requiere revisión manual");let next=k;
- if(p.targetModule==="discovery") {const kind=p.targetSection as EntityKind;const d=discoveryOf(k);const existing=recordsOf(d,kind).find(r=>r.id===p.targetEntityId);let row:EditableRecord;
- if(p.operation==="create"){if(!p.proposedValue||typeof p.proposedValue!=="object"||Array.isArray(p.proposedValue))throw new Error("Registro inválido");row={...newEntity(kind,p.targetEntityId)} as unknown as EditableRecord;const allowed=new Set(entityFields(kind).map(f=>f.key));for(const [key,value] of Object.entries(p.proposedValue))if(allowed.has(key))row[key]=value as EditableRecord[string];}
- else{if(!existing)throw new Error("Registro inexistente");safeFieldValue(kind,p.targetFieldPath,p.proposedValue);row={...existing,[p.targetFieldPath]:p.proposedValue} as unknown as EditableRecord;}
- row.id=p.targetEntityId;row.sourceIds=Array.from(new Set([...(Array.isArray(row.sourceIds)?row.sourceIds:[]),p.sourceId]));row.status="Borrador";row.demo=!!row.demo||!!k.sources.find(s=>s.id===p.sourceId)?.demo;row.evidence=p.evidence.map(e=>e.excerpt).join("\n");row.updatedAt=ctx.at;row.updatedBy=ctx.actor;row.owner=String(row.owner||ctx.actor);const errors=validateEntity(d,kind,row);if(errors.length)throw new Error(errors.join(" · "));next=replaceDiscovery(k,putEntity(d,kind,row as EntityMap[typeof kind]),ctx,p.sourceId,p.id);
- }else{const isPlan=p.targetModule==="marketing-plan";const bp=(isPlan?planBlueprints:[...benchmarkBlueprints,findingBlueprint]).find(b=>b.id===p.targetSection);if(!bp||!bp.fields.some(f=>f.key===p.targetFieldPath))throw new Error("Destino o campo no permitido");const existing=isPlan?Object.values(k.plan.modules).flat().find(i=>i?.id===p.targetEntityId):k.benchmark.brands.flatMap(b=>b.items).find(i=>i.id===p.targetEntityId)??k.benchmark.findings.find(i=>i.id===p.targetEntityId);if(!existing)throw new Error("Creá primero un registro en el módulo de destino");const item={...existing,values:{...existing.values,[p.targetFieldPath]:p.proposedValue as string},sourceIds:Array.from(new Set([...existing.sourceIds,p.sourceId])),evidence:p.evidence.map(e=>e.excerpt).join("\n"),status:"Borrador" as const,updatedAt:ctx.at,updatedBy:ctx.actor};const errors=isPlan?validatePlanItem(k,item,bp,bp.service as ServiceId):validateItem(k,item,bp);if(errors.length)throw new Error(errors.join(" · "));next=versionChange(k,p.targetModule,item.id,existing,item,ctx,p.sourceId,p.id);next=isPlan?{...next,plan:{modules:{...next.plan.modules,[bp.service!]:next.plan.modules[bp.service!]?.map(i=>i.id===item.id?item:i)}}}:{...next,benchmark:{...next.benchmark,brands:next.benchmark.brands.map(b=>({...b,items:b.items.map(i=>i.id===item.id?item:i)})),findings:next.benchmark.findings.map(f=>f.id===item.id?{...f,...item}:f)}};next=flagDependents(next,isPlan?"marketing-plan":"finding",item.id,"Cambió una decisión vinculada",ctx,p.sourceId);}
- const versionId=next.versions.at(-1)?.id;return {...next,proposals:next.proposals.map(x=>x.id===id?{...x,status:"applied",reviewedBy:ctx.actor,reviewedAt:ctx.at,versionId}:x)};
+export function meetingToProposals(
+  k: KnowledgeState,
+  sourceId: string,
+  ctx: MutationContext,
+) {
+  const source = k.sources.find((s) => s.id === sourceId);
+  if (!source) throw new Error("Fuente inexistente");
+  const mapping: Record<string, [EntityKind, string]> = {
+    cobertura: ["companyProfile", "coverage"],
+    "nombre comercial": ["companyProfile", "name"],
+    "razón social": ["companyProfile", "legalName"],
+    actividad: ["companyProfile", "activity"],
+    "descripción de empresa": ["companyProfile", "definition"],
+    "frase del negocio": ["companyProfile", "tagline"],
+    "ciclo comercial": ["salesProcess", "cycleDuration"],
+    "ticket típico": ["salesProcess", "averageTicket"],
+  };
+  const proposals: KnowledgeChangeProposal[] = [];
+  for (const [i, line] of source.rawText.split("\n").entries()) {
+    const colon = line.indexOf(":");
+    if (colon < 0) continue;
+    const target = mapping[line.slice(0, colon).trim().toLocaleLowerCase("es")];
+    const value = line.slice(colon + 1).trim();
+    if (!target || !value) continue;
+    const p = newProposal(k, sourceId, target[0], target[1], value, line, ctx);
+    p.evidence[0].paragraph = i + 1;
+    p.confidence = 0.85;
+    if (JSON.stringify(p.previousValue) !== JSON.stringify(value))
+      proposals.push(p);
+  }
+  const next = addProposals(k, proposals);
+  return {
+    ...next,
+    sources: next.sources.map((s) =>
+      s.id === sourceId
+        ? { ...s, status: "processed" as const, impactedModules: ["discovery"] }
+        : s,
+    ),
+    audit: [
+      ...next.audit,
+      {
+        id: newId(),
+        at: ctx.at,
+        actor: ctx.actor,
+        sourceId,
+        action: `Extracción determinística: ${next.proposals.length - k.proposals.length} propuestas nuevas`,
+      },
+    ],
+  };
 }
-export function editProposal(k:KnowledgeState,id:string,patch:Pick<KnowledgeChangeProposal,"targetModule"|"targetSection"|"targetEntityId"|"targetFieldPath"|"proposedValue">,ctx:MutationContext){const current=k.proposals.find(p=>p.id===id);if(!current||current.status!=="pending")throw new Error("La propuesta ya fue revisada");const revised={...current,...patch,impact:proposalImpact(patch.targetModule,patch.targetSection,patch.targetFieldPath)};revised.previousValue=proposalCurrent(k,revised)??null;return {...k,proposals:k.proposals.map(p=>p.id===id?revised:p),audit:[...k.audit,{id:newId(),at:ctx.at,actor:ctx.actor,proposalId:id,sourceId:current.sourceId,action:"Propuesta editada antes de aprobar"}]};}
-export function validatedDiscoveryToBenchmark(k:KnowledgeState){const d=discoveryOf(k);return {company:d.companyProfile.status==="Validado"&&!d.companyProfile.demo?d.companyProfile:null,segments:d.targetSegments.filter(x=>x.status==="Validado"&&!x.demo),offerings:d.offerings.filter(x=>x.status==="Validado"&&!x.demo)};}
-export function discoveryAndFindingsToPlan(k:KnowledgeState){return {discovery:kinds.filter(x=>x!=="sources").flatMap(kind=>recordsOf(discoveryOf(k),kind).filter(x=>x.status==="Validado"&&!x.demo).map(x=>({kind,record:x}))),findings:k.benchmark.findings.filter(f=>f.status==="Validado"&&!f.demo)};}
+function safeFieldValue(kind: EntityKind, path: string, value: unknown) {
+  const f: Field | undefined = fields[kind].find((f) => f.key === path);
+  if (!f) throw new Error("Campo no permitido");
+  if (
+    f.kind === "number" &&
+    value !== null &&
+    (typeof value !== "number" || !Number.isFinite(value))
+  )
+    throw new Error("Se requiere un número");
+  if (f.kind === "boolean" && typeof value !== "boolean")
+    throw new Error("Se requiere un booleano");
+  if (
+    f.kind === "relations" &&
+    (!Array.isArray(value) || !value.every((x) => typeof x === "string"))
+  )
+    throw new Error("Se requiere una lista de relaciones");
+  if (
+    !["number", "boolean", "relations"].includes(f.kind ?? "text") &&
+    typeof value !== "string"
+  )
+    throw new Error("Se requiere texto");
+}
+export function reviewProposal(
+  k: KnowledgeState,
+  id: string,
+  decision: "approve" | "reject",
+  ctx: MutationContext,
+  reason = "",
+  batch = false,
+): KnowledgeState {
+  const p = k.proposals.find((x) => x.id === id);
+  if (!p) throw new Error("Propuesta inexistente");
+  if (p.status !== "pending") return k;
+  if (
+    p.clientSlug !== k.clientSlug ||
+    !k.sources.some((s) => s.id === p.sourceId && s.clientSlug === k.clientSlug)
+  )
+    throw new Error("La fuente no pertenece a este cliente");
+  if (decision === "reject")
+    return {
+      ...k,
+      proposals: k.proposals.map((x) =>
+        x.id === id
+          ? {
+              ...x,
+              status: "rejected",
+              reviewedBy: ctx.actor,
+              reviewedAt: ctx.at,
+              rejectionReason: reason || "No relevante",
+            }
+          : x,
+      ),
+      audit: [
+        ...k.audit,
+        {
+          id: newId(),
+          at: ctx.at,
+          actor: ctx.actor,
+          proposalId: id,
+          sourceId: p.sourceId,
+          action: `Propuesta rechazada: ${reason || "No relevante"}`,
+        },
+      ],
+    };
+  if (
+    batch &&
+    (p.impact !== "low" ||
+      proposalImpact(p.targetModule, p.targetSection, p.targetFieldPath) !==
+        "low")
+  )
+    throw new Error("El lote admite únicamente cambios de bajo riesgo");
+  if (
+    !p.evidence.length ||
+    p.evidence.some((e) => e.sourceId !== p.sourceId || !e.excerpt.trim())
+  )
+    throw new Error("Falta evidencia de la fuente");
+  if (
+    JSON.stringify(proposalCurrent(k, p) ?? null) !==
+    JSON.stringify(p.previousValue ?? null)
+  )
+    throw new Error(
+      "El valor actual cambió desde la propuesta. Editá y revisá nuevamente antes de aprobar.",
+    );
+  if (p.operation !== "create" && p.operation !== "update")
+    throw new Error("Esta operación requiere revisión manual");
+  let next = k;
+  if (p.targetModule === "discovery") {
+    const kind = p.targetSection as EntityKind;
+    const d = discoveryOf(k);
+    const existing = recordsOf(d, kind).find((r) => r.id === p.targetEntityId);
+    let row: EditableRecord;
+    if (p.operation === "create") {
+      if (
+        !p.proposedValue ||
+        typeof p.proposedValue !== "object" ||
+        Array.isArray(p.proposedValue)
+      )
+        throw new Error("Registro inválido");
+      row = {
+        ...newEntity(kind, p.targetEntityId),
+      } as unknown as EditableRecord;
+      const allowed = new Set(entityFields(kind).map((f) => f.key));
+      for (const [key, value] of Object.entries(p.proposedValue))
+        if (allowed.has(key)) row[key] = value as EditableRecord[string];
+    } else {
+      if (!existing) throw new Error("Registro inexistente");
+      safeFieldValue(kind, p.targetFieldPath, p.proposedValue);
+      row = {
+        ...existing,
+        [p.targetFieldPath]: p.proposedValue,
+      } as unknown as EditableRecord;
+    }
+    row.id = p.targetEntityId;
+    row.sourceIds = Array.from(
+      new Set([
+        ...(Array.isArray(row.sourceIds) ? row.sourceIds : []),
+        p.sourceId,
+      ]),
+    );
+    row.status = "Borrador";
+    row.demo = !!row.demo || !!k.sources.find((s) => s.id === p.sourceId)?.demo;
+    row.evidence = p.evidence.map((e) => e.excerpt).join("\n");
+    row.updatedAt = ctx.at;
+    row.updatedBy = ctx.actor;
+    row.owner = String(row.owner || ctx.actor);
+    const errors = validateEntity(d, kind, row);
+    if (errors.length) throw new Error(errors.join(" · "));
+    next = replaceDiscovery(
+      k,
+      putEntity(d, kind, row as EntityMap[typeof kind]),
+      ctx,
+      p.sourceId,
+      p.id,
+    );
+  } else {
+    const isPlan = p.targetModule === "marketing-plan";
+    const bp = (
+      isPlan ? planBlueprints : [...benchmarkBlueprints, findingBlueprint]
+    ).find((b) => b.id === p.targetSection);
+    if (!bp || !bp.fields.some((f) => f.key === p.targetFieldPath))
+      throw new Error("Destino o campo no permitido");
+    const existing = isPlan
+      ? Object.values(k.plan.modules)
+          .flat()
+          .find((i) => i?.id === p.targetEntityId)
+      : (k.benchmark.brands
+          .flatMap((b) => b.items)
+          .find((i) => i.id === p.targetEntityId) ??
+        k.benchmark.findings.find((i) => i.id === p.targetEntityId));
+    if (!existing)
+      throw new Error("Creá primero un registro en el módulo de destino");
+    const item = {
+      ...existing,
+      values: {
+        ...existing.values,
+        [p.targetFieldPath]: p.proposedValue as string,
+      },
+      sourceIds: Array.from(new Set([...existing.sourceIds, p.sourceId])),
+      evidence: p.evidence.map((e) => e.excerpt).join("\n"),
+      status: "Borrador" as const,
+      updatedAt: ctx.at,
+      updatedBy: ctx.actor,
+    };
+    const errors = isPlan
+      ? validatePlanItem(k, item, bp, bp.service as ServiceId)
+      : validateItem(k, item, bp);
+    if (errors.length) throw new Error(errors.join(" · "));
+    next = versionChange(
+      k,
+      p.targetModule,
+      item.id,
+      existing,
+      item,
+      ctx,
+      p.sourceId,
+      p.id,
+    );
+    next = isPlan
+      ? {
+          ...next,
+          plan: {
+            modules: {
+              ...next.plan.modules,
+              [bp.service!]: next.plan.modules[bp.service!]?.map((i) =>
+                i.id === item.id ? item : i,
+              ),
+            },
+          },
+        }
+      : {
+          ...next,
+          benchmark: {
+            ...next.benchmark,
+            brands: next.benchmark.brands.map((b) => ({
+              ...b,
+              items: b.items.map((i) => (i.id === item.id ? item : i)),
+            })),
+            findings: next.benchmark.findings.map((f) =>
+              f.id === item.id ? { ...f, ...item } : f,
+            ),
+          },
+        };
+    next = flagDependents(
+      next,
+      isPlan ? "marketing-plan" : "finding",
+      item.id,
+      "Cambió una decisión vinculada",
+      ctx,
+      p.sourceId,
+    );
+  }
+  const versionId = next.versions.at(-1)?.id;
+  return {
+    ...next,
+    proposals: next.proposals.map((x) =>
+      x.id === id
+        ? {
+            ...x,
+            status: "applied",
+            reviewedBy: ctx.actor,
+            reviewedAt: ctx.at,
+            versionId,
+          }
+        : x,
+    ),
+  };
+}
+export function editProposal(
+  k: KnowledgeState,
+  id: string,
+  patch: Pick<
+    KnowledgeChangeProposal,
+    | "targetModule"
+    | "targetSection"
+    | "targetEntityId"
+    | "targetFieldPath"
+    | "proposedValue"
+  >,
+  ctx: MutationContext,
+) {
+  const current = k.proposals.find((p) => p.id === id);
+  if (!current || current.status !== "pending")
+    throw new Error("La propuesta ya fue revisada");
+  const revised = {
+    ...current,
+    ...patch,
+    impact: proposalImpact(
+      patch.targetModule,
+      patch.targetSection,
+      patch.targetFieldPath,
+    ),
+  };
+  revised.previousValue = proposalCurrent(k, revised) ?? null;
+  return {
+    ...k,
+    proposals: k.proposals.map((p) => (p.id === id ? revised : p)),
+    audit: [
+      ...k.audit,
+      {
+        id: newId(),
+        at: ctx.at,
+        actor: ctx.actor,
+        proposalId: id,
+        sourceId: current.sourceId,
+        action: "Propuesta editada antes de aprobar",
+      },
+    ],
+  };
+}
+export function validatedDiscoveryToBenchmark(k: KnowledgeState) {
+  const d = discoveryOf(k);
+  return {
+    company: isValidated(d, "companyProfile", d.companyProfile)
+      ? d.companyProfile
+      : null,
+    segments: d.targetSegments.filter(
+      (x) => x.status === "Validado" && !x.demo,
+    ),
+    offerings: d.offerings.filter((x) => isValidated(d, "offerings", x)),
+  };
+}
+export function discoveryAndFindingsToPlan(k: KnowledgeState) {
+  return {
+    discovery: kinds
+      .filter((x) => x !== "sources")
+      .flatMap((kind) =>
+        recordsOf(discoveryOf(k), kind)
+          .filter((x) => isValidated(discoveryOf(k), kind, x))
+          .map((x) => ({ kind, record: x })),
+      ),
+    findings: k.benchmark.findings.filter(
+      (f) => f.status === "Validado" && !f.demo,
+    ),
+  };
+}

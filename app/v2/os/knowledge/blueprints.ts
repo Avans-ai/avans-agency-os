@@ -521,7 +521,48 @@ export function visibleFields(
   blueprint: Blueprint,
   values: Record<string, KnowledgeValue>,
 ) {
-  return blueprint.fields.filter(
-    (f) => !f.condition || values[f.condition.field] === f.condition.value,
-  );
+  return blueprint.fields
+    .filter(
+      (f) => !f.condition || values[f.condition.field] === f.condition.value,
+    )
+    .map((f) => {
+      if (f.key !== "indicator" || !values.businessModel) return f;
+      const allowed =
+        blueprint.id === "paidKpis"
+          ? values.businessModel === "Leads"
+            ? [
+                "Alcance y frecuencia",
+                "Tasa de conversión",
+                "Costo por consulta",
+                "Calidad de consultas",
+              ]
+            : [
+                "ROAS",
+                "Conversión ecommerce",
+                "Ticket promedio",
+                "Clientes nuevos",
+                "Recompra",
+                "Frecuencia",
+              ]
+          : blueprint.id === "webKpis"
+            ? values.businessModel === "Leads"
+              ? [
+                  "Tráfico",
+                  "Fuente de origen",
+                  "Permanencia",
+                  "Recorrido",
+                  "Conversiones",
+                  "Page Speed Insights",
+                ]
+              : [
+                  "Tráfico",
+                  "Productos vistos",
+                  "Productos vendidos",
+                  "Carrito",
+                  "Checkout",
+                  "Page Speed Insights",
+                ]
+            : f.options;
+      return { ...f, options: allowed };
+    });
 }

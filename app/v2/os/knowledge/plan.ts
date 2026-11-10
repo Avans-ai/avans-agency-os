@@ -1,4 +1,4 @@
-import { planBlueprints, type Blueprint } from "./blueprints";
+import { planBlueprints, visibleFields, type Blueprint } from "./blueprints";
 import { itemMissing, validateItem } from "./benchmark";
 import type { ServiceId } from "../os-data";
 import type { KnowledgeItem, KnowledgeState } from "./types";
@@ -51,7 +51,10 @@ export function validatePlanItem(
   bp: Blueprint,
   service: ServiceId,
 ) {
-  const errors = validateItem(k, item, bp);
+  const errors = validateItem(k, item, {
+    ...bp,
+    fields: visibleFields(bp, item.values),
+  });
   const items = [
     ...(k.plan.modules[service] ?? []).filter((i) => i.id !== item.id),
     item,

@@ -21,7 +21,7 @@ import {
   reviewProposal,
 } from "./proposals";
 import { discoveryOf } from "./state";
-import { FieldInput, formatValue } from "./shared-ui";
+import { FieldInput, formatValue, ExternalLink } from "./shared-ui";
 import type {
   KnowledgeChangeProposal,
   KnowledgeModule,
@@ -115,6 +115,7 @@ export function ProposalEditor({
   const create = proposal?.operation === "create";
   return (
     <OSSidePanel
+      persistentFooter
       label="Editar propuesta"
       heading={
         <h2>
@@ -296,6 +297,7 @@ export function ProposalsView({ client }: { client: OsClient }) {
   const [impact, setImpact] = useState("");
   const [confidence, setConfidence] = useState("");
   const [date, setDate] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
   const [editor, setEditor] = useState<KnowledgeChangeProposal | null>(null);
   if (!editable)
     return (
@@ -392,12 +394,22 @@ export function ProposalsView({ client }: { client: OsClient }) {
       <button
         className={buttonClass("secondary", true)}
         disabled={
-          !filtered.some((p) => p.status === "pending" && p.impact === "low")
+          !filtered.some(
+            (p) =>
+              p.status === "pending" &&
+              p.impact === "low" &&
+              selected.includes(p.id),
+          )
         }
         onClick={() =>
           mutate((s, c) =>
             filtered
-              .filter((p) => p.status === "pending" && p.impact === "low")
+              .filter(
+                (p) =>
+                  p.status === "pending" &&
+                  p.impact === "low" &&
+                  selected.includes(p.id),
+              )
               .reduce(
                 (state, p) =>
                   reviewProposal(state, p.id, "approve", c, "", true),
@@ -406,13 +418,30 @@ export function ProposalsView({ client }: { client: OsClient }) {
           )
         }
       >
-        Aprobar cambios de bajo riesgo del filtro
+        Aprobar seleccionados de bajo riesgo
       </button>
       {!filtered.length ? (
         <p className={m.empty}>No hay propuestas con estos filtros.</p>
       ) : (
         filtered.map((p) => (
           <article className={m.card} key={p.id}>
+            {p.status === "pending" ? (
+              <label className={m.field}>
+                <span>Seleccionar para aprobación en lote</span>
+                <input
+                  type="checkbox"
+                  disabled={p.impact !== "low"}
+                  checked={selected.includes(p.id)}
+                  onChange={(e) =>
+                    setSelected(
+                      e.target.checked
+                        ? [...selected, p.id]
+                        : selected.filter((id) => id !== p.id),
+                    )
+                  }
+                />
+              </label>
+            ) : null}
             <div className={m.head}>
               <h4>
                 {moduleLabels[p.targetModule]} · {p.targetSection} ·{" "}
@@ -432,6 +461,12 @@ export function ProposalsView({ client }: { client: OsClient }) {
               Confianza: {Math.round(p.confidence * 100)}% ·{" "}
               {p.createdAt.slice(0, 10)}
             </p>
+            <ExternalLink
+              url={
+                k.sources.find((s) => s.id === p.sourceId)?.externalUrl ?? ""
+              }
+              label="Abrir fuente original"
+            />
             <div className={m.diff}>
               <div>
                 <strong>Valor actual</strong>
@@ -494,6 +529,9 @@ export function ProposalsView({ client }: { client: OsClient }) {
             ) : (
               <p className={m.muted}>
                 Revisada por {p.reviewedBy} · {p.reviewedAt} {p.rejectionReason}
+                {p.status === "applied"
+                  ? ` · Campo actualizado · Versión ${k.versions.find((v) => v.id === p.versionId)?.version ?? "registrada"} · Revisión pendiente en módulos afectados`
+                  : ""}
               </p>
             )}
           </article>

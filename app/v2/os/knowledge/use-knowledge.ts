@@ -1,4 +1,6 @@
 "use client";
+import { useMemo } from "react";
+import { sourceVisible } from "./sources";
 import {
   useLocalStorageState,
   readLocalJson,
@@ -34,9 +36,13 @@ export function useKnowledge(client: OsClient) {
     undefined,
   );
   const invalid = stored !== null && !isKnowledge(stored, client.slug);
-  const k = isKnowledge(stored, client.slug)
-    ? stored
-    : seedKnowledge(client, legacy, docs, competitors);
+  const k = useMemo(
+    () =>
+      isKnowledge(stored, client.slug)
+        ? stored
+        : seedKnowledge(client, legacy, docs, competitors),
+    [stored, client, legacy, docs, competitors],
+  );
   const editable =
     hydrated && localHydrated && !invalid && canEditDiscovery(role, client);
   const context = (): MutationContext => ({
@@ -117,7 +123,16 @@ export function useKnowledge(client: OsClient) {
   }
   return {
     k,
-    d: discoveryOf(k),
+    d: {
+      ...discoveryOf(k),
+      sources: discoveryOf(k).sources.filter((source) =>
+        k.sources.some(
+          (s) =>
+            s.id === source.id &&
+            sourceVisible(s, canEditDiscovery(role, client)),
+        ),
+      ),
+    },
     editable,
     invalid,
     hydrated,

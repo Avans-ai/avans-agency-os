@@ -204,6 +204,7 @@ export function ItemEditor({
   );
   return (
     <OSSidePanel
+      persistentFooter
       label={`Editar ${bp.label}`}
       heading={<h2>{bp.label}</h2>}
       onClose={onClose}

@@ -215,7 +215,10 @@ export function importMeeting(
   const source: KnowledgeSource = {
     ...newSource(k.clientSlug, context),
     id: meeting.sourceId,
-    type: meeting.smartNoteName || meeting.demo ? "meeting-smart-note" : "meeting-manual-note",
+    type:
+      meeting.smartNoteName || meeting.demo
+        ? "meeting-smart-note"
+        : "meeting-manual-note",
     title: meeting.title,
     provider: meeting.workspaceEventId ? "google" : "manual",
     externalId: meeting.smartNoteName || meeting.documentId,
