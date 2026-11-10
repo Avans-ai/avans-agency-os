@@ -1,6 +1,8 @@
 name: Quality Gate
 
 on:
+  push:
+    branches: [feat/avans-os-ajustes-reunion-2026-11-03]
   pull_request:
     branches: [main]
   workflow_dispatch:
