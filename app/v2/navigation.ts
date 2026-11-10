@@ -15,13 +15,11 @@ export type OsNavArea = {
 };
 
 /**
- * Arquitectura acordada el 3 nov 2026: Operaciones comienza en Clientes.
- * Proyectos, producción, campañas, aprobaciones y reportes conservan sus URLs
- * para enlaces contextuales y el Inicio personal, pero dejan de competir como
- * entradas globales de la navegación operativa.
+ * Actualización del director: Operaciones reúne todos los proyectos y Clientes
+ * organiza la ejecución diaria dentro de cada cuenta y módulo de servicio.
  */
 export const osAreas: OsNavArea[] = [
-  { slug: "operaciones", label: "Operaciones", icon: "flujo", href: "/v2/clientes", items: [
+  { slug: "operaciones", label: "Operaciones", icon: "flujo", href: "/v2/operaciones", items: [
     { label: "Clientes", href: "/v2/clientes", slug: "clientes" },
   ] },
   { slug: "ventas", label: "Ventas", icon: "embudo", href: "/v2/ventas", items: [
