@@ -62,6 +62,7 @@ function SourceEditor({
   const [error, setError] = useState("");
   return (
     <OSSidePanel
+      persistentFooter
       label="Editar fuente"
       heading={<h2>{source.title || "Agregar fuente"}</h2>}
       onClose={onClose}
@@ -291,6 +292,7 @@ function ManualMeeting({
   const [error, setError] = useState("");
   return (
     <OSSidePanel
+      persistentFooter
       label="Importar nota manual"
       heading={<h2>Importar nota de reunión</h2>}
       onClose={onClose}
@@ -403,20 +405,33 @@ export function DocumentsView({ client }: { client: OsClient }) {
     if (!editable) return false;
     const base = osClients.map((c) => ({
       slug: c.slug,
-      aliases: [c.name, c.slug],
       emails: [],
       domains: [],
       eventIds: [],
       folderIds: [],
       documentIds: [],
       ...profiles.find((p) => p.slug === c.slug),
+      aliases: Array.from(
+        new Set([
+          c.name,
+          c.slug,
+          ...(profiles.find((p) => p.slug === c.slug)?.aliases ?? []),
+        ]),
+      ),
     }));
     const associated = { ...meeting, ...associateMeeting(meeting, base) };
-    if (associated.clientSlug === client.slug)
-      return mutate((s, c) => {
-        const next = importMeeting(s, associated, c);
-        return next === s ? s : meetingToProposals(next, associated.sourceId, c);
-      });
+    const target = available.find((c) => c.slug === associated.clientSlug);
+    if (target)
+      return mutate(
+        (s, c) => {
+          const next = importMeeting(s, associated, c);
+          return next === s
+            ? s
+            : meetingToProposals(next, associated.sourceId, c);
+        },
+        undefined,
+        target,
+      );
     const old = readLocalJson<MeetingArtifact[]>(inboxKey, []);
     if (
       old.some((m) => sameMeeting(m, associated)) ||
@@ -435,14 +450,8 @@ export function DocumentsView({ client }: { client: OsClient }) {
   }
   function assign(meeting: MeetingArtifact) {
     const slug = assignment[meeting.id] || client.slug;
-    if (slug !== client.slug) {
-      notify(
-        "Abrí Documentos del cliente elegido para completar la asignación",
-        "error",
-      );
-      return;
-    }
-    if (!available.some((c) => c.slug === slug)) return;
+    const target = available.find((c) => c.slug === slug);
+    if (!target) return;
     const assigned = {
       ...meeting,
       clientSlug: slug,
@@ -450,10 +459,16 @@ export function DocumentsView({ client }: { client: OsClient }) {
       associationReason: "Asignación manual del PM",
     };
     if (
-      mutate((s, c) => {
-        const next = importMeeting(s, assigned, c);
-        return next === s ? s : meetingToProposals(next, assigned.sourceId, c);
-      })
+      mutate(
+        (s, c) => {
+          const next = importMeeting(s, assigned, c);
+          return next === s
+            ? s
+            : meetingToProposals(next, assigned.sourceId, c);
+        },
+        undefined,
+        target,
+      )
     ) {
       const current = readLocalJson<MeetingArtifact[]>(inboxKey, []);
       if (
@@ -469,7 +484,7 @@ export function DocumentsView({ client }: { client: OsClient }) {
       if (meeting.eventId) {
         const p = profiles.find((x) => x.slug === slug) ?? {
           slug,
-          aliases: [client.name],
+          aliases: [target.name, target.slug],
           emails: [],
           domains: [],
           eventIds: [],
@@ -484,6 +499,9 @@ export function DocumentsView({ client }: { client: OsClient }) {
           },
         ]);
       }
+      notify(
+        `Reunión asignada a ${target.name} · Propuestas pendientes de revisión`,
+      );
     }
   }
   const sources = k.sources

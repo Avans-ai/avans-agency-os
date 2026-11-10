@@ -49,16 +49,22 @@ export function useKnowledge(client: OsClient) {
     actor: discoveryActor(role),
     at: new Date().toISOString(),
   });
-  function latest() {
-    const value = readLocalJson<unknown>(key, null);
+  function latest(target = client) {
+    const value = readLocalJson<unknown>(knowledgeKey(target.slug), null);
     if (value === null)
       return seedKnowledge(
-        client,
-        readLocalJson(discoveryKey(client.slug), legacy),
-        readLocalJson(`client:${client.slug}:documents`, docs),
-        readLocalJson(`client:${client.slug}:competitors`, competitors),
+        target,
+        readLocalJson(discoveryKey(target.slug), null),
+        readLocalJson<ClientDocument[] | undefined>(
+          `client:${target.slug}:documents`,
+          undefined,
+        ),
+        readLocalJson<CompetitorSnapshot[] | undefined>(
+          `client:${target.slug}:competitors`,
+          undefined,
+        ),
       );
-    if (!isKnowledge(value, client.slug))
+    if (!isKnowledge(value, target.slug))
       throw new Error(
         "El formato almacenado no es compatible. Se conservó sin cambios.",
       );
@@ -67,8 +73,9 @@ export function useKnowledge(client: OsClient) {
   function mutate(
     update: (state: KnowledgeState, ctx: MutationContext) => KnowledgeState,
     expectedRevision?: number,
+    target = client,
   ) {
-    if (!editable || !canEditDiscovery(role, client)) {
+    if (!editable || !canEditDiscovery(role, target)) {
       notify(
         "Este rol no puede modificar el conocimiento del cliente.",
         "error",
@@ -76,7 +83,7 @@ export function useKnowledge(client: OsClient) {
       return false;
     }
     try {
-      const previous = latest();
+      const previous = latest(target);
       if (
         expectedRevision !== undefined &&
         previous.revision !== expectedRevision
@@ -87,10 +94,10 @@ export function useKnowledge(client: OsClient) {
       const ctx = context();
       const next = update(previous, ctx);
       if (next === previous) return true;
-      if (next.clientSlug !== client.slug)
+      if (next.clientSlug !== target.slug)
         throw new Error("Cliente incompatible");
       if (
-        !writeLocalJson(key, {
+        !writeLocalJson(knowledgeKey(target.slug), {
           ...next,
           revision: previous.revision + 1,
           updatedAt: ctx.at,

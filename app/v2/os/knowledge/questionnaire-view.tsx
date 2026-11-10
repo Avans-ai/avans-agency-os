@@ -347,7 +347,10 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
                             className={buttonClass("secondary", true)}
                             onClick={() =>
                               change(q.id, {
-                                value: [...rows, {_id:newId()}] as AnswerValue,
+                                value: [
+                                  ...rows,
+                                  { _id: newId() },
+                                ] as AnswerValue,
                               })
                             }
                           >

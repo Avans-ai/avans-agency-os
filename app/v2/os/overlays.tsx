@@ -38,13 +38,14 @@ function useDialog(onClose: () => void, initialFocus?: React.RefObject<HTMLEleme
   return ref;
 }
 
-export function OSSidePanel({ label, heading, onClose, children, footer, titleRef }: {
+export function OSSidePanel({ label, heading, onClose, children, footer, titleRef, persistentFooter = false }: {
   label: string;
   heading: ReactNode;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
   titleRef?: React.RefObject<HTMLElement | null>;
+  persistentFooter?: boolean;
 }) {
   const ref = useDialog(onClose, titleRef);
   return (
@@ -57,7 +58,7 @@ export function OSSidePanel({ label, heading, onClose, children, footer, titleRe
           <button type="button" className={`${s.closeBtn} ${s.panelClose}`} onClick={onClose} aria-label="Cerrar panel"><Glyph name="close" size={16} /></button>
         </div>
         <div className={s.panelBody}>{children}</div>
-        {footer ? <div className={s.panelFoot}>{footer}</div> : null}
+        {footer ? <div className={`${s.panelFoot} ${persistentFooter ? s.panelFootVisible : ""}`}>{footer}</div> : null}
       </div>
     </>
   );

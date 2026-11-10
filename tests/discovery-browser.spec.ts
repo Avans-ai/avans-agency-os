@@ -215,9 +215,9 @@ test("complete PM journey: eight sections, CRUD, relationships, quadrants, ICP, 
   await section(page, "Datos relevantes");
   await expect(card(page, "Dato de QA persistente")).toBeVisible();
   const keys = await page.evaluate(() =>
-    Object.keys(localStorage).filter((k) => k.endsWith(":marketing-discovery")),
+    Object.keys(localStorage).filter((k) => k.endsWith(":knowledge:v1")),
   );
-  expect(keys).toEqual(["avans-os:preview:v1:client:epsa:marketing-discovery"]);
+  expect(keys).toEqual(["avans-os:preview:v1:client:epsa:knowledge:v1"]);
   expect(errors).toEqual([]);
 });
 
@@ -319,7 +319,7 @@ test("sources, actual validation, failed storage, cross-tab conflict and keyboar
   await page.evaluate(() => {
     const original = Storage.prototype.setItem;
     Storage.prototype.setItem = function (k, v) {
-      if (k.endsWith(":marketing-discovery"))
+      if (k.endsWith(":knowledge:v1"))
         throw new DOMException("Quota", "QuotaExceededError");
       original.call(this, k, v);
     };
@@ -357,7 +357,7 @@ test("regression: scope, five management accesses, home, tasks, content, modules
       .click();
     await expect(
       page.getByRole("heading", {
-        name: label === "Documentos" ? "Documentos y actualizaciones" : label,
+        name: label === "Documentos" ? "Fuentes y actualizaciones" : label,
         exact: true,
       }),
     ).toBeVisible();

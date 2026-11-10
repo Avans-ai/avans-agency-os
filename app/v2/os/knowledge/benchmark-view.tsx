@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { serviceLabel, type OsClient, type ServiceId } from "../os-data";
+import { serviceLabel, type OsClient } from "../os-data";
 import { buttonClass } from "../ui";
 import { OSSidePanel } from "../overlays";
 import { useKnowledge } from "./use-knowledge";
@@ -21,7 +21,7 @@ import {
 } from "./benchmark";
 import { versionChange } from "./state";
 import { validatedDiscoveryToBenchmark } from "./proposals";
-import type { BenchmarkBrand, KnowledgeItem, BenchmarkFinding } from "./types";
+import type { BenchmarkBrand, KnowledgeItem } from "./types";
 import {
   FieldInput,
   ItemEditor,
@@ -91,6 +91,7 @@ function BrandEditor({
   ];
   return (
     <OSSidePanel
+      persistentFooter
       label="Editar marca"
       heading={<h2>Marca a analizar</h2>}
       onClose={onClose}
@@ -188,12 +189,17 @@ export function BenchmarkView({ client }: { client: OsClient }) {
     if (!editor) return ["Sin editor"];
     const errors = validateItem(k, item, editor.bp);
     if (errors.length) return errors;
-    const ok = mutate((state, ctx) => saveBenchmarkItem(state,item,editor.brandId,ctx),editor.revision);
+    const ok = mutate(
+      (state, ctx) => saveBenchmarkItem(state, item, editor.brandId, ctx),
+      editor.revision,
+    );
     return ok
       ? []
       : ["No se pudo guardar. Revisá el aviso y conservá el formulario."];
   }
-  function deleteItem(item:KnowledgeItem) {mutate((s,c)=>deleteBenchmarkItem(s,item,c));}
+  function deleteItem(item: KnowledgeItem) {
+    mutate((s, c) => deleteBenchmarkItem(s, item, c));
+  }
   return (
     <div className={m.root}>
       <div className={m.head}>
@@ -242,6 +248,7 @@ export function BenchmarkView({ client }: { client: OsClient }) {
                   {row.name} · {row.percent}%
                 </h3>
                 <progress
+                  aria-label={`Cobertura de ${row.name}`}
                   className={m.progress}
                   value={row.percent}
                   max={100}
@@ -616,7 +623,7 @@ export function BenchmarkView({ client }: { client: OsClient }) {
           </section>
         </>
       ) : null}
-      <History k={k} />
+      {editable ? <History k={k} /> : null}
       {brandEditor ? (
         <BrandEditor
           client={client}

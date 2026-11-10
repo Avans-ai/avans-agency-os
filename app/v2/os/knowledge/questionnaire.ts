@@ -254,7 +254,18 @@ export function emptyQuestionnaire(): QuestionnaireInstance {
   };
 }
 export function answerPresent(value: AnswerValue): boolean {
-  if (Array.isArray(value)) return value.some(row => typeof row === "string" ? !!row.trim() : Object.entries(row).some(([key,v]) => !key.startsWith("_") && (Array.isArray(v) ? v.length > 0 : v !== null && String(v).trim() !== "")));
+  if (Array.isArray(value))
+    return value.some((row) =>
+      typeof row === "string"
+        ? !!row.trim()
+        : Object.entries(row).some(
+            ([key, v]) =>
+              !key.startsWith("_") &&
+              (Array.isArray(v)
+                ? v.length > 0
+                : v !== null && String(v).trim() !== ""),
+          ),
+    );
   return value !== null && String(value).trim() !== "";
 }
 export function questionnaireProgress(instance: QuestionnaireInstance) {

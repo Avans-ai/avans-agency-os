@@ -15,10 +15,17 @@ export default defineConfig({
       : undefined,
   },
   projects: [
-    { name: "domain", testMatch: "discovery-model.spec.ts" },
+    {
+      name: "domain",
+      testMatch: [
+        "discovery-model.spec.ts",
+        "knowledge-model.spec.ts",
+        "google-workspace.spec.ts",
+      ],
+    },
     {
       name: "browser",
-      testMatch: "discovery-browser.spec.ts",
+      testMatch: ["discovery-browser.spec.ts", "knowledge-browser.spec.ts"],
       use: { browserName: "chromium" },
     },
   ],

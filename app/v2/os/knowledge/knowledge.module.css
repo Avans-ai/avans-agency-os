@@ -17,7 +17,7 @@
 }
 .head p,
 .muted {
-  color: var(--muted, #777);
+  color: var(--av-text-muted, #777);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -52,7 +52,7 @@
   gap: 16px;
 }
 .card {
-  background: var(--surface, #fff);
+  background: var(--av-bg-raised, #fff);
   border: 1px solid #e0dcd4;
   border-radius: 12px;
   padding: 20px;
@@ -91,7 +91,7 @@
   min-width: 0;
   box-sizing: border-box;
   border: 1px solid #ccc7bd;
-  background: var(--surface, #fff);
+  background: var(--av-bg-raised, #fff);
   color: inherit;
   border-radius: 7px;
   padding: 10px;
@@ -294,4 +294,17 @@
   .printable .twoCol {
     display: block;
   }
+}
+
+:global(html[data-avans-theme="dark"]) .notice {
+  background: #362e20;
+  color: #ead9b8;
+  border-color: #635336;
+}
+:global(html[data-avans-theme="dark"]) .diff > div:last-child {
+  background: #283326;
+}
+:global(html[data-avans-theme="dark"]) .badge {
+  background: #393630;
+  color: #ede8df;
 }

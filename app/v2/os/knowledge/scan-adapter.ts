@@ -1,6 +1,61 @@
-import type { BenchmarkBrand,KnowledgeSource,ScanJob } from "./types";
-export type ScanResult={observedAt:string;brand:BenchmarkBrand;sources:KnowledgeSource[]};
-export interface BenchmarkScanAdapter{readonly id:string;isConfigured():boolean;scan(brand:BenchmarkBrand,sources:KnowledgeSource[],signal:AbortSignal):Promise<ScanResult>;}
+import type { BenchmarkBrand, KnowledgeSource, ScanJob } from "./types";
+export type ScanResult = {
+  observedAt: string;
+  brand: BenchmarkBrand;
+  sources: KnowledgeSource[];
+};
+export interface BenchmarkScanAdapter {
+  readonly id: string;
+  isConfigured(): boolean;
+  scan(
+    brand: BenchmarkBrand,
+    sources: KnowledgeSource[],
+    signal: AbortSignal,
+  ): Promise<ScanResult>;
+}
 /** No generic URL scraper. An authorized provider must implement this contract. */
-export class UnconfiguredScanAdapter implements BenchmarkScanAdapter{readonly id="connected-provider";isConfigured(){return false;}async scan():Promise<ScanResult>{throw new Error("Monitoreo pendiente de configurar");}}
-export async function runBenchmarkScan(job:ScanJob,brand:BenchmarkBrand,sources:KnowledgeSource[],adapter:BenchmarkScanAdapter,signal:AbortSignal):Promise<{job:ScanJob;result?:ScanResult}>{if(!adapter.isConfigured())return {job:{...job,status:"pending-configuration",error:"Monitoreo pendiente de configurar"}};try{const result=await adapter.scan(brand,sources,signal);return {job:{...job,status:"succeeded",lastRunAt:result.observedAt,error:""},result};}catch{return {job:{...job,status:"failed",error:"El relevamiento falló. Los datos anteriores se conservan."}};}}
+export class UnconfiguredScanAdapter implements BenchmarkScanAdapter {
+  readonly id = "connected-provider";
+  isConfigured() {
+    return false;
+  }
+  async scan(): Promise<ScanResult> {
+    throw new Error("Monitoreo pendiente de configurar");
+  }
+}
+export async function runBenchmarkScan(
+  job: ScanJob,
+  brand: BenchmarkBrand,
+  sources: KnowledgeSource[],
+  adapter: BenchmarkScanAdapter,
+  signal: AbortSignal,
+): Promise<{ job: ScanJob; result?: ScanResult }> {
+  if (!adapter.isConfigured())
+    return {
+      job: {
+        ...job,
+        status: "pending-configuration",
+        error: "Monitoreo pendiente de configurar",
+      },
+    };
+  try {
+    const result = await adapter.scan(brand, sources, signal);
+    return {
+      job: {
+        ...job,
+        status: "succeeded",
+        lastRunAt: result.observedAt,
+        error: "",
+      },
+      result,
+    };
+  } catch {
+    return {
+      job: {
+        ...job,
+        status: "failed",
+        error: "El relevamiento falló. Los datos anteriores se conservan.",
+      },
+    };
+  }
+}
