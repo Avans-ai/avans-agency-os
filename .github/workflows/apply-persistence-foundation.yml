@@ -1,0 +1,53 @@
+name: Apply Persistence Foundation
+
+on:
+  push:
+    branches: [feat/avans-os-ajustes-reunion-2026-11-03]
+    paths:
+      - scripts/apply-persistence-foundation.py
+      - .github/workflows/apply-persistence-foundation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout working branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feat/avans-os-ajustes-reunion-2026-11-03
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply source patch
+        run: python scripts/apply-persistence-foundation.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit verified changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm scripts/apply-persistence-foundation.py .github/workflows/apply-persistence-foundation.yml
+          git add -A
+          git commit -m "feat(os): persist preview state and stage secure data layer"
+          git push origin HEAD:feat/avans-os-ajustes-reunion-2026-11-03
