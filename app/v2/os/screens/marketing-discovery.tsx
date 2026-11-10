@@ -1,28 +1,22 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
-import {
-  readLocalJson,
-  useLocalStorageState,
-  writeLocalJson,
-} from "../local-persistence";
+import { useKnowledge } from "../knowledge/use-knowledge";
+import { discoveryOf } from "../knowledge/state";
+import { QuestionnaireView } from "../knowledge/questionnaire-view";
 import { OSModal, OSSidePanel } from "../overlays";
 import { Badge, buttonClass } from "../ui";
-import { discoverySeed } from "../discovery/seed";
-import { canEditDiscovery, discoveryActor } from "../discovery/permissions";
+import { discoveryActor } from "../discovery/permissions";
 import {
   changeCollection,
-  discoveryKey,
-  isDiscovery,
   isValidated,
   missingFields,
   newEntity,
   putEntity,
   recordsOf,
   referencesTo,
-  refreshDiscovery,
   targetingQuadrant,
   toDiscoveryPresentation,
   validateEntity,
@@ -44,7 +38,7 @@ import {
 import s from "../os.module.css";
 import m from "./marketing-discovery.module.css";
 
-type View = SectionKey | "coverage" | "sources";
+type View = SectionKey | "coverage" | "sources" | "questionnaire";
 type Editor = { kind: EntityKind; value: EditableRecord; original?: string };
 const titles: Record<EntityKind, string> = {
   companyProfile: "Quiénes somos",
@@ -646,17 +640,9 @@ function PresentationPreview({
 }
 
 export function MarketingDiscoveryView({ client }: { client: OsClient }) {
-  const { role, localHydrated, notify } = useOsStore();
-  const seed = useMemo(() => discoverySeed(client), [client]);
-  const key = discoveryKey(client.slug);
-  const [stored, , hydrated] = useLocalStorageState<unknown>(key, null);
-  const invalidStorage = stored !== null && !isDiscovery(stored, client.slug);
-  const d = refreshDiscovery(isDiscovery(stored, client.slug) ? stored : seed);
-  const editable =
-    localHydrated &&
-    hydrated &&
-    !invalidStorage &&
-    canEditDiscovery(role, client);
+  const { role, notify } = useOsStore();
+  const knowledge = useKnowledge(client);
+  const {d,editable,invalid:invalidStorage,hydrated}=knowledge;
   const [active, setActive] = useState<View>("companyProfile");
   const [editor, setEditor] = useState<Editor | null>(null);
   const [deletion, setDeletion] = useState<{
@@ -681,31 +667,10 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
     });
   }
   function latest(): MarketingDiscovery | null {
-    const value = readLocalJson<unknown>(key, null);
-    return value === null
-      ? seed
-      : isDiscovery(value, client.slug)
-        ? value
-        : null;
+    try { return discoveryOf(knowledge.latest()); } catch { return null; }
   }
   function persist(next: MarketingDiscovery): boolean {
-    if (!editable || !canEditDiscovery(role, client)) return false;
-    const value = refreshDiscovery({
-      ...next,
-      updatedAt: new Date().toISOString(),
-      updatedBy: discoveryActor(role),
-    });
-    if (!writeLocalJson(key, value)) {
-      notify(
-        "No se pudo guardar en este navegador. Revisá el espacio o los permisos del navegador; el formulario sigue abierto.",
-        "error",
-      );
-      return false;
-    }
-    notify(
-      "Guardado en este navegador · Pendiente de sincronización multiusuario",
-    );
-    return true;
+    return knowledge.persistDiscovery(next);
   }
   function openEditor(kind: EntityKind, row?: Trace, duplicate = false) {
     if (!editable) return;
@@ -1024,7 +989,7 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
         <span>
           {!hydrated
             ? "Leyendo datos locales…"
-            : stored !== null && !invalidStorage
+            : knowledge.k.revision > 0 && !invalidStorage
               ? "Guardado en este navegador"
               : "Datos demostrativos · sin cambios locales"}{" "}
           · Pendiente de sincronización multiusuario
@@ -1119,6 +1084,7 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
         >
           9. Cobertura
         </button>
+        <button type="button" aria-current={active === "questionnaire" ? "page" : undefined} onClick={() => navigate("questionnaire")}>Cuestionario inicial</button>
       </nav>
       <section
         className={m.content}
@@ -1128,13 +1094,13 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
           <div>
             <h3 ref={headingRef} tabIndex={-1} id="discovery-section-heading">
               {currentSection?.label ??
-                (active === "coverage"
+                (active === "questionnaire" ? "Cuestionario inicial" : active === "coverage"
                   ? "Cobertura del Marketing Discovery"
                   : "Fuentes y trazabilidad")}
             </h3>
             <p>
               {currentSection?.hint ??
-                (active === "coverage"
+                (active === "questionnaire" ? "Preguntas para completar junto al cliente y generar propuestas revisables." : active === "coverage"
                   ? "Completitud de contenido y validación se evalúan por separado."
                   : "Cada fuente puede vincularse a varios registros. La carga de archivos y la extracción continúan pendientes.")}
             </p>
@@ -1143,6 +1109,7 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
             <span className={m.eyebrow}>Filmina {currentSection.slide}</span>
           ) : null}
         </div>
+        {active === "questionnaire" ? editable ? <QuestionnaireView key={client.slug} client={client} /> : <p>El cuestionario está disponible para el administrador y el PM asignado.</p> : null}
         {active === "companyProfile"
           ? recordCard("companyProfile", d.companyProfile, 0, 1)
           : null}
