@@ -52,4 +52,25 @@ for old, new in replacements:
     text = text.replace(old, new, 1)
 
 path.write_text(text, encoding="utf-8")
-print("Reducer hydration patch applied")
+
+director_path = Path("app/v2/os/director-data.ts")
+director = director_path.read_text(encoding="utf-8")
+old = '''export function isArchivedTask(task: OsTask, now = new Date()) {
+  if (task.archivedAt) return true;
+  if (task.status !== "Hecho" || !task.completedAt) return false;
+  const completedAt = new Date(task.completedAt);
+  if (Number.isNaN(completedAt.getTime())) return false;
+  return now.getTime() - completedAt.getTime() >= TASK_ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+}'''
+new = '''export function isArchivedTask(task: OsTask) {
+  if (task.archivedAt) return true;
+  if (task.status !== "Hecho" || !task.completedAt) return false;
+  const completedAt = new Date(task.completedAt);
+  if (Number.isNaN(completedAt.getTime())) return false;
+  return Date.now() - completedAt.getTime() >= TASK_ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+}'''
+if old not in director:
+    raise SystemExit("Expected archive predicate not found")
+director_path.write_text(director.replace(old, new, 1), encoding="utf-8")
+
+print("Reducer hydration and filter-safe archive patches applied")
