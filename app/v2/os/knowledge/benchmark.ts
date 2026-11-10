@@ -1,22 +1,315 @@
-import { benchmarkBlueprints, commonKnowledgeFields, findingBlueprint, type Blueprint, type KnowledgeValue } from "./blueprints";
-import { newId, type BenchmarkBrand, type BenchmarkState, type KnowledgeItem, type KnowledgeState, type MutationContext } from "./types";
-export function newItem(section:string, ctx:MutationContext): KnowledgeItem { return {id:newId(),section,values:{},sourceIds:[],discoveryRefs:[],findingIds:[],owner:ctx.actor,evidence:"",observedAt:"",captures:"",notes:"",status:"Borrador",demo:false,updatedAt:ctx.at,updatedBy:ctx.actor}; }
-export function newBrand(name="", own=false): BenchmarkBrand { return {id:own?"own":newId(),name,type:own?"Propia":"Directa",segmentIds:[],rationale:"",url:"",region:"",principal:!own,clientValidated:false,status:"Borrador",owner:"",sourceIds:[],items:[],demo:false}; }
-export function itemValues(item:KnowledgeItem): Record<string,KnowledgeValue> { return {...item.values,sourceIds:item.sourceIds,discoveryRefs:item.discoveryRefs,findingIds:item.findingIds,owner:item.owner,evidence:item.evidence,observedAt:item.observedAt,captures:item.captures,notes:item.notes,status:item.status}; }
-export function itemFromValues(item:KnowledgeItem, data:Record<string,KnowledgeValue>, ctx:MutationContext): KnowledgeItem { const {sourceIds,discoveryRefs,findingIds,owner,evidence,observedAt,captures,notes,status,...values}=data; return {...item,values,sourceIds:Array.isArray(sourceIds)?sourceIds:[],discoveryRefs:Array.isArray(discoveryRefs)?discoveryRefs:[],findingIds:Array.isArray(findingIds)?findingIds:[],owner:String(owner??""),evidence:String(evidence??""),observedAt:String(observedAt??""),captures:String(captures??""),notes:String(notes??""),status:status==="Validado"?"Validado":status==="Requiere revisión"?"Requiere revisión":"Borrador",updatedAt:ctx.at,updatedBy:ctx.actor}; }
-export function valuePresent(v:unknown) { return Array.isArray(v)?v.length>0:typeof v==="number"?Number.isFinite(v):typeof v==="boolean"?true:typeof v==="string"&&v.trim().length>0; }
-export function itemMissing(item:KnowledgeItem,bp:Blueprint) { const values=itemValues(item); return [...bp.fields,...commonKnowledgeFields].filter(f=>f.required&&(!f.condition||values[f.condition.field]===f.condition.value)&&!valuePresent(values[f.key])).map(f=>f.label); }
-export function validateItem(k:KnowledgeState,item:KnowledgeItem,bp:Blueprint) {
-  const errors:string[]=[]; const values=itemValues(item);
-  for(const f of bp.fields) { const v=values[f.key]; if(f.kind==="number"&&v!==undefined&&v!==null&&(typeof v!=="number"||!Number.isFinite(v)||v<0||(f.max!==undefined&&v>f.max))) errors.push(`${f.label}: número inválido`); if(f.options&&valuePresent(v)&&!f.options.includes(String(v))) errors.push(`${f.label}: opción inválida`); }
-  if(item.sourceIds.some(id=>!k.sources.some(s=>s.id===id))) errors.push("Fuente inexistente");
-  if(item.status==="Validado") { errors.push(...itemMissing(item,bp).map(f=>`Falta: ${f}`)); if(item.demo||item.sourceIds.some(id=>!k.sources.some(s=>s.id===id&&s.validationStatus==="Validado"&&!s.demo))) errors.push("La validación exige fuentes verificadas y datos no demostrativos"); }
-  if(item.observedAt&&!/^\d{4}-\d{2}-\d{2}$/.test(item.observedAt)) errors.push("La fecha debe tener formato AAAA-MM-DD");
+import { recordsOf, isValidated } from "../discovery/model";
+import { fields as discoveryFields, type EntityKind } from "../discovery/schema";
+import { discoveryOf } from "./state";
+import { serviceCatalog } from "../os-data";
+import {
+  benchmarkBlueprints,
+  commonKnowledgeFields,
+  findingBlueprint,
+  type Blueprint,
+  type KnowledgeValue,
+} from "./blueprints";
+import {
+  newId,
+  type BenchmarkBrand,
+  type BenchmarkState,
+  type KnowledgeItem,
+  type KnowledgeState,
+  type MutationContext,
+} from "./types";
+export function newItem(section: string, ctx: MutationContext): KnowledgeItem {
+  return {
+    id: newId(),
+    section,
+    values: {},
+    sourceIds: [],
+    discoveryRefs: [],
+    findingIds: [],
+    owner: ctx.actor,
+    evidence: "",
+    observedAt: "",
+    captures: "",
+    notes: "",
+    status: "Borrador",
+    demo: false,
+    updatedAt: ctx.at,
+    updatedBy: ctx.actor,
+  };
+}
+export function newBrand(name = "", own = false): BenchmarkBrand {
+  return {
+    id: own ? "own" : newId(),
+    name,
+    type: own ? "Propia" : "Directa",
+    segmentIds: [],
+    rationale: "",
+    url: "",
+    region: "",
+    principal: !own,
+    clientValidated: false,
+    status: "Borrador",
+    owner: "",
+    sourceIds: [],
+    items: [],
+    demo: false,
+  };
+}
+export function itemValues(
+  item: KnowledgeItem,
+): Record<string, KnowledgeValue> {
+  return {
+    ...item.values,
+    sourceIds: item.sourceIds,
+    discoveryRefs: item.discoveryRefs,
+    findingIds: item.findingIds,
+    owner: item.owner,
+    evidence: item.evidence,
+    observedAt: item.observedAt,
+    captures: item.captures,
+    notes: item.notes,
+    status: item.status,
+  };
+}
+export function itemFromValues(
+  item: KnowledgeItem,
+  data: Record<string, KnowledgeValue>,
+  ctx: MutationContext,
+): KnowledgeItem {
+  const {
+    sourceIds,
+    discoveryRefs,
+    findingIds,
+    owner,
+    evidence,
+    observedAt,
+    captures,
+    notes,
+    status,
+    ...values
+  } = data;
+  return {
+    ...item,
+    values,
+    sourceIds: Array.isArray(sourceIds) ? sourceIds : [],
+    discoveryRefs: Array.isArray(discoveryRefs) ? discoveryRefs : [],
+    findingIds: Array.isArray(findingIds) ? findingIds : [],
+    owner: String(owner ?? ""),
+    evidence: String(evidence ?? ""),
+    observedAt: String(observedAt ?? ""),
+    captures: String(captures ?? ""),
+    notes: String(notes ?? ""),
+    status:
+      status === "Validado"
+        ? "Validado"
+        : status === "Requiere revisión"
+          ? "Requiere revisión"
+          : "Borrador",
+    updatedAt: ctx.at,
+    updatedBy: ctx.actor,
+  };
+}
+export function valuePresent(v: unknown) {
+  return Array.isArray(v)
+    ? v.length > 0
+    : typeof v === "number"
+      ? Number.isFinite(v)
+      : typeof v === "boolean"
+        ? true
+        : typeof v === "string" && v.trim().length > 0;
+}
+export function itemMissing(item: KnowledgeItem, bp: Blueprint) {
+  const values = itemValues(item);
+  return [...bp.fields, ...commonKnowledgeFields]
+    .filter(
+      (f) =>
+        f.required &&
+        (!f.condition || values[f.condition.field] === f.condition.value) &&
+        !valuePresent(values[f.key]),
+    )
+    .map((f) => f.label);
+}
+export function validateItem(
+  k: KnowledgeState,
+  item: KnowledgeItem,
+  bp: Blueprint,
+) {
+  const errors: string[] = [];
+  const values = itemValues(item);
+  for (const f of bp.fields) {
+    const v = values[f.key];
+    if (
+      f.kind === "number" &&
+      v !== undefined &&
+      v !== null &&
+      (typeof v !== "number" ||
+        !Number.isFinite(v) ||
+        v < 0 ||
+        (f.max !== undefined && v > f.max))
+    )
+      errors.push(`${f.label}: número inválido`);
+    if (f.options && valuePresent(v) && !f.options.includes(String(v)))
+      errors.push(`${f.label}: opción inválida`);
+  }
+  const discovery = discoveryOf(k);
+  const discoveryRows = (Object.keys(discoveryFields) as EntityKind[]).filter(x=>x!=="sources").flatMap(kind=>recordsOf(discovery,kind));
+  if(item.discoveryRefs.some(id=>!discoveryRows.some(row=>row.id===id))) errors.push("Hallazgo del Discovery inexistente");
+  if(item.findingIds.some(id=>!k.benchmark.findings.some(f=>f.id===id))) errors.push("Conclusión inexistente");
+  for(const f of bp.fields.filter(f=>f.kind==="relations")) {
+    const value=values[f.key];if(value!==undefined&&!Array.isArray(value)) {errors.push(`${f.label}: se requiere una lista`);continue;}
+    const allowed=f.reference==="segments"?k.discovery.targetSegments.map(r=>r.id):f.reference==="icps"?[...k.discovery.b2bIcps,...k.discovery.b2cIcps].map(r=>r.id):f.reference==="offerings"?k.discovery.offerings.map(r=>r.id):f.reference==="services"?serviceCatalog.map(s=>s.id):f.reference==="campaigns"||f.reference==="pages"?Object.values(k.plan.modules).flat().filter(i=>i?.section===(f.reference==="pages"?"sitemap":"campaigns")).map(i=>i!.id):null;
+    if(allowed&&Array.isArray(value)&&value.some(id=>!allowed.includes(id)))errors.push(`${f.label}: vínculo inexistente`);
+  }
+  if(item.status==="Validado") {
+    if(item.discoveryRefs.some(id=>!(Object.keys(discoveryFields) as EntityKind[]).some(kind=>recordsOf(discovery,kind).some(row=>row.id===id&&isValidated(discovery,kind,row)))))errors.push("Los hallazgos vinculados requieren validación");
+    if(item.findingIds.some(id=>!k.benchmark.findings.some(f=>f.id===id&&f.status==="Validado"&&!f.demo)))errors.push("Las conclusiones vinculadas requieren validación");
+  }
+  if (item.sourceIds.some((id) => !k.sources.some((s) => s.id === id)))
+    errors.push("Fuente inexistente");
+  if (item.status === "Validado") {
+    errors.push(...itemMissing(item, bp).map((f) => `Falta: ${f}`));
+    if (
+      item.demo ||
+      item.sourceIds.some(
+        (id) =>
+          !k.sources.some(
+            (s) => s.id === id && s.validationStatus === "Validado" && !s.demo,
+          ),
+      )
+    )
+      errors.push(
+        "La validación exige fuentes verificadas y datos no demostrativos",
+      );
+  }
+  if (item.observedAt && (!/^\d{4}-\d{2}-\d{2}$/.test(item.observedAt) || !Number.isFinite(Date.parse(item.observedAt)) || new Date(item.observedAt).toISOString().slice(0,10)!==item.observedAt))
+    errors.push("La fecha debe tener formato AAAA-MM-DD");
   return errors;
 }
-export function benchmarkCoverage(b:BenchmarkState) { return b.brands.map(brand=>{ const blocks=benchmarkBlueprints.map(bp=>{const rows=brand.items.filter(i=>i.section===bp.id);const missing=rows.length?rows.flatMap(i=>itemMissing(i,bp)):bp.fields.filter(f=>f.required).map(f=>f.label);const total=Math.max(1,rows.length)*([...bp.fields,...commonKnowledgeFields].filter(f=>f.required).length);return {id:bp.id,label:bp.label,count:rows.length,missing,percent:rows.length?Math.max(0,Math.round((total-missing.length)/total*100)):0,owner:rows.map(r=>r.owner).filter(Boolean).join(" · "),requiresValidation:rows.some(i=>i.status!=="Validado")};});return {brandId:brand.id,name:brand.name,blocks,percent:Math.round(blocks.reduce((sum,v)=>sum+v.percent,0)/blocks.length)};}); }
-export function saveBrand(k:KnowledgeState,brand:BenchmarkBrand) { if(!brand.name.trim()) throw new Error("Ingresá el nombre de la marca"); if(brand.type!=="Propia"&&brand.principal&&k.benchmark.brands.filter(b=>b.id!==brand.id&&b.principal&&b.type!=="Propia").length>=4) throw new Error("Solo se permiten cuatro marcas principales; desmarcá una o guardá esta como adicional"); if(brand.sourceIds.some(id=>!k.sources.some(s=>s.id===id)))throw new Error("Fuente inexistente"); if(brand.status==="Validado"&&(!brand.clientValidated||!brand.rationale||!brand.owner||!brand.sourceIds.length||brand.demo))throw new Error("La selección requiere criterio, responsable, fuentes y validación del cliente"); return {...k,benchmark:{...k.benchmark,brands:k.benchmark.brands.some(b=>b.id===brand.id)?k.benchmark.brands.map(b=>b.id===brand.id?brand:b):[...k.benchmark.brands,brand]}}; }
-export function captureBenchmark(k:KnowledgeState,brandId:string,ctx:MutationContext) {const brand=k.benchmark.brands.find(b=>b.id===brandId);if(!brand)throw new Error("Marca inexistente");if(!brand.items.length)throw new Error("Primero cargá un relevamiento");return {...k,benchmark:{...k.benchmark,snapshots:[...k.benchmark.snapshots,{id:newId(),brandId,capturedAt:ctx.at,capturedBy:ctx.actor,brand:structuredClone(brand)}]}};}
+export function benchmarkCoverage(b: BenchmarkState) {
+  return b.brands.map((brand) => {
+    const blocks = benchmarkBlueprints.map((bp) => {
+      const rows = brand.items.filter((i) => i.section === bp.id);
+      const missing = rows.length
+        ? rows.flatMap((i) => itemMissing(i, bp))
+        : bp.fields.filter((f) => f.required).map((f) => f.label);
+      const total =
+        Math.max(1, rows.length) *
+        [...bp.fields, ...commonKnowledgeFields].filter((f) => f.required)
+          .length;
+      return {
+        id: bp.id,
+        label: bp.label,
+        count: rows.length,
+        missing,
+        percent: rows.length
+          ? Math.max(0, Math.round(((total - missing.length) / total) * 100))
+          : 0,
+        owner: rows
+          .map((r) => r.owner)
+          .filter(Boolean)
+          .join(" · "),
+        requiresValidation: rows.some((i) => i.status !== "Validado"),
+      };
+    });
+    return {
+      brandId: brand.id,
+      name: brand.name,
+      blocks,
+      percent: Math.round(
+        blocks.reduce((sum, v) => sum + v.percent, 0) / blocks.length,
+      ),
+    };
+  });
+}
+export function saveBrand(k: KnowledgeState, brand: BenchmarkBrand) {
+  if (!brand.name.trim()) throw new Error("Ingresá el nombre de la marca");
+  if (
+    brand.type !== "Propia" &&
+    brand.principal &&
+    k.benchmark.brands.filter(
+      (b) => b.id !== brand.id && b.principal && b.type !== "Propia",
+    ).length >= 4
+  )
+    throw new Error(
+      "Solo se permiten cuatro marcas principales; desmarcá una o guardá esta como adicional",
+    );
+  if (brand.segmentIds.some(id=>!k.discovery.targetSegments.some(s=>s.id===id)))throw new Error("Segmento inexistente");
+  if (brand.sourceIds.some((id) => !k.sources.some((s) => s.id === id)))
+    throw new Error("Fuente inexistente");
+  if (
+    brand.status === "Validado" &&
+    (!brand.clientValidated ||
+      !brand.rationale ||
+      !brand.owner ||
+      !brand.sourceIds.length ||
+      brand.sourceIds.some(id=>!k.sources.some(s=>s.id===id&&s.validationStatus==="Validado"&&!s.demo)) ||
+      brand.demo)
+  )
+    throw new Error(
+      "La selección requiere criterio, responsable, fuentes y validación del cliente",
+    );
+  return {
+    ...k,
+    benchmark: {
+      ...k.benchmark,
+      brands: k.benchmark.brands.some((b) => b.id === brand.id)
+        ? k.benchmark.brands.map((b) => (b.id === brand.id ? brand : b))
+        : [...k.benchmark.brands, brand],
+    },
+  };
+}
+export function captureBenchmark(
+  k: KnowledgeState,
+  brandId: string,
+  ctx: MutationContext,
+) {
+  const brand = k.benchmark.brands.find((b) => b.id === brandId);
+  if (!brand) throw new Error("Marca inexistente");
+  if (!brand.items.length) throw new Error("Primero cargá un relevamiento");
+  return {
+    ...k,
+    benchmark: {
+      ...k.benchmark,
+      snapshots: [
+        ...k.benchmark.snapshots,
+        {
+          id: newId(),
+          brandId,
+          capturedAt: ctx.at,
+          capturedBy: ctx.actor,
+          brand: structuredClone(brand),
+        },
+      ],
+    },
+  };
+}
 /** Reports compare saved, dated observations only; never synthesize campaigns or findings. */
-export function benchmarkReport(k:KnowledgeState) { return k.benchmark.brands.map(brand=>{const snapshots=k.benchmark.snapshots.filter(s=>s.brandId===brand.id).sort((a,b)=>a.capturedAt.localeCompare(b.capturedAt));const last=snapshots.at(-1),before=snapshots.at(-2);return {brand:brand.name,last:last?.capturedAt??"",baseline:before?.capturedAt??"",changes:last&&before?benchmarkBlueprints.flatMap(bp=>{const old=before.brand.items.filter(i=>i.section===bp.id),next=last.brand.items.filter(i=>i.section===bp.id);return JSON.stringify(old)!==JSON.stringify(next)?[{section:bp.label,before:old,after:next}]:[]}):[],pending:!last||!before};}); }
-export const conclusionTypes=findingBlueprint.fields[0].options!;
+export function benchmarkReport(k: KnowledgeState) {
+  return k.benchmark.brands.map((brand) => {
+    const snapshots = k.benchmark.snapshots
+      .filter((s) => s.brandId === brand.id)
+      .sort((a, b) => a.capturedAt.localeCompare(b.capturedAt));
+    const last = snapshots.at(-1),
+      before = snapshots.at(-2);
+    return {
+      brand: brand.name,
+      last: last?.capturedAt ?? "",
+      baseline: before?.capturedAt ?? "",
+      changes:
+        last && before
+          ? benchmarkBlueprints.flatMap((bp) => {
+              const old = before.brand.items.filter((i) => i.section === bp.id),
+                next = last.brand.items.filter((i) => i.section === bp.id);
+              return JSON.stringify(old) !== JSON.stringify(next)
+                ? [{ section: bp.label, before: old, after: next }]
+                : [];
+            })
+          : [],
+      pending: !last || !before,
+    };
+  });
+}
+export const conclusionTypes = findingBlueprint.fields[0].options!;
+
+export function validatedBenchmarkToFindings(k:KnowledgeState) {
+ return k.benchmark.brands.flatMap(brand=>brand.items.filter(item=>item.status==="Validado"&&!item.demo&&!validateItem(k,item,benchmarkBlueprints.find(b=>b.id===item.section)!).length).map(item=>({brandId:brand.id,brandName:brand.name,item})));
+}
