@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Glyph } from "../glyphs";
 import {
   canEditService,
@@ -71,20 +71,18 @@ export function ClientTasksWorkspace({
     ? canEditService(role, client.slug, lockedServiceId)
     : canManageClient(role, client.slug) && client.services.some((serviceId) => canEditService(role, client.slug, serviceId));
 
-  const visible = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase("es");
-    const source = showArchived ? archivedTasks : activeTasks;
-    return source.filter((task) => {
-      const serviceId = serviceForTask(task);
-      if (lockedServiceId && serviceId !== lockedServiceId) return false;
-      if (!lockedServiceId && moduleFilter !== "todos" && serviceId !== moduleFilter) return false;
-      if (roleFilter !== "todos" && taskOwnerRole(task) !== roleFilter) return false;
-      if (statusFilter !== "todos" && task.status !== statusFilter) return false;
-      if (!matchesDate(task, dateFilter)) return false;
-      const project = getProject(task.projectSlug);
-      return !normalized || `${task.id} ${task.title} ${task.owner} ${taskOwnerRole(task)} ${project?.name ?? ""} ${serviceLabel(serviceId)}`.toLocaleLowerCase("es").includes(normalized);
-    });
-  }, [activeTasks, archivedTasks, dateFilter, lockedServiceId, moduleFilter, query, roleFilter, showArchived, statusFilter]);
+  const normalized = query.trim().toLocaleLowerCase("es");
+  const sourceTasks = showArchived ? archivedTasks : activeTasks;
+  const visible = sourceTasks.filter((task) => {
+    const serviceId = serviceForTask(task);
+    if (lockedServiceId && serviceId !== lockedServiceId) return false;
+    if (!lockedServiceId && moduleFilter !== "todos" && serviceId !== moduleFilter) return false;
+    if (roleFilter !== "todos" && taskOwnerRole(task) !== roleFilter) return false;
+    if (statusFilter !== "todos" && task.status !== statusFilter) return false;
+    if (!matchesDate(task, dateFilter)) return false;
+    const project = getProject(task.projectSlug);
+    return !normalized || `${task.id} ${task.title} ${task.owner} ${taskOwnerRole(task)} ${project?.name ?? ""} ${serviceLabel(serviceId)}`.toLocaleLowerCase("es").includes(normalized);
+  });
 
   const open = activeTasks.filter((task) => task.status !== "Hecho").length;
   const blocked = activeTasks.filter((task) => task.blocked && task.status !== "Hecho").length;
