@@ -33,6 +33,9 @@ jobs:
         run: |
           python scripts/apply-persistence-foundation.py
           python scripts/fix-os-store-hydration.py
+          # The connected GitHub App cannot push workflow changes. Keep the
+          # existing quality gate untouched and commit only product source.
+          git checkout -- .github/workflows/quality-gate.yml
 
       - name: Install dependencies
         run: npm ci
@@ -46,11 +49,12 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Commit verified changes
+      - name: Commit verified source changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm scripts/apply-persistence-foundation.py scripts/fix-os-store-hydration.py .github/workflows/apply-persistence-foundation.yml
-          git add -A
+          git rm scripts/apply-persistence-foundation.py scripts/fix-os-store-hydration.py
+          git add app lib supabase docs .env.example
+          git diff --cached --stat
           git commit -m "feat(os): persist preview state and stage secure data layer"
           git push origin HEAD:feat/avans-os-ajustes-reunion-2026-11-03
