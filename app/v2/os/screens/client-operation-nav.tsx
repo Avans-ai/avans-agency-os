@@ -10,7 +10,7 @@ import d from "./director-update.module.css";
 
 export type ClientOperationSection = "inicio" | "tareas" | ServiceId;
 
-export function ClientOperationNav({ client, active }: { client: OsClient; active: ClientOperationSection }) {
+export function ClientOperationNav({ client, active }: { client: OsClient; active?: ClientOperationSection }) {
   const { role, servicesOf } = useOsStore();
   const activeIds = servicesOf(client.slug);
   const services = serviceCatalog.filter((service) => activeIds.includes(service.id));
