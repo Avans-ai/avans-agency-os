@@ -2,7 +2,7 @@
  * so close / chevron / bell / lock / search / check live here, not in the system. */
 type GlyphName =
   | "close" | "chevron-right" | "chevron-left" | "chevron-down" | "bell" | "lock" | "search"
-  | "check" | "arrow-right" | "blocked" | "kanban" | "list" | "more" | "menu" | "retry" | "sort-up" | "sort-down" | "alert";
+  | "check" | "arrow-right" | "blocked" | "kanban" | "list" | "more" | "menu" | "retry" | "sort-up" | "sort-down" | "alert" | "archive";
 
 const PATHS: Record<GlyphName, string> = {
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
@@ -23,6 +23,7 @@ const PATHS: Record<GlyphName, string> = {
   "sort-up": '<path d="M12 19V5M6 11l6-6 6 6"/>',
   "sort-down": '<path d="M12 5v14M6 13l6 6 6-6"/>',
   alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 17.5v.5"/>',
+  archive: '<path d="M4 7h16v13H4z"/><path d="M3 4h18v4H3zM9 12h6"/>',
 };
 
 export function Glyph({ name, size = 16, strokeWidth = 2.2, label }: { name: GlyphName; size?: number; strokeWidth?: number; label?: string }) {
