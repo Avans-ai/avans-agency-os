@@ -22,7 +22,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
       active="clientes"
       title={client.name}
       legacy={false}
-      crumbs={[{ label: "Operaciones", href: "/v2/clientes" }, { label: "Clientes", href: "/v2/clientes" }, { label: client.name }]}
+      crumbs={[{ label: "Operaciones", href: "/v2/operaciones" }, { label: "Clientes", href: "/v2/clientes" }, { label: client.name }]}
     >
       <Suspense fallback={<OSSkeletonRows rows={4} label="Cargando ficha…" />}>
         <ClientWorkspace client={client} depth={getClientDepth(client.slug)} benchmark={getClientBenchmark(client.slug)} />
