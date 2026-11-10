@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AvansModuleIcon } from "../brand";
+import { canEditService } from "../director-data";
 import { serviceCatalog, serviceLabel, type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import {
   recommendationsForClient,
   serviceHref,
-  serviceWorkspaceById,
   type ServiceRecommendation,
   type ServiceWorkspaceConfig,
 } from "../service-workspace-data";
@@ -16,6 +16,7 @@ import { Badge, buttonClass, cx, LinkButton, OSEmptyState, OSStatus } from "../u
 import s from "../os.module.css";
 import sc from "../screens.module.css";
 import m from "./meeting-architecture.module.css";
+import { ClientOperationNav } from "./client-operation-nav";
 
 function statusTone(status: string) {
   if (status === "Priorizada") return "cool" as const;
@@ -25,10 +26,10 @@ function statusTone(status: string) {
 }
 
 export function ClientServiceWorkspace({ client, service }: { client: OsClient; service: ServiceWorkspaceConfig }) {
-  const { notify, servicesOf } = useOsStore();
+  const { notify, role, servicesOf } = useOsStore();
   const activeIds = servicesOf(client.slug);
-  const activeServices = serviceCatalog.filter((item) => activeIds.includes(item.id));
   const definition = serviceCatalog.find((item) => item.id === service.id);
+  const editable = canEditService(role, client.slug, service.id);
   const [formOpen, setFormOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [rationale, setRationale] = useState("");
@@ -53,6 +54,7 @@ export function ClientServiceWorkspace({ client, service }: { client: OsClient; 
 
   function addManualRecommendation(event: React.FormEvent) {
     event.preventDefault();
+    if (!editable) return;
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
     setManual((current) => [{
@@ -83,32 +85,24 @@ export function ClientServiceWorkspace({ client, service }: { client: OsClient; 
           </div>
         </div>
         <div className={s.actions}>
-          <LinkButton href={`/v2/clientes/${client.slug}`} variant="ghost">Gestión de cuenta</LinkButton>
-          <button type="button" className={buttonClass("primary")} onClick={() => notify(`${service.createLabel}: pendiente de persistencia y definición del flujo específico`)}>{service.createLabel}</button>
+          <LinkButton href={`/v2/clientes/${client.slug}`} variant="ghost">Vista general</LinkButton>
+          <button type="button" className={buttonClass("primary")} disabled={!editable} title={!editable ? "Tu rol puede consultar este módulo, pero no modificarlo" : undefined} onClick={() => notify(`${service.createLabel}: pendiente de persistencia y definición del flujo específico`)}>{editable ? service.createLabel : "Solo lectura"}</button>
         </div>
       </header>
 
-      <nav className={m.workspaceTabs} aria-label={`Servicios activos de ${client.name}`}>
-        {activeServices.map((item) => {
-          const workspace = serviceWorkspaceById(item.id);
-          if (!workspace) return null;
-          return <Link key={item.id} href={serviceHref(client.slug, item.id)} className={m.workspaceTab} data-active={item.id === service.id} aria-current={item.id === service.id ? "page" : undefined}>{item.label}</Link>;
-        })}
-      </nav>
+      <ClientOperationNav client={client} active={service.id} />
 
       <div className={m.workspaceBody}>
         <section className={m.healthStrip} aria-label="Contexto del módulo">
           <div><span>Cliente</span><strong>{client.name}</strong></div>
           <div><span>Salud de cuenta</span><strong><OSStatus status={client.status} /></strong></div>
           <div><span>Responsable de cuenta</span><strong>{client.owner}</strong></div>
-          <div><span>Próximo hito</span><strong>{client.nextMilestone.label}</strong></div>
+          <div><span>Permiso actual</span><strong>{editable ? "Puede editar" : "Solo lectura"}</strong></div>
         </section>
 
         <section aria-labelledby="workflow-title" className={sc.stack}>
-          <div className={s.pageHead}><div><h2 id="workflow-title" style={{ margin: 0, fontSize: 22, fontWeight: 500 }}>Flujo del servicio</h2><p>La creación ocurre acá, adaptada al proceso del servicio, y no desde un botón general del cliente.</p></div></div>
-          <div className={m.workflow}>
-            {service.stages.map((stage, index) => <div className={m.workflowStep} key={stage}><span>{String(index + 1).padStart(2, "0")}</span><strong>{stage}</strong></div>)}
-          </div>
+          <div className={s.pageHead}><div><h2 id="workflow-title" style={{ margin: 0, fontSize: 22, fontWeight: 500 }}>Flujo del servicio</h2><p>La creación ocurre dentro del módulo y se adapta a su proceso específico.</p></div></div>
+          <div className={m.workflow}>{service.stages.map((stage, index) => <div className={m.workflowStep} key={stage}><span>{String(index + 1).padStart(2, "0")}</span><strong>{stage}</strong></div>)}</div>
         </section>
 
         <div className={m.workspaceGrid}>
@@ -121,9 +115,9 @@ export function ClientServiceWorkspace({ client, service }: { client: OsClient; 
             <section className={s.surface} aria-labelledby="recommendations-title">
               <div className={s.cardHead}>
                 <h2 id="recommendations-title">{service.id === "estrategia" ? "Centro consolidado de recomendaciones" : `Recomendaciones de ${service.label}`}</h2>
-                <button type="button" className={buttonClass("secondary", true)} aria-expanded={formOpen} onClick={() => setFormOpen((current) => !current)}>Nueva recomendación</button>
+                <button type="button" className={buttonClass("secondary", true)} aria-expanded={formOpen} disabled={!editable} onClick={() => setFormOpen((current) => !current)}>Nueva recomendación</button>
               </div>
-              {formOpen ? (
+              {formOpen && editable ? (
                 <form className={cx(sc.cardBody, m.formGrid)} onSubmit={addManualRecommendation}>
                   <label className={s.field}><span>Título</span><input className={s.input} value={title} onChange={(event) => setTitle(event.target.value)} required placeholder="Qué proponemos" /></label>
                   <label className={s.field}><span>Fundamento</span><textarea className={s.input} rows={3} value={rationale} onChange={(event) => setRationale(event.target.value)} placeholder="Dato, aprendizaje o decisión que la origina" /></label>
@@ -146,17 +140,19 @@ export function ClientServiceWorkspace({ client, service }: { client: OsClient; 
             <section className={s.surface} aria-labelledby="sources-title">
               <div className={s.cardHead}><h2 id="sources-title">Fuentes para operar</h2></div>
               <div className={m.sourceList}>
-                <Link className={m.sourceItem} href={`/v2/clientes/${client.slug}?view=ficha`}><span>Ficha del cliente</span><span>Negocio y contexto</span></Link>
+                <Link className={m.sourceItem} href={`/v2/clientes/${client.slug}?view=ficha`}><span>Ficha del cliente</span><span>Alcance y negocio</span></Link>
                 <Link className={m.sourceItem} href={`/v2/clientes/${client.slug}?view=benchmark`}><span>Benchmark</span><span>Hallazgos competitivos</span></Link>
-                <Link className={m.sourceItem} href={`/v2/clientes/${client.slug}?view=estrategia`}><span>Estrategia y plan</span><span>Prioridades generales</span></Link>
-                <Link className={m.sourceItem} href={`/v2/clientes/${client.slug}?view=reportes`}><span>Reportes y salud</span><span>Resultados y alertas</span></Link>
+                <Link className={m.sourceItem} href={`/v2/clientes/${client.slug}?view=plan`}><span>Plan de Marketing</span><span>Prioridades generales</span></Link>
+                <Link className={m.sourceItem} href={`/v2/clientes/${client.slug}?view=reportes`}><span>Reportes</span><span>Resultados y alertas</span></Link>
+                <Link className={m.sourceItem} href={`/v2/clientes/${client.slug}?view=documentos`}><span>Documentos</span><span>Actualizaciones aprobadas</span></Link>
               </div>
             </section>
             <section className={s.surface}>
-              <div className={s.cardHead}><h2>Estado técnico</h2></div>
+              <div className={s.cardHead}><h2>Permisos</h2></div>
               <div className={sc.cardBody}>
-                <Badge tone="stone">Estructura implementada</Badge>
-                <p style={{ margin: 0, lineHeight: 1.5 }}>El módulo ya está ubicado en el contexto correcto. Persistencia, permisos por backend y flujos específicos requieren la definición funcional de cada servicio.</p>
+                <Badge tone={editable ? "cool" : "stone"}>{editable ? "Edición habilitada en demo" : "Solo lectura"}</Badge>
+                <p style={{ margin: 0, lineHeight: 1.5 }}>Todos pueden consultar el módulo. La edición depende del rol, del cliente asignado y del servicio correspondiente.</p>
+                <p className={s.demoNote} style={{ margin: 0 }}>La restricción actual es visual. Antes de producción debe aplicarse también en API y base de datos.</p>
               </div>
             </section>
           </aside>
