@@ -173,6 +173,10 @@ export function questionnaireToProposals(
         r.clarification
       )
         continue;
+      const answerSourceId =
+        r.sourceId && next.sources.some((s) => s.id === r.sourceId)
+          ? r.sourceId
+          : sourceId;
       const evidence = `${q.label}\n${JSON.stringify(r.value)}\nFuente: ${r.sourceReference || "Respuesta del cliente"}. Uso: ${r.permission}`;
       if (q.responseType === "repeatable" && Array.isArray(r.value)) {
         for (const [index, row] of r.value.entries()) {
@@ -194,7 +198,7 @@ export function questionnaireToProposals(
                 proposals.push(
                   newProposal(
                     next,
-                    sourceId,
+                    answerSourceId,
                     q.sectionId,
                     f.key,
                     (row as Record<string, unknown>)[f.key],
@@ -215,14 +219,15 @@ export function questionnaireToProposals(
                     string | number | boolean | null | string[]
                   >
                 )[f.key];
-            value.sourceIds = [sourceId];
+            value.sourceIds = [answerSourceId];
+            value.demo = !!r.demo;
             value.evidence = evidence;
             value.owner = ctx.actor;
             value.notes = `Autorización: ${r.permission}`;
             proposals.push(
               newProposal(
                 next,
-                sourceId,
+                answerSourceId,
                 q.sectionId,
                 "",
                 value,
@@ -241,7 +246,7 @@ export function questionnaireToProposals(
           proposals.push(
             newProposal(
               next,
-              sourceId,
+              answerSourceId,
               "sources",
               "",
               {
@@ -249,7 +254,7 @@ export function questionnaireToProposals(
                 name: q.label,
                 type: "Documento",
                 reference: String(r.value),
-                sourceIds: [sourceId],
+                sourceIds: [answerSourceId],
                 owner: ctx.actor,
                 evidence,
               },
@@ -264,7 +269,7 @@ export function questionnaireToProposals(
         const [kind, path] = q.targetFieldPath.split(".");
         const proposal = newProposal(
           next,
-          sourceId,
+          answerSourceId,
           kind,
           path,
           r.value,

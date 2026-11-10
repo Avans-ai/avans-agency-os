@@ -114,6 +114,19 @@ export function isKnowledge(v: unknown, slug: string): v is KnowledgeState {
     !!k.discovery &&
     Array.isArray(k.sources) &&
     k.sources.every((s) => s.clientSlug === slug) &&
+    (k.answerSuggestions === undefined ||
+      (Array.isArray(k.answerSuggestions) &&
+        k.answerSuggestions.every(
+          (s) =>
+            s.clientSlug === slug &&
+            Array.isArray(s.sourceIds) &&
+            Array.isArray(s.evidence),
+        ))) &&
+    (k.presentationExports === undefined ||
+      (Array.isArray(k.presentationExports) &&
+        k.presentationExports.every(
+          (e) => e.clientSlug === slug && e.manifest?.clientSlug === slug,
+        ))) &&
     Array.isArray(k.proposals) &&
     Array.isArray(k.meetings) &&
     !!k.questionnaire?.responses &&
@@ -307,6 +320,10 @@ export function replaceDiscovery(
     (s) => !sources.some((x) => x.id === s.id),
   )) {
     if (
+      k.answerSuggestions?.some((s) => s.sourceIds.includes(removed.id)) ||
+      Object.values(k.questionnaire.responses).some(
+        (r) => r.sourceId === removed.id || r.sourceIds?.includes(removed.id),
+      ) ||
       k.proposals.some((p) => p.sourceId === removed.id) ||
       k.meetings.some((m) => m.sourceId === removed.id) ||
       k.benchmark.brands.some(
@@ -320,7 +337,7 @@ export function replaceDiscovery(
         .some((i) => i?.sourceIds.includes(removed.id))
     )
       throw new Error(
-        "La fuente está vinculada a reuniones, propuestas, Benchmark o Plan. Debe conservarse su trazabilidad.",
+        "La fuente está vinculada a respuestas, sugerencias, reuniones, propuestas, Benchmark o Plan. Debe conservarse su trazabilidad.",
       );
   }
   let next = {

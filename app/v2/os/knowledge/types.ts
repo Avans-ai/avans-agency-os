@@ -2,8 +2,14 @@ import type { MarketingDiscovery, DiscoveryStatus } from "../discovery/model";
 import type { ServiceId } from "../os-data";
 import type { KnowledgeValue } from "./blueprints";
 import type { QuestionnaireInstance } from "./questionnaire";
+import type {
+  SourceProcessing,
+  QuestionnaireAnswerSuggestion,
+} from "./intake/types";
+import type { PresentationExport } from "./presentation/types";
 export type KnowledgeModule = "discovery" | "benchmark" | "marketing-plan";
 export type KnowledgeSource = {
+  intake?: SourceProcessing;
   id: string;
   organizationId?: string;
   clientSlug: string;
@@ -201,6 +207,8 @@ export type MarketingPlan = {
   modules: Partial<Record<ServiceId, KnowledgeItem[]>>;
 };
 export type KnowledgeState = {
+  answerSuggestions?: QuestionnaireAnswerSuggestion[];
+  presentationExports?: PresentationExport[];
   version: 1;
   clientSlug: string;
   revision: number;

@@ -42,6 +42,10 @@ export type QuestionnaireTemplate = {
   sections: QuestionnaireSection[];
 };
 export type QuestionnaireResponse = {
+  origin?: "manual" | "source";
+  sourceIds?: string[];
+  suggestionId?: string;
+  demo?: boolean;
   questionId: string;
   value: AnswerValue;
   status: "unanswered" | "draft" | "answered" | "validated";
