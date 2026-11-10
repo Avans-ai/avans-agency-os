@@ -1,6 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  PRESENTATION_SCOPES,
+  presentationSettings,
+  presentationBlockers,
+} from "../../../lib/presentations/readiness";
 import { GOOGLE_SCOPES } from "../../../lib/google-workspace/contracts";
 import { requiredGoogleSettings } from "../../../lib/google-workspace/readiness";
 import { buttonClass } from "../os/ui";
@@ -67,6 +72,38 @@ export function GoogleWorkspaceCard() {
           validación de Pub/Sub. No ingreses credenciales en formularios ni
           notas.
         </p>
+      </details>
+      <details>
+        <summary>Presentaciones · plantilla, Drive y Slides</summary>
+        <p>
+          La vista previa del contenido está disponible. Crear Slides y
+          descargar PPTX requiere habilitar y validar la integración con la
+          plantilla oficial.
+        </p>
+        <ul>
+          {presentationBlockers.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+        <p>Configuración requerida, sin valores:</p>
+        <ul>
+          {presentationSettings.map((item) => (
+            <li key={item}>
+              <code>{item}</code>
+            </li>
+          ))}
+        </ul>
+        <p>
+          Permisos adicionales para copiar la plantilla y editar la
+          presentación:
+        </p>
+        <ul>
+          {PRESENTATION_SCOPES.map((item) => (
+            <li key={item}>
+              <code>{item}</code>
+            </li>
+          ))}
+        </ul>
       </details>
       <details>
         <summary>Permisos y flujo de eventos</summary>

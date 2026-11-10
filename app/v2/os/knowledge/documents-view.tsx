@@ -31,6 +31,7 @@ import {
 } from "./types";
 import { versionChange } from "./state";
 import { meetingToProposals } from "./proposals";
+import { ExportHistory } from "./presentation/presentation-view";
 import { ProposalsView, ProposalEditor } from "./proposal-view";
 import { ExternalLink, History, LocalNotice } from "./shared-ui";
 import m from "./knowledge.module.css";
@@ -47,6 +48,7 @@ const tabs = [
   "Cambios para aprobar",
   "Errores de sincronización",
   "Bandeja sin cliente",
+  "Presentaciones generadas",
 ];
 function SourceEditor({
   client,
@@ -587,7 +589,9 @@ export function DocumentsView({ client }: { client: OsClient }) {
           </button>
         ))}
       </nav>
-      {tab === "Cambios para aprobar" ? (
+      {tab === "Presentaciones generadas" ? (
+        <ExportHistory client={client} />
+      ) : tab === "Cambios para aprobar" ? (
         <ProposalsView client={client} />
       ) : tab === "Bandeja sin cliente" ? (
         <section className={m.root}>

@@ -1,0 +1,265 @@
+.root {
+  background: #e5e2db;
+  color: #17191a;
+  min-height: 100vh;
+  padding: 24px 0;
+  font-family: var(--font-figtree), Arial, sans-serif;
+}
+.toolbar {
+  max-width: 210mm;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px;
+  box-sizing: border-box;
+  color: #17191a;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.toolbar p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.toolbar a {
+  color: #17191a;
+  text-decoration: underline;
+}
+.toolbar button {
+  background: #17191a;
+  color: white;
+  border: 0;
+  border-radius: 7px;
+  padding: 12px 18px;
+  cursor: pointer;
+  font: inherit;
+}
+.sheet {
+  background: #fffdf8;
+  width: 210mm;
+  height: 297mm;
+  box-sizing: border-box;
+  padding: 18mm 18mm 20mm;
+  margin: 0 auto 24px;
+  position: relative;
+  break-after: page;
+  box-shadow: 0 4px 24px #0000000b;
+}
+.sheet:last-child {
+  break-after: auto;
+}
+.cover {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.coverTitle {
+  margin-top: 29mm;
+  max-width: 150mm;
+}
+.kicker {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #6e706d;
+}
+.cover h1 {
+  font-size: 58px;
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  margin: 20px 0;
+}
+.cover h2 {
+  font-size: 25px;
+  font-weight: 400;
+  margin: 25px 0;
+}
+.cover p {
+  font-size: 15px;
+  line-height: 1.7;
+  max-width: 143mm;
+}
+.coralRule {
+  width: 26mm;
+  height: 4px;
+  background: #ff6b4e;
+  margin: 24px 0;
+}
+.contact {
+  margin-top: auto;
+  margin-bottom: 13mm;
+  width: 100%;
+  font-size: 13px;
+}
+.contact p {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  margin: 14px 0;
+}
+.contact span {
+  flex: 1;
+  border-bottom: 1px solid #bbb8b1;
+}
+.footer {
+  position: absolute;
+  bottom: 10mm;
+  left: 18mm;
+  right: 18mm;
+  border-top: 1px solid #d9d4cb;
+  padding-top: 4mm;
+  font-size: 9px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #656862;
+}
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 14mm;
+  font-size: 11px;
+  text-align: right;
+  color: #676961;
+}
+.pageHeader img {
+  width: 92px;
+  height: auto;
+}
+.sectionTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10mm;
+}
+.sectionTitle > span {
+  color: #e86b54;
+  font-size: 13px;
+}
+.sectionTitle h2 {
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 500;
+  margin: 0;
+}
+.question {
+  margin-bottom: 7mm;
+  min-height: 39mm;
+  break-inside: avoid;
+}
+.question h3 {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0 0 3mm;
+}
+.answer {
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.answerLines {
+  display: grid;
+  gap: 6mm;
+  padding-top: 2mm;
+}
+.answerLines div {
+  border-bottom: 1px solid #d9d4cb;
+  height: 1mm;
+}
+.checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4mm;
+  font-size: 11px;
+  margin-bottom: 3mm;
+}
+.answerMeta {
+  font-size: 9px;
+  line-height: 1.5;
+  color: #676961;
+  margin-top: 2mm;
+  overflow-wrap: anywhere;
+}
+@media screen and (max-width: 820px) {
+  .root {
+    padding: 12px 0;
+    overflow-x: auto;
+  }
+  .toolbar {
+    margin: 0 12px 16px;
+  }
+  .sheet {
+    width: min(100%, 210mm);
+    height: auto;
+    min-height: 297mm;
+    padding: 12mm 8mm 23mm;
+  }
+  .cover h1 {
+    font-size: 44px;
+  }
+  .footer {
+    left: 8mm;
+    right: 8mm;
+  }
+  .coverTitle {
+    margin-top: 24mm;
+  }
+  .contact {
+    margin-top: 28mm;
+  }
+}
+@page {
+  size: A4;
+  margin: 0;
+}
+@media print {
+  .root {
+    padding: 0;
+    background: white;
+  }
+  .toolbar {
+    display: none !important;
+  }
+  .sheet {
+    margin: 0;
+    box-shadow: none;
+    background: #fffdf8;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    width: 210mm;
+    height: 297mm;
+  }
+  .cover {
+    display: flex;
+  }
+  .root :global(button) {
+    display: none !important;
+  }
+}
+
+.answerTable {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 10px;
+  margin-top: 2mm;
+}
+.answerTable th,
+.answerTable td {
+  border: 1px solid #d9d4cb;
+  height: 8mm;
+  padding: 1mm 3mm;
+}
+.answerTable th {
+  width: 18%;
+  font-weight: 400;
+  text-align: left;
+  color: #676961;
+}

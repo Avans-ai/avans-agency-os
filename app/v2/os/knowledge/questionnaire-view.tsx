@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { newId } from "./types";
+import { PresentationView } from "./presentation/presentation-view";
+import { IntakeView } from "./intake/intake-view";
 import type { OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import { buttonClass } from "../ui";
@@ -96,10 +98,10 @@ function AnswerField({
   );
 }
 export function QuestionnaireView({ client }: { client: OsClient }) {
-  const { k, d, editable, mutate } = useKnowledge(client);
+  const { k, d, editable, mutate, latest } = useKnowledge(client);
   const { notify } = useOsStore();
   const [responses, setResponses] = useState(k.questionnaire.responses);
-  const [revision, setRevision] = useState(k.revision);
+  const [baseResponses, setBaseResponses] = useState(k.questionnaire.responses);
   const [active, setActive] = useState(questionnaireTemplate.sections[0].id);
   const [share, setShare] = useState(false);
   const [filter, setFilter] = useState("all");
@@ -120,29 +122,55 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
           updatedBy: "",
         }),
         ...patch,
+        ...("value" in patch ? { origin: "manual" as const } : {}),
       },
     }));
   }
+  function refreshResponses() {
+    const saved = latest();
+    setResponses(saved.questionnaire.responses);
+    setBaseResponses(saved.questionnaire.responses);
+  }
   function save() {
-    return mutate(
-      (state, ctx) => ({
+    if (JSON.stringify(responses) === JSON.stringify(baseResponses))
+      return true;
+    const ok = mutate((state, ctx) => {
+      if (
+        JSON.stringify(state.questionnaire.responses) !==
+        JSON.stringify(baseResponses)
+      )
+        throw new Error(
+          "Las respuestas cambiaron. Recargá la vista antes de guardar para conservar ambos cambios.",
+        );
+      return {
         ...state,
         questionnaire: {
           ...state.questionnaire,
           responses: Object.fromEntries(
             Object.entries(responses).map(([id, r]) => [
               id,
-              {
-                ...r,
-                status: r.status,
-                updatedAt: ctx.at,
-                updatedBy: ctx.actor,
-              },
+              JSON.stringify(r) === JSON.stringify(baseResponses[id])
+                ? r
+                : { ...r, updatedAt: ctx.at, updatedBy: ctx.actor },
             ]),
           ),
         },
-      }),
-      revision,
+      };
+    });
+    if (ok) refreshResponses();
+    return ok;
+  }
+  function openSection(id: string) {
+    const node = document.getElementById(id);
+    if (node instanceof HTMLDetailsElement) node.open = true;
+    node?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function print(mode: "blank" | "filled") {
+    if (mode === "filled" && !save()) return;
+    window.open(
+      `/v2/clientes/${client.slug}/discovery/questionnaire/print?mode=${mode}`,
+      "_blank",
+      "noopener,noreferrer",
     );
   }
   const sections = share
@@ -183,14 +211,28 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
           </button>
           <button
             className={buttonClass("secondary", true)}
-            onClick={() => {
-              setShare(true);
-              requestAnimationFrame(() =>
-                requestAnimationFrame(() => window.print()),
-              );
-            }}
+            onClick={() => print("blank")}
           >
-            Imprimir
+            Imprimir cuestionario vacío
+          </button>
+          <button
+            className={buttonClass("secondary", true)}
+            onClick={() => print("filled")}
+            disabled={!editable}
+          >
+            Imprimir cuestionario completado
+          </button>
+          <button
+            className={buttonClass("primary", true)}
+            onClick={() => openSection("company-intake")}
+          >
+            Cargar información
+          </button>
+          <button
+            className={buttonClass("secondary", true)}
+            onClick={() => openSection("answer-suggestions")}
+          >
+            Revisar sugerencias
           </button>
         </div>
       </div>
@@ -199,12 +241,24 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
           Progreso general: {progress.percent}% · {progress.answered} de{" "}
           {progress.total}
         </strong>
-        <progress className={m.progress} max={100} value={progress.percent} />
+        <progress
+          aria-label="Progreso del cuestionario"
+          className={m.progress}
+          max={100}
+          value={progress.percent}
+        />
       </div>
       <p className={m.muted}>
         Esta vista permanece dentro de la sesión de Avans OS. No genera un
         enlace público ni envía mensajes.
       </p>
+      {!share && editable ? (
+        <IntakeView
+          client={client}
+          beforeReview={save}
+          onResponsesChanged={refreshResponses}
+        />
+      ) : null}
       <div className={share ? m.root : m.twoCol}>
         {!share ? (
           <nav className={m.side} aria-label="Bloques del cuestionario">
@@ -256,6 +310,26 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
                   return (
                     <div key={q.id} className={m.card}>
                       <h4>{q.label}</h4>
+                      {response ? (
+                        <p className={m.muted}>
+                          {response.status === "validated"
+                            ? "Respuesta validada"
+                            : response.origin === "source"
+                              ? "Respuesta desde fuente aprobada"
+                              : "Respuesta manual"}
+                          {response.demo ? " · DEMO" : ""}
+                          {response.sourceReference
+                            ? ` · ${response.sourceReference}`
+                            : ""}
+                          {response.updatedAt
+                            ? ` · ${new Date(response.updatedAt).toLocaleDateString("es-AR", { timeZone: "America/Buenos_Aires" })}`
+                            : ""}
+                        </p>
+                      ) : (
+                        <p className={m.muted}>
+                          Sin respuesta ni evidencia confirmada
+                        </p>
+                      )}
                       <p className={m.muted}>{q.helpText}</p>
                       {q.responseType === "repeatable" ? (
                         <>
@@ -361,6 +435,7 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
                         <label className={m.field}>
                           <span className={m.srOnly}>{q.label}</span>
                           <textarea
+                            aria-label={q.label}
                             disabled={!editable}
                             value={String(response?.value ?? "")}
                             onChange={(e) =>
@@ -447,7 +522,7 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
           disabled={!editable}
           className={buttonClass("secondary")}
           onClick={() => {
-            if (save()) setRevision(revision + 1);
+            save();
           }}
         >
           Guardar borrador
@@ -456,7 +531,7 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
           disabled={!editable}
           className={buttonClass("primary")}
           onClick={() => {
-            if (save()) setRevision(revision + 1);
+            save();
           }}
         >
           Guardar respuestas
@@ -466,17 +541,8 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
             disabled={!editable}
             className={buttonClass("secondary")}
             onClick={() => {
-              if (
-                mutate(
-                  (s, c) =>
-                    questionnaireToProposals(
-                      { ...s, questionnaire: instance },
-                      c,
-                    ),
-                  revision,
-                )
-              ) {
-                setRevision(revision + 1);
+              if (save() && mutate((s, c) => questionnaireToProposals(s, c))) {
+                refreshResponses();
                 notify(
                   "Propuestas disponibles en Documentos → Cambios para aprobar",
                 );
@@ -487,6 +553,9 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
           </button>
         ) : null}
       </div>
+      {!share && editable ? (
+        <PresentationView client={client} beforeGenerate={save} />
+      ) : null}
     </div>
   );
 }

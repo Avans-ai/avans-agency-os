@@ -308,3 +308,58 @@
   background: #393630;
   color: #ede8df;
 }
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 10px;
+}
+.metrics > div {
+  padding: 14px;
+  border-left: 3px solid var(--av-coral, #f28472);
+  background: var(--av-bg-raised, #fff);
+  display: grid;
+  gap: 5px;
+}
+.metrics strong {
+  font-size: 26px;
+  font-weight: 500;
+}
+.metrics span {
+  font-size: 12px;
+  color: var(--av-text-muted);
+}
+.intakeHero {
+  border-left: 4px solid #ed8274;
+  background: var(--av-bg-raised, #fff);
+}
+.card > summary {
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 17px;
+  list-style-position: inside;
+}
+.card[open] > summary {
+  margin-bottom: 20px;
+}
+.dropzone {
+  border: 1px dashed #d78474;
+  border-radius: 10px;
+  padding: 22px;
+  margin: 16px 0;
+  background: var(--av-bg-base);
+}
+.dropzone small {
+  display: block;
+  color: var(--av-text-muted);
+  line-height: 1.6;
+}
+.dropzone input {
+  max-width: 100%;
+}
+
+.manifestList {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
