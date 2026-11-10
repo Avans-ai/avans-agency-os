@@ -16,6 +16,7 @@ import { Glyph } from "../glyphs";
 import { serviceCatalog, serviceLabel, type OsClient, type ServiceId } from "../os-data";
 import { useOsStore } from "../os-store";
 import { serviceHref } from "../service-workspace-data";
+import { useLocalStorageState } from "../local-persistence";
 import { Avatar, Badge, buttonClass, LinkButton, OSEmptyState, OSStatus } from "../ui";
 import s from "../os.module.css";
 import sc from "../screens.module.css";
@@ -47,7 +48,7 @@ export function ClientWorkspace({ client, benchmark }: { client: OsClient; depth
   const { role, tasks, notify, servicesOf } = useOsStore();
   const view = requestedView(params.get("view"));
   const meta = directorMeta(client.slug);
-  const [channels, setChannels] = useState<ClientChannel[]>(meta?.channels ?? []);
+  const [channels, setChannels] = useLocalStorageState<ClientChannel[]>(`client:${client.slug}:channels`, meta?.channels ?? []);
   const [editingChannels, setEditingChannels] = useState(false);
   const canManage = canManageClient(role, client.slug);
   const activeServices = serviceCatalog.filter((service) => servicesOf(client.slug).includes(service.id));
@@ -58,7 +59,7 @@ export function ClientWorkspace({ client, benchmark }: { client: OsClient; depth
 
   function saveChannels() {
     setEditingChannels(false);
-    notify("Canales actualizados solo en esta sesión (simulado)", "success");
+    notify("Canales guardados en este navegador. La sincronización multiusuario todavía requiere Supabase.", "success");
   }
 
   return (
@@ -97,7 +98,7 @@ export function ClientWorkspace({ client, benchmark }: { client: OsClient; depth
                 <button type="button" className={buttonClass("ghost", true)} onClick={() => setChannels((current) => [...current, { id: `LOCAL-${Date.now()}`, label: "Nuevo canal", value: "Pendiente", kind: "platform" }])}>Sumar canal</button>
                 <button type="button" className={buttonClass("dark", true)} onClick={saveChannels}>Guardar cambios</button>
               </div>
-              <p className={s.demoNote}>La edición funciona únicamente en esta sesión. La persistencia y los permisos de PM deben implementarse en backend.</p>
+              <p className={s.demoNote}>Los cambios quedan guardados en este navegador. Todavía no se sincronizan entre usuarios ni reemplazan los permisos de backend.</p>
             </div>
           </section>
         ) : null}

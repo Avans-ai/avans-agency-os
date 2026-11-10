@@ -6,6 +6,7 @@ import { AvansModuleIcon } from "../brand";
 import { canEditService } from "../director-data";
 import { serviceCatalog, serviceLabel, type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
+import { useLocalStorageState } from "../local-persistence";
 import {
   recommendationsForClient,
   serviceHref,
@@ -33,7 +34,7 @@ export function ClientServiceWorkspace({ client, service }: { client: OsClient; 
   const [formOpen, setFormOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [rationale, setRationale] = useState("");
-  const [manual, setManual] = useState<ServiceRecommendation[]>([]);
+  const [manual, setManual] = useLocalStorageState<ServiceRecommendation[]>(`client:${client.slug}:service:${service.id}:recommendations`, []);
 
   const recommendations = useMemo(() => {
     const base = service.id === "estrategia"
@@ -70,7 +71,7 @@ export function ClientServiceWorkspace({ client, service }: { client: OsClient; 
     setTitle("");
     setRationale("");
     setFormOpen(false);
-    notify("Recomendación agregada solo a esta sesión (simulado)");
+    notify("Recomendación guardada en este navegador. La sincronización multiusuario continúa pendiente.");
   }
 
   return (
@@ -132,7 +133,7 @@ export function ClientServiceWorkspace({ client, service }: { client: OsClient; 
                   {service.id === "estrategia" && item.serviceId !== "estrategia" ? <Link className={s.link} href={serviceHref(client.slug, item.serviceId)}>Abrir en el módulo responsable</Link> : null}
                 </article>
               )) : <OSEmptyState icon="idea" title="Todavía no hay recomendaciones">Las sugerencias deben quedar asociadas a este servicio, con fuente y prioridad.</OSEmptyState>}
-              <p className={s.demoNote} style={{ margin: 0, padding: "12px 18px" }}>No hay un motor de IA conectado en esta rama. Las recomendaciones precargadas y manuales están identificadas como demostración.</p>
+              <p className={s.demoNote} style={{ margin: 0, padding: "12px 18px" }}>No hay un motor de IA conectado en esta rama. Las recomendaciones precargadas son demostrativas; las manuales quedan guardadas solamente en este navegador.</p>
             </section>
           </div>
 

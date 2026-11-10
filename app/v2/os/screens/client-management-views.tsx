@@ -12,6 +12,7 @@ import {
 import { serviceLabel, strategyByClient, type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import { serviceHref } from "../service-workspace-data";
+import { useLocalStorageState } from "../local-persistence";
 import { Badge, buttonClass, cx, LinkButton, OSEmptyState } from "../ui";
 import s from "../os.module.css";
 import sc from "../screens.module.css";
@@ -93,7 +94,7 @@ function ClientSheet({ client }: { client: OsClient }) {
 function ClientBenchmarkView({ client, benchmark }: { client: OsClient; benchmark?: ClientBenchmark }) {
   const { notify } = useOsStore();
   const meta = directorMeta(client.slug);
-  const [competitors, setCompetitors] = useState<CompetitorSnapshot[]>(meta?.competitors ?? []);
+  const [competitors, setCompetitors] = useLocalStorageState<CompetitorSnapshot[]>(`client:${client.slug}:competitors`, meta?.competitors ?? []);
   const [name, setName] = useState("");
 
   function addCompetitor(event: React.FormEvent) {
@@ -102,7 +103,7 @@ function ClientBenchmarkView({ client, benchmark }: { client: OsClient; benchmar
     if (!clean) return;
     setCompetitors((current) => [{ name: clean, positioning: "Pendiente de analizar", channels: "Pendiente", lastScan: "Sin escanear", state: "Nueva" }, ...current]);
     setName("");
-    notify(`${clean} agregada al benchmark solo en esta sesión (simulado)`);
+    notify(`${clean} quedó guardada en este navegador. El escaneo automático continúa pendiente.`);
   }
 
   return (
@@ -139,7 +140,7 @@ function ClientBenchmarkView({ client, benchmark }: { client: OsClient; benchmar
         <div className={s.cardHead}><h2>Reporte quincenal de insights</h2><span className={s.cardMeta}>Próxima salida: pendiente de automatización</span></div>
         <div className={sc.cardBody}><p style={{ margin: 0 }}>El reporte debe destacar acciones que funcionaron, nuevos competidores, lanzamientos y oportunidades aplicables a los módulos del cliente.</p></div>
       </section>
-      <p className={s.demoNote}>No existe un escaneo automático activo en esta rama. Las marcas y fechas son datos de demostración y las altas manuales se pierden al recargar.</p>
+      <p className={s.demoNote}>No existe un escaneo automático activo. Las altas manuales se guardan en este navegador, pero todavía no se sincronizan ni cuentan con trazabilidad de fuentes.</p>
     </div>
   );
 }
@@ -197,8 +198,8 @@ function ClientDocuments({ client }: { client: OsClient }) {
   const { role, notify } = useOsStore();
   const meta = directorMeta(client.slug);
   const editable = canManageClient(role, client.slug);
-  const [documents, setDocuments] = useState(meta?.documents ?? []);
-  const [changes, setChanges] = useState([
+  const [documents, setDocuments] = useLocalStorageState(`client:${client.slug}:documents`, meta?.documents ?? []);
+  const [changes, setChanges] = useLocalStorageState(`client:${client.slug}:document-changes`, [
     { id: "CH-1", title: "Actualizar objetivo del trimestre", detail: "El último resumen de reunión menciona priorizar calidad de leads por sobre volumen." },
     { id: "CH-2", title: "Agregar un decisor al proceso", detail: "El documento identifica a Dirección Comercial como nueva instancia de aprobación." },
   ]);
@@ -206,9 +207,9 @@ function ClientDocuments({ client }: { client: OsClient }) {
   function upload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    setDocuments((current) => [{ id: `LOCAL-${Date.now()}`, name: file.name, type: "Documento nuevo", updated: "Ahora", source: "Carga local" }, ...current]);
+    setDocuments((current) => [{ id: `LOCAL-${Date.now()}`, name: file.name, type: "Documento nuevo", updated: "Ahora", source: "Metadata local" }, ...current]);
     setChanges((current) => [{ id: `LOCAL-CHANGE-${Date.now()}`, title: `Revisar cambios sugeridos por ${file.name}`, detail: "Análisis de demostración: el backend deberá extraer, citar y comparar el contenido con la ficha vigente." }, ...current]);
-    notify(`${file.name} cargado solo en esta sesión (simulado)`);
+    notify(`${file.name}: metadata guardada en este navegador. El archivo todavía no se sube a Storage.`);
     event.target.value = "";
   }
 
@@ -229,9 +230,9 @@ function ClientDocuments({ client }: { client: OsClient }) {
 
       <section className={s.surface} aria-labelledby="changes-title">
         <div className={s.cardHead}><h2 id="changes-title">Cambios sugeridos para aprobar</h2><span className={s.cardMeta}>Solo PMs</span></div>
-        {changes.length ? <div className={d.changeList}>{changes.map((change) => <div className={d.changeItem} key={change.id}><div><strong>{change.title}</strong><p>{change.detail}</p></div><div className={s.actions}><button type="button" className={buttonClass("ghost", true)} disabled={!editable} onClick={() => setChanges((current) => current.filter((item) => item.id !== change.id))}>Descartar</button><button type="button" className={buttonClass("dark", true)} disabled={!editable} onClick={() => { setChanges((current) => current.filter((item) => item.id !== change.id)); notify("Cambio aprobado solo en esta sesión (simulado)", "success"); }}>Aprobar</button></div></div>)}</div> : <OSEmptyState icon="chispa" title="No hay cambios pendientes">Las sugerencias del próximo documento aparecerán acá.</OSEmptyState>}
+        {changes.length ? <div className={d.changeList}>{changes.map((change) => <div className={d.changeItem} key={change.id}><div><strong>{change.title}</strong><p>{change.detail}</p></div><div className={s.actions}><button type="button" className={buttonClass("ghost", true)} disabled={!editable} onClick={() => setChanges((current) => current.filter((item) => item.id !== change.id))}>Descartar</button><button type="button" className={buttonClass("dark", true)} disabled={!editable} onClick={() => { setChanges((current) => current.filter((item) => item.id !== change.id)); notify("Cambio aprobado y guardado en este navegador. La actualización del backend continúa pendiente.", "success"); }}>Aprobar</button></div></div>)}</div> : <OSEmptyState icon="chispa" title="No hay cambios pendientes">Las sugerencias del próximo documento aparecerán acá.</OSEmptyState>}
       </section>
-      <p className={s.demoNote}>El análisis automático todavía no está conectado. Una implementación real deberá guardar el archivo, citar fragmentos, mostrar diferencias y aplicar únicamente cambios aprobados.</p>
+      <p className={s.demoNote}>Se conserva la metadata y el estado de aprobación en este navegador. El archivo binario, las citas y la aplicación multiusuario requieren Storage, extracción y permisos de backend.</p>
     </div>
   );
 }

@@ -6,7 +6,7 @@
  * multi-user persistence. Replace these actions with authenticated server
  * mutations once the Avans Supabase project is active and its RLS policies
  * have been applied and tested. */
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
 import { CURRENT_USER, ideas as seedIdeas, osClients, osTasks, serviceLabel, type DueKind, type Idea, type IdeaState, type OsTask, type Priority, type ServiceId, type TaskStatus } from "./os-data";
 import { readLocalJson, writeLocalJson } from "./local-persistence";
 
@@ -22,6 +22,7 @@ type State = {
   services: Record<string, ServiceId[]>;
   ideas: Idea[];
   ideaSeq: number;
+  hydrated: boolean;
 };
 type PersistedState = Pick<State, "tasks" | "seq" | "role" | "services" | "ideas" | "ideaSeq">;
 type Action =
@@ -45,6 +46,7 @@ function seedState(): State {
     services: Object.fromEntries(osClients.map((client) => [client.slug, client.services])),
     ideas: seedIdeas,
     ideaSeq: 40,
+    hydrated: false,
   };
 }
 
@@ -65,7 +67,7 @@ function validPersistedState(value: PersistedState | null, fallback: State): Per
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "hydrate":
-      return { ...state, ...action.state };
+      return { ...state, ...action.state, hydrated: true };
     case "replace": {
       const toastSeq = action.toast ? state.toastSeq + 1 : state.toastSeq;
       return { ...state, tasks: action.tasks, seq: action.seq ?? state.seq, toastSeq, toast: action.toast ? { ...action.toast, id: toastSeq } : action.toast === null ? null : state.toast };
@@ -120,17 +122,15 @@ const StoreContext = createContext<Store | null>(null);
 
 export function OsStoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, seedState);
-  const [localHydrated, setLocalHydrated] = useState(false);
 
   useEffect(() => {
     const fallback = seedState();
     const stored = readLocalJson<PersistedState | null>(STORE_KEY, null);
     dispatch({ type: "hydrate", state: validPersistedState(stored, fallback) });
-    setLocalHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!localHydrated) return;
+    if (!state.hydrated) return;
     const persisted: PersistedState = {
       tasks: state.tasks,
       seq: state.seq,
@@ -140,7 +140,7 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
       ideaSeq: state.ideaSeq,
     };
     writeLocalJson(STORE_KEY, persisted);
-  }, [localHydrated, state.ideaSeq, state.ideas, state.role, state.seq, state.services, state.tasks]);
+  }, [state.hydrated, state.ideaSeq, state.ideas, state.role, state.seq, state.services, state.tasks]);
 
   const update = useCallback((id: string, change: (task: OsTask) => OsTask, message: string, tone: Toast["tone"] = "default", undoable = false) => {
     const next = state.tasks.map((item) => (item.id === id ? change({ ...item }) : item));
@@ -152,7 +152,7 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
     role: state.role,
     toast: state.toast,
     ideas: state.ideas,
-    localHydrated,
+    localHydrated: state.hydrated,
     servicesOf: (clientSlug) => state.services[clientSlug] ?? [],
     setServices: (clientSlug, services) => {
       const before = state.services[clientSlug] ?? [];
@@ -210,7 +210,7 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
       if (state.toast?.undo) dispatch({ type: "replace", tasks: state.toast.undo, toast: { message: localMessage("Cambio deshecho"), tone: "default" } });
     },
     dismissToast: () => dispatch({ type: "toast", toast: null }),
-  }), [localHydrated, state, update]);
+  }), [state, update]);
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }

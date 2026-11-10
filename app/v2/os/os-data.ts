@@ -177,6 +177,9 @@ export type OsTask = {
   files: TaskFile[];
   comments: TaskComment[];
   activity: TaskActivity[];
+  /** ISO timestamps used by the 30-day archive policy. */
+  completedAt?: string;
+  archivedAt?: string;
   /** Approval metadata shown on Inicio / Aprobaciones. */
   sentBy?: string;
   sentWhen?: string;
@@ -187,7 +190,7 @@ const task = (t: Partial<OsTask> & Pick<OsTask, "id" | "projectSlug" | "title" |
   ({ files: [], comments: [], activity: [], ...t });
 
 export const osTasks: OsTask[] = [
-  task({ id: "T-140", projectSlug: "lanzamiento-line-up-2027", title: "Kickoff con el comité de marketing", owner: "Valentina Ríos", prio: "Media", due: "3 oct", dueKind: "past", status: "Hecho", desc: "Presentar objetivos, cronograma y responsables del lanzamiento al comité del cliente.", activity: [{ text: "Valentina Ríos marcó la tarea como Hecho", when: "3 oct" }] }),
+  task({ id: "T-140", projectSlug: "lanzamiento-line-up-2027", title: "Kickoff con el comité de marketing", owner: "Valentina Ríos", prio: "Media", due: "3 oct", dueKind: "past", status: "Hecho", completedAt: "2026-10-03T15:00:00.000Z", desc: "Presentar objetivos, cronograma y responsables del lanzamiento al comité del cliente.", activity: [{ text: "Valentina Ríos marcó la tarea como Hecho", when: "3 oct" }] }),
   task({ id: "T-141", projectSlug: "lanzamiento-line-up-2027", title: "Mapa de mensajes por segmento", owner: "Valentina Ríos", prio: "Alta", due: "15 oct", dueKind: "past", status: "Hecho", desc: "Definir mensajes clave para cada segmento B2B y validarlos con el cliente.", files: [{ name: "Mapa de mensajes v2", ext: "PDF", meta: "1,2 MB" }], activity: [{ text: "Carolina Méndez (cliente) aprobó la v2", when: "22 oct" }] }),
   task({ id: "T-142", projectSlug: "lanzamiento-line-up-2027", title: "Definir key visual de campaña", approvalTitle: "Aprobar key visual de campaña", owner: "Tomás Aguirre", approver: "Nicolás Okro", prio: "Alta", due: "30 oct", dueKind: "today", status: "En aprobación", sentBy: "Tomás Aguirre", sentWhen: "hace 2 días", approvalNote: "Bloquea T-144",
     desc: "Tres rutas de key visual a partir del mapa de mensajes. Espera la aprobación interna de Nicolás antes de presentarse al cliente el 3 nov.",

@@ -404,7 +404,7 @@ const taskServiceOverrides: Record<string, ServiceId> = {
   "T-501": "crm",
 };
 
-const archivedTaskIds = new Set(["T-140"]);
+export const TASK_ARCHIVE_AFTER_DAYS = 30;
 const operativeServiceAccess = new Set<ServiceId>(["estrategia", "contenidos", "publicidad-digital"]);
 
 export function directorMeta(clientSlug: string) {
@@ -472,7 +472,11 @@ export function tasksForClient(tasks: OsTask[], clientSlug: string) {
 }
 
 export function isArchivedTask(task: OsTask) {
-  return archivedTaskIds.has(task.id);
+  if (task.archivedAt) return true;
+  if (task.status !== "Hecho" || !task.completedAt) return false;
+  const completedAt = new Date(task.completedAt);
+  if (Number.isNaN(completedAt.getTime())) return false;
+  return Date.now() - completedAt.getTime() >= TASK_ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
 }
 
 export function serviceSummary(clientSlug: string, serviceId: ServiceId, tasks: OsTask[]) {
