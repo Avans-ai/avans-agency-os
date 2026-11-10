@@ -5,6 +5,7 @@ on:
     branches: [feat/avans-os-ajustes-reunion-2026-11-03]
     paths:
       - scripts/apply-persistence-foundation.py
+      - scripts/fix-os-store-hydration.py
       - .github/workflows/apply-persistence-foundation.yml
 
 permissions:
@@ -29,7 +30,9 @@ jobs:
           cache: npm
 
       - name: Apply source patch
-        run: python scripts/apply-persistence-foundation.py
+        run: |
+          python scripts/apply-persistence-foundation.py
+          python scripts/fix-os-store-hydration.py
 
       - name: Install dependencies
         run: npm ci
@@ -47,7 +50,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm scripts/apply-persistence-foundation.py .github/workflows/apply-persistence-foundation.yml
+          git rm scripts/apply-persistence-foundation.py scripts/fix-os-store-hydration.py .github/workflows/apply-persistence-foundation.yml
           git add -A
           git commit -m "feat(os): persist preview state and stage secure data layer"
           git push origin HEAD:feat/avans-os-ajustes-reunion-2026-11-03
