@@ -423,15 +423,15 @@ export function isActiveClient(client: OsClient) {
   return Boolean(metaByClient[client.slug]?.active) && client.status !== "pausado";
 }
 
-export function canViewFinancials(role: "admin" | "operativo") {
+export function canViewFinancials(role: "admin" | "operativo" | "pm") {
   return role === "admin";
 }
 
-export function canManageClient(role: "admin" | "operativo", clientSlug: string) {
+export function canManageClient(role: "admin" | "operativo" | "pm", clientSlug: string) {
   return role === "admin" || isAssignedClient(clientSlug);
 }
 
-export function canEditService(role: "admin" | "operativo", clientSlug: string, serviceId: ServiceId) {
+export function canEditService(role: "admin" | "operativo" | "pm", clientSlug: string, serviceId: ServiceId) {
   if (role === "admin") return true;
   return isAssignedClient(clientSlug) && operativeServiceAccess.has(serviceId);
 }

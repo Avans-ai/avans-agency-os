@@ -10,7 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { CURRENT_USER, ideas as seedIdeas, osClients, osTasks, serviceLabel, type DueKind, type Idea, type IdeaState, type OsTask, type Priority, type ServiceId, type TaskStatus } from "./os-data";
 import { readLocalJson, writeLocalJson } from "./local-persistence";
 
-export type PreviewRole = "admin" | "operativo";
+export type PreviewRole = "admin" | "operativo" | "pm";
 export type Toast = { id: number; message: string; tone: "default" | "success" | "error"; undo?: OsTask[] };
 
 type State = {
@@ -57,7 +57,7 @@ function validPersistedState(value: PersistedState | null, fallback: State): Per
   return {
     tasks: value.tasks,
     seq: Number.isFinite(value.seq) ? value.seq : fallback.seq,
-    role: value.role === "operativo" ? "operativo" : "admin",
+    role: value.role === "operativo" || value.role === "pm" ? value.role : "admin",
     services: { ...fallback.services, ...value.services },
     ideas: value.ideas,
     ideaSeq: Number.isFinite(value.ideaSeq) ? value.ideaSeq : fallback.ideaSeq,

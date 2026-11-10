@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MarketingDiscoveryView } from "./marketing-discovery";
 import { useState } from "react";
 import type { ClientBenchmark } from "../../benchmark-data";
 import {
@@ -13,7 +14,7 @@ import { serviceLabel, strategyByClient, type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import { serviceHref } from "../service-workspace-data";
 import { useLocalStorageState } from "../local-persistence";
-import { Badge, buttonClass, cx, LinkButton, OSEmptyState } from "../ui";
+import { Badge, buttonClass, LinkButton, OSEmptyState } from "../ui";
 import s from "../os.module.css";
 import sc from "../screens.module.css";
 import d from "./director-update.module.css";
@@ -41,9 +42,7 @@ export function ClientManagementContent({ client, view, benchmark }: { client: O
 }
 
 function ClientSheet({ client }: { client: OsClient }) {
-  const { notify } = useOsStore();
   const [tab, setTab] = useState<"scope" | "business">("scope");
-  const meta = directorMeta(client.slug);
   const scope = scopeForClient(client);
 
   return (
@@ -51,11 +50,12 @@ function ClientSheet({ client }: { client: OsClient }) {
       <div className={s.pageHead}>
         <div><h2 style={{ margin: 0, fontSize: 24, fontWeight: 500 }}>Ficha del cliente</h2><p>Alcance contratado e información estructurada del negocio según el modelo de Discovery.</p></div>
       </div>
-      <div className={d.managementTabs} role="tablist" aria-label="Secciones de la ficha">
-        <button type="button" role="tab" aria-selected={tab === "scope"} aria-pressed={tab === "scope"} onClick={() => setTab("scope")}>Alcance del servicio</button>
-        <button type="button" role="tab" aria-selected={tab === "business"} aria-pressed={tab === "business"} onClick={() => setTab("business")}>Información del negocio</button>
+      <div className={d.managementTabs} role="tablist" aria-label="Secciones de la ficha" onKeyDown={(event) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const next = event.key === "Home" ? "scope" : event.key === "End" ? "business" : tab === "scope" ? "business" : "scope"; setTab(next); document.getElementById(`sheet-tab-${next}`)?.focus(); } }}>
+        <button type="button" role="tab" id="sheet-tab-scope" aria-controls="sheet-panel" tabIndex={tab === "scope" ? 0 : -1} aria-selected={tab === "scope"} onClick={() => setTab("scope")}>Alcance del servicio</button>
+        <button type="button" role="tab" id="sheet-tab-business" aria-controls="sheet-panel" tabIndex={tab === "business" ? 0 : -1} aria-selected={tab === "business"} onClick={() => setTab("business")}>Discovery del negocio</button>
       </div>
 
+      <div id="sheet-panel" role="tabpanel" aria-labelledby={`sheet-tab-${tab}`} className={sc.stack}>
       {tab === "scope" ? (
         <>
           <section className={d.scopeGrid} aria-label="Alcance por módulo">
@@ -73,20 +73,9 @@ function ClientSheet({ client }: { client: OsClient }) {
           <p className={s.demoNote}>La revisión periódica del alcance está representada con reglas y alertas de demostración. Para informar incumplimientos reales deberá comparar entregables persistidos, fechas y alcance contractual.</p>
         </>
       ) : (
-        <>
-          {meta ? (
-            <section className={d.businessGrid} aria-label="Información estructurada del negocio">
-              <div className={d.businessFact}><span>Definición del negocio</span><strong>{meta.business.definition}</strong></div>
-              <div className={d.businessFact}><span>Propuesta de valor</span><strong>{meta.business.offer}</strong></div>
-              <div className={d.businessFact}><span>Unidades de negocio</span><div className={d.chipList}>{meta.business.units.map((item) => <span className={d.chip} key={item}>{item}</span>)}</div></div>
-              <div className={d.businessFact}><span>Públicos</span><div className={d.chipList}>{meta.business.audiences.map((item) => <span className={d.chip} key={item}>{item}</span>)}</div></div>
-              <div className={d.businessFact}><span>Catálogos y brochures</span><strong>{meta.business.catalogState}</strong><button type="button" className={buttonClass("secondary", true)} onClick={() => notify("Carga de catálogo: todavía sin persistencia ni extracción automática")}>Cargar material</button></div>
-              <div className={d.businessFact}><span>Tienda Nube</span><strong>{meta.business.tiendaNubeState}</strong><button type="button" className={buttonClass("secondary", true)} onClick={() => notify("Integración con Tienda Nube: pendiente de credenciales y alcance")}>Configurar integración</button></div>
-            </section>
-          ) : <OSEmptyState icon="registro" title="Sin información estructurada">Primero debe completarse el relevamiento del negocio.</OSEmptyState>}
-          <p className={s.demoNote}>La carga y el escaneo de productos todavía no están conectados. Los botones muestran el flujo previsto sin afirmar una integración activa.</p>
-        </>
+        <MarketingDiscoveryView key={client.slug} client={client} />
       )}
+      </div>
     </div>
   );
 }

@@ -49,9 +49,10 @@ export function SettingsScreen() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <strong style={{ fontWeight: 500 }}>Vista previa de rol</strong>
-            <div className={s.segmented} role="group" aria-label="Rol simulado">
+            <div className={s.segmented} style={{ flexWrap: "wrap" }} role="group" aria-label="Rol simulado">
               <button type="button" aria-pressed={role === "admin"} onClick={() => setRole("admin")}>Administrador</button>
               <button type="button" aria-pressed={role === "operativo"} onClick={() => setRole("operativo")}>Ejecutiva de cuentas</button>
+              <button type="button" aria-pressed={role === "pm"} onClick={() => setRole("pm")}>Project Manager · Valentina Ríos</button>
             </div>
             <span className={s.cellSub}>Simulación visual. No es control de acceso: se resolverá en el servidor.</span>
           </div>

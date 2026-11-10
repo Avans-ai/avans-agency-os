@@ -22,7 +22,11 @@ function fullKey(key: string) {
 
 function rawSnapshot(key: string) {
   if (typeof window === "undefined") return SERVER_SNAPSHOT;
-  return window.localStorage.getItem(fullKey(key)) ?? EMPTY_SNAPSHOT;
+  try {
+    return window.localStorage.getItem(fullKey(key)) ?? EMPTY_SNAPSHOT;
+  } catch {
+    return EMPTY_SNAPSHOT;
+  }
 }
 
 function parseRaw<T>(raw: string, fallback: T): T {
@@ -72,7 +76,7 @@ export function useLocalStorageState<T>(
 ): [T, Dispatch<SetStateAction<T>>, boolean] {
   const subscribe = useCallback((onStoreChange: () => void) => {
     function onStorage(event: StorageEvent) {
-      if (event.key === fullKey(key)) onStoreChange();
+      if (event.key === null || event.key === fullKey(key)) onStoreChange();
     }
 
     function onLocalChange(event: Event) {

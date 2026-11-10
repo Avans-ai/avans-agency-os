@@ -113,7 +113,7 @@
 
 .managementTabs{display:flex;gap:5px;flex-wrap:wrap}
 .managementTabs button,.managementTabs a{border:1px solid var(--av-border);background:var(--av-bg-raised);color:var(--av-text);padding:9px 12px;min-height:38px;text-decoration:none;font:inherit;cursor:pointer}
-.managementTabs button[aria-pressed="true"],.managementTabs a[data-active="true"]{background:var(--av-text);color:var(--av-bg);border-color:var(--av-text)}
+.managementTabs button[aria-pressed="true"],.managementTabs button[aria-selected="true"],.managementTabs a[data-active="true"]{background:var(--av-text);color:var(--av-bg);border-color:var(--av-text)}
 .scopeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .scopeCard{padding:18px;background:var(--av-bg-raised);border:1px solid var(--av-border);display:flex;flex-direction:column;gap:12px}
 .scopeHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}

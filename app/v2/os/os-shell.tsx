@@ -164,7 +164,7 @@ function ProfileMenu() {
   const { role, setRole } = useOsStore();
   const [open, setOpen] = useState(false);
   const ref = useOutsideClose(open, () => setOpen(false));
-  const roleLabel = role === "admin" ? CURRENT_USER.role : "Vista: Ejecutiva de cuentas";
+  const roleLabel = role === "admin" ? CURRENT_USER.role : role === "pm" ? "Vista: PM · Valentina Ríos" : "Vista: Ejecutiva de cuentas";
   return (
     <div className={s.popWrap} ref={ref}>
       <button type="button" className={s.profileBtn} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(value => !value)} aria-label={`Perfil: ${CURRENT_USER.name}, ${roleLabel}`}>
@@ -175,9 +175,10 @@ function ProfileMenu() {
         <div className={s.popover} role="dialog" aria-label="Perfil y preferencias">
           <div className={s.menuSection}>
             <strong>Vista previa de rol</strong>
-            <div className={s.segmented} role="group" aria-label="Rol simulado">
+            <div className={s.segmented} style={{ flexWrap: "wrap" }} role="group" aria-label="Rol simulado">
               <button type="button" aria-pressed={role === "admin"} onClick={() => setRole("admin")}>Administrador</button>
               <button type="button" aria-pressed={role === "operativo"} onClick={() => setRole("operativo")}>Ejecutiva de cuentas</button>
+              <button type="button" aria-pressed={role === "pm"} onClick={() => setRole("pm")}>Project Manager · Valentina Ríos</button>
             </div>
             <p>Simulación visual de permisos. El control real se resolverá en el servidor cuando exista autenticación.</p>
           </div>
@@ -227,7 +228,7 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
   const [sheet, setSheet] = useState(false);
   const approvals = pendingApprovals(tasks).length;
   const mine = myApprovals(tasks).length;
-  const restricted = role === "operativo" && RESTRICTED_FOR_OPERATIVE.has(root);
+  const restricted = role !== "admin" && RESTRICTED_FOR_OPERATIVE.has(root);
   const restrictedArea = osAreas.find(area => area.slug === root)?.label ?? title;
   const bottom = [
     { href: "/v2", label: "Inicio", icon: "nucleo" as const, current: pathname === "/v2" },
@@ -257,7 +258,7 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
           <Link href="/v2/configuracion" className={cx(s.settingsLink, root === "configuracion" && s.settingsActive)} aria-current={active === "configuracion" ? "page" : undefined} title="Configuración">
             <AvansIcon name="ajuste" size={20} /><span>Configuración</span>
           </Link>
-          <p className={s.footNote}>Vista: {role === "admin" ? "Administrador" : "Ejecutiva de cuentas (simulada)"}. Finanzas y Gerencia se muestran según rol.</p>
+          <p className={s.footNote}>Vista: {role === "admin" ? "Administrador" : role === "pm" ? "PM · Valentina Ríos (simulada)" : "Ejecutiva de cuentas (simulada)"}. Finanzas y Gerencia se muestran según rol.</p>
         </div>
       </nav>
 
