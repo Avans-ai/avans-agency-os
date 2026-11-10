@@ -62,4 +62,14 @@ Verificación sintáctica con parser PostgreSQL (`pglast`), sin conexión ni eje
 - `npm run lint`, `npm run typecheck`, `npm run build`
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm exec -- playwright test`
 
-Pruebas en `tests/discovery-model.spec.ts`, `knowledge-model.spec.ts`, `google-workspace.spec.ts`, `discovery-browser.spec.ts` y `knowledge-browser.spec.ts`. Cubren lógica, OAuth/CloudEvents con fixtures, navegador, persistencia, aislamiento, permisos visuales, navegación, responsive y regresión del Discovery anterior. Las pruebas Google no llaman cuentas reales ni crean recursos.
+Pruebas en `tests/discovery-model.spec.ts`, `knowledge-model.spec.ts`, `google-workspace.spec.ts`, `discovery-browser.spec.ts`, `knowledge-browser.spec.ts`, `intake-presentation-model.spec.ts` y `intake-presentation-browser.spec.ts`. Cubren lógica, OAuth/CloudEvents con fixtures, navegador, persistencia, aislamiento, permisos visuales, navegación, responsive y regresión del Discovery anterior. Las pruebas Google no llaman cuentas reales ni crean recursos.
+
+## Ampliación: fuentes, impresión y presentaciones
+
+`knowledge/intake/` separa validación/extracción de archivos, proveedor de análisis, salida estructurada, revisión y aplicación al cuestionario. Se conservan las preguntas existentes. Las sugerencias no modifican Discovery: una aprobación llena la respuesta y el circuito anterior permite proponer y revisar el cambio de Discovery. Cada sugerencia conserva evidencia, versión de fuente y respuesta previa; una fuente modificada requiere una nueva sugerencia. Los registros DEMO mantienen esa marca al pasar a Discovery.
+
+PDF usa PDF.js con worker local; DOCX/PPTX/XLSX se leen como XML de paquetes Office limitados; CSV/TXT/MD son texto UTF-8. Los archivos permanecen en memoria mientras se extraen. Solo se guardan metadata y texto limitado; las imágenes requieren OCR, las URLs se registran sin descargarse y no hay proveedor de IA conectado. La salida de cualquier proveedor debe cumplir el schema Zod y citar fragmentos existentes. El fixture DEMO solo acepta fuentes ficticias.
+
+El agregado acepta `answerSuggestions` y `presentationExports` opcionales para conservar compatibilidad con datos anteriores. La impresión vive en una ruta separada del chrome de la aplicación. `knowledge/presentation/` genera preparación, manifest y snapshots a partir de los dominios canónicos; no lee componentes React ni reconstruye el diseño del PPT. El master original y su SHA están versionados. `lib/presentations/` implementa adapters y compilador de operaciones sobre copias nativas de Google Slides; las rutas permanecen cerradas hasta conectar repositorios y validar visualmente la conversión.
+
+Límites, correspondencia con las 56 páginas y QA: [QUESTIONNAIRE_PRESENTATIONS_DELIVERY.md](QUESTIONNAIRE_PRESENTATIONS_DELIVERY.md).

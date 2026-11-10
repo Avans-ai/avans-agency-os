@@ -1,5 +1,7 @@
 # Entrega · conocimiento del cliente · 2026-11-10
 
+Este informe registra la etapa anterior (`cd91664`). La ampliación prioritaria de carga, impresión y presentaciones se documenta en [QUESTIONNAIRE_PRESENTATIONS_DELIVERY.md](QUESTIONNAIRE_PRESENTATIONS_DELIVERY.md).
+
 ## IMPLEMENTADO
 
 Cuestionario reutilizable de páginas 5–12 integrado al Marketing Discovery existente; fuentes comunes; reuniones e inbox sin cliente; asociación determinística y manual entre cuentas autorizadas; deduplicación; propuestas con evidencia y aprobación del PM; versiones, auditoría y módulos que requieren revisión.
@@ -36,7 +38,7 @@ Google Workspace no está conectado: faltan configuración/autorización de la c
 
 ## PENDIENTES
 
-Activación autorizada de persistencia multiusuario, Auth/API/RLS y repositorios cifrados; prueba real Google de punta a punta y renovación de suscripciones; política aprobada de retención/purga; proveedores autorizados para monitoreo periódico. Los PDFs, presentaciones e imágenes se registran por enlace: no hay subida binaria ni extracción automática. El análisis de notas reconoce etiquetas explícitas y admite propuestas manuales; no hay IA conectada. El reporte compara snapshots reales y conclusiones guardadas; no afirma haber detectado datos externos ni una quincena sin relevamientos.
+Activación autorizada de persistencia multiusuario, Auth/API/RLS y repositorios cifrados; prueba real Google de punta a punta y renovación de suscripciones; política aprobada de retención/purga; proveedores autorizados para monitoreo periódico. En esta etapa inicial los archivos se registraban por enlace. La ampliación prioritaria incorpora lectura local y extracción de texto; los originales siguen sin almacenamiento remoto. El análisis de notas reconoce etiquetas explícitas y admite propuestas manuales; no hay IA conectada. El reporte compara snapshots reales y conclusiones guardadas; no afirma haber detectado datos externos ni una quincena sin relevamientos.
 
 ## ARCHIVOS MODIFICADOS
 

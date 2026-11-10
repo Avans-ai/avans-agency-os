@@ -21,11 +21,16 @@ export default defineConfig({
         "discovery-model.spec.ts",
         "knowledge-model.spec.ts",
         "google-workspace.spec.ts",
+        "intake-presentation-model.spec.ts",
       ],
     },
     {
       name: "browser",
-      testMatch: ["discovery-browser.spec.ts", "knowledge-browser.spec.ts"],
+      testMatch: [
+        "discovery-browser.spec.ts",
+        "knowledge-browser.spec.ts",
+        "intake-presentation-browser.spec.ts",
+      ],
       use: { browserName: "chromium" },
     },
   ],

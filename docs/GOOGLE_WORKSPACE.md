@@ -46,3 +46,20 @@ Para el backend: proponer 90 días de texto bruto y 1 año de metadatos, evidenc
 - https://developers.google.com/workspace/events/guides/create-subscription
 - https://developers.google.com/workspace/events/guides/update-subscription
 - https://cloud.google.com/pubsub/docs/authenticate-push-subscriptions
+
+## Google Slides y exportación PPTX
+
+`lib/presentations/google-slides.ts` agrega operaciones de Drive y Slides a la arquitectura, sin habilitarlas en la preview. Requiere `GOOGLE_PRESENTATION_TEMPLATE_FILE_ID` y `GOOGLE_CLIENTS_ROOT_FOLDER_ID`, además de OAuth y cifrado existentes. Los scopes de presentaciones son `drive.file` y `presentations` bajo `https://www.googleapis.com/auth/`; deben incorporarse al consentimiento al activar esta capacidad. Con `drive.file`, el master y la carpeta deben haber sido creados/seleccionados para esta app, no basta conocer un ID ajeno.
+
+`importMaster` comprueba el SHA del archivo oficial y consulta `about.importFormats` antes de importar una única plantilla. No se ejecutó esa importación. La conversión debe revisarse visualmente contra las 56 slides, incluyendo fuentes, imágenes, grupos, tablas, targeting y sitemap. El mapa `TemplateBinding` relaciona IDs OOXML con objetos nativos, texto original, capacidad y estilos; se rechaza sin autor/fecha de validación y SHA coincidente. Textos con estilos mixtos necesitan un plan explícito de rangos antes de habilitarse; el compilador los rechaza en vez de aplanarlos.
+
+Cada generación copia el master a una carpeta autorizada, duplica objetos nativos, aplica reemplazos por objeto, retira instrucciones/roles y páginas no usadas, preserva orden y añade marca visible a borradores. Se respetan relaciones de aspecto de imágenes mediante `CENTER_INSIDE`. Se limpian notas del presentador en la copia. La revisión de capacidad de texto evita publicar contenido excedido. El pipeline verifica estructura, placeholders, instrucciones, páginas vacías y cantidad; exporta a PPTX desde Drive y valida el paquete OOXML antes de registrar `ready`. Drive limita esa exportación a 10 MB. Una validación de ZIP/XML no demuestra por sí sola fidelidad visual ni apertura en PowerPoint.
+
+`PresentationRepository` debe autorizar organización/cliente, resolver versión/idempotencia de forma atómica, guardar el ID de la copia, conservar estados de error y almacenar el archivo. `OriginalSourceStorage` requiere identidad real. Esas interfaces todavía no tienen implementación conectada. `/api/presentations/status` informa bloqueos; import/create/export responden 503 sin llamadas externas. Completar variables no habilita el flujo ni sortea la autorización.
+
+Pruebas actuales: adapters con HTTP simulado, compilador con fixtures, importación de archivo incorrecto rechazada antes de red y validación sintáctica del master. Pendientes: OAuth real con scopes, importación/conversión, binding visual, ejecución de creación/exportación con repositorios reales, abrir Slides y abrir el PPTX descargado. La preview no presenta enlaces ni archivos ficticios.
+
+Referencias adicionales consultadas:
+- https://developers.google.com/workspace/slides/api/reference/rest/v1/presentations/request
+- https://developers.google.com/workspace/drive/api/guides/manage-uploads
+- https://developers.google.com/workspace/drive/api/reference/rest/v3/files/export
