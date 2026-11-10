@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 
 const PREFIX = "avans-os:preview:v1";
 type Envelope<T> = { version: 1; value: T; savedAt: string };
@@ -47,12 +47,13 @@ export function useLocalStorageState<T>(
   key: string,
   initialValue: T,
 ): [T, Dispatch<SetStateAction<T>>, boolean] {
-  const initialRef = useRef(initialValue);
-  initialRef.current = initialValue;
   const [state, setState] = useState<LocalState<T>>({ key, value: initialValue, hydrated: false });
 
   useEffect(() => {
-    setState({ key, value: readLocalJson(key, initialRef.current), hydrated: true });
+    setState({ key, value: readLocalJson(key, initialValue), hydrated: true });
+    // The fallback is a seed for a new key, not a reactive source. Including
+    // object/array seeds would rehydrate on every render for literal defaults.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
   useEffect(() => {
@@ -63,22 +64,22 @@ export function useLocalStorageState<T>(
   useEffect(() => {
     function syncFromAnotherTab(event: StorageEvent) {
       if (event.key !== fullKey(key)) return;
-      setState({ key, value: readLocalJson(key, initialRef.current), hydrated: true });
+      setState({ key, value: readLocalJson(key, initialValue), hydrated: true });
     }
     window.addEventListener("storage", syncFromAnotherTab);
     return () => window.removeEventListener("storage", syncFromAnotherTab);
-  }, [key]);
+  }, [initialValue, key]);
 
   const setValue = useCallback<Dispatch<SetStateAction<T>>>((update) => {
     setState((current) => {
-      const previous = current.key === key ? current.value : initialRef.current;
+      const previous = current.key === key ? current.value : initialValue;
       const value = typeof update === "function"
         ? (update as (previousValue: T) => T)(previous)
         : update;
       return { key, value, hydrated: true };
     });
-  }, [key]);
+  }, [initialValue, key]);
 
-  const currentValue = state.key === key ? state.value : initialRef.current;
+  const currentValue = state.key === key ? state.value : initialValue;
   return [currentValue, setValue, state.key === key && state.hydrated];
 }
