@@ -99,9 +99,10 @@ for (const [view, label, first] of [
     const last = links.last();
     await last.click();
     await expect(last).toHaveAttribute("aria-current", "location");
+    // El scroll suave puede seguir en curso cuando cambia aria-current: esperar a que el índice quede fijo.
+    await expect.poll(async () => (await index.boundingBox())!.y).toBeLessThan(200);
     const box = await index.boundingBox();
     expect(box!.y).toBeGreaterThanOrEqual(0);
-    expect(box!.y).toBeLessThan(200);
     await expect(page.getByRole("tab")).toHaveCount(0);
   });
 }
