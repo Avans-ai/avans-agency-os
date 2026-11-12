@@ -38,7 +38,7 @@ function useDialog(onClose: () => void, initialFocus?: React.RefObject<HTMLEleme
   return ref;
 }
 
-export function OSSidePanel({ label, heading, onClose, children, footer, titleRef, persistentFooter = false, wide = false }: {
+export function OSSidePanel({ label, heading, onClose, children, footer, titleRef, persistentFooter = false, wide = false, extraWide = false }: {
   label: string;
   heading: ReactNode;
   onClose: () => void;
@@ -48,12 +48,14 @@ export function OSSidePanel({ label, heading, onClose, children, footer, titleRe
   persistentFooter?: boolean;
   /** 720 px instead of 480 px on desktop, for catalog-style dialogs. */
   wide?: boolean;
+  /** Two-column work panels (form + assistant), up to 1180 px. */
+  extraWide?: boolean;
 }) {
   const ref = useDialog(onClose, titleRef);
   return (
     <>
       <div className={s.veil} onClick={onClose} aria-hidden="true" />
-      <div ref={ref} className={`${s.panel} ${wide ? s.panelWide : ""}`} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1}>
+      <div ref={ref} className={`${s.panel} ${wide ? s.panelWide : ""} ${extraWide ? s.panelXWide : ""}`} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1}>
         <div className={s.panelHead}>
           <button type="button" className={s.backBtn} onClick={onClose} aria-label="Volver"><Glyph name="chevron-left" size={22} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>{heading}</div>

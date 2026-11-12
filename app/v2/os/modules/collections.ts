@@ -34,6 +34,9 @@ const campaigns: CollectionDef = {
     { key: "objetivo", label: "Objetivo", type: "select", options: CAMPAIGN_OBJECTIVES, required: true, list: true },
     { key: "plataforma", label: "Plataforma", type: "select", options: CAMPAIGN_PLATFORMS, required: true, list: true },
     { key: "audiencia", label: "Audiencia", type: "textarea", placeholder: "Segmentos, intereses, cargos o listas" },
+    { key: "mensaje", label: "Mensaje principal", type: "textarea", group: "Propuesta", placeholder: "Problema, tensión o beneficio que comunica" },
+    { key: "propuestaCreativa", label: "Propuesta creativa", type: "textarea", group: "Propuesta", placeholder: "Ángulo publicitario, concepto visual y formatos" },
+    { key: "distribucion", label: "Distribución de inversión (orientativa)", type: "textarea", group: "Propuesta" },
     { key: "presupuesto", label: "Presupuesto del período (ARS)", type: "number", required: true, list: true },
     { key: "estado", label: "Estado", type: "select", options: CAMPAIGN_STATUSES, required: true, list: true },
     owner(),
@@ -173,6 +176,10 @@ const pieces: CollectionDef = {
     { key: "estado", label: "Estado", type: "select", options: PIECE_STATUSES, required: true, list: true },
     owner(),
     { key: "brief", label: "Brief", type: "textarea" },
+    { key: "icp", label: "ICP o segmento", type: "text", group: "Propuesta" },
+    { key: "mensaje", label: "Mensaje", type: "textarea", group: "Propuesta" },
+    { key: "conceptoVisual", label: "Concepto visual", type: "textarea", group: "Propuesta" },
+    { key: "cta", label: "CTA", type: "text", group: "Propuesta" },
     { key: "copy", label: "Copy", type: "textarea" },
     { key: "version", label: "Versión", type: "text", placeholder: "v1" },
     { key: "feedback", label: "Feedback", type: "textarea" },
@@ -198,21 +205,28 @@ const SERVICE_LABELS = serviceCatalog.map((service) => service.label);
 const priorities: CollectionDef = {
   id: "prioridades",
   label: "Planificación",
-  singular: "prioridad",
+  singular: "iniciativa",
   prefix: "PRI",
-  description: "Prioridades de la cuenta por horizonte, con módulo responsable y estado.",
+  description: "Iniciativas y prioridades de la cuenta por horizonte, con módulo responsable y estado.",
   titleKey: "iniciativa",
   statusKey: "estado",
   ownerKey: "responsable",
   linkTasks: true,
   empty: "No hay prioridades planificadas.",
   fields: [
-    { key: "iniciativa", label: "Prioridad", type: "text", required: true, list: true },
+    { key: "iniciativa", label: "Iniciativa", type: "text", required: true, list: true },
     { key: "modulo", label: "Módulo", type: "select", options: SERVICE_LABELS, list: true },
     { key: "horizonte", label: "Horizonte", type: "select", options: ["Esta semana", "Este mes", "Trimestre"], required: true, list: true },
     owner(),
     { key: "estado", label: "Estado", type: "select", options: ["Planificada", "En curso", "Bloqueada", "Cumplida"], required: true, list: true },
     { key: "detalle", label: "Detalle", type: "textarea" },
+    { key: "oportunidad", label: "Oportunidad detectada", type: "textarea", group: "Propuesta" },
+    { key: "objetivo", label: "Objetivo", type: "textarea", group: "Propuesta" },
+    { key: "modulosInvolucrados", label: "Módulos involucrados", type: "text", group: "Propuesta" },
+    { key: "prioridad", label: "Prioridad", type: "select", options: ["Alta", "Media", "Baja"], group: "Propuesta" },
+    { key: "impacto", label: "Impacto esperado", type: "textarea", group: "Propuesta" },
+    { key: "dependencias", label: "Dependencias", type: "textarea", group: "Propuesta" },
+    { key: "proximasAcciones", label: "Próximas acciones", type: "textarea", group: "Propuesta" },
   ],
 };
 
@@ -303,6 +317,15 @@ const webProjects: CollectionDef = {
     owner(),
     { key: "fechaObjetivo", label: "Fecha objetivo", type: "date", list: true },
     { key: "estado", label: "Estado", type: "select", options: ["Planificado", "En curso", "Bloqueado", "En aprobación", "Aprobado", "Cambios pedidos", "Publicado"], required: true, list: true },
+    { key: "objetivo", label: "Objetivo", type: "textarea", group: "Propuesta" },
+    { key: "publico", label: "Público", type: "text", group: "Propuesta" },
+    { key: "propuesta", label: "Propuesta principal", type: "textarea", group: "Propuesta" },
+    { key: "estructura", label: "Estructura y secciones", type: "textarea", group: "Propuesta" },
+    { key: "cta", label: "CTA", type: "text", group: "Propuesta" },
+    { key: "requisitosClave", label: "Requisitos", type: "textarea", group: "Propuesta" },
+    { key: "integraciones", label: "Integraciones", type: "textarea", group: "Propuesta" },
+    { key: "conversion", label: "Criterios de conversión", type: "textarea", group: "Propuesta" },
+    { key: "seo", label: "SEO y visibilidad en IA", type: "textarea", group: "Propuesta" },
   ],
 };
 
@@ -431,6 +454,15 @@ const productions: CollectionDef = {
     owner(),
     { key: "fechaEntrega", label: "Entrega comprometida", type: "date", list: true },
     { key: "estado", label: "Estado", type: "select", options: ["En curso", "Bloqueada", "En aprobación", "Aprobada", "Cambios pedidos", "Entregada"], required: true, list: true },
+    { key: "concepto", label: "Concepto", type: "textarea", group: "Propuesta" },
+    { key: "mensaje", label: "Mensaje", type: "textarea", group: "Propuesta" },
+    { key: "guion", label: "Guion preliminar", type: "textarea", group: "Propuesta" },
+    { key: "protagonistas", label: "Protagonistas", type: "text", group: "Propuesta" },
+    { key: "locacion", label: "Locación", type: "text", group: "Propuesta" },
+    { key: "duracion", label: "Duración", type: "text", group: "Propuesta", placeholder: "Ej.: 45 s" },
+    { key: "estiloEdicion", label: "Estilo de edición", type: "text", group: "Propuesta" },
+    { key: "adaptaciones", label: "Adaptaciones por canal", type: "textarea", group: "Propuesta" },
+    { key: "referencias", label: "Referencias", type: "textarea", group: "Propuesta" },
   ],
 };
 
@@ -556,6 +588,25 @@ function genericWork(serviceId: ServiceId): CollectionDef {
   };
 }
 
+/** Diseño de marca: objeto genérico + campos de propuesta creativa (asistente de Diseño). */
+function brandWork(): CollectionDef {
+  const base = genericWork("diseno-marca");
+  return {
+    ...base,
+    fields: [
+      ...base.fields,
+      { key: "concepto", label: "Concepto visual", type: "textarea", group: "Propuesta" },
+      { key: "objetivo", label: "Objetivo", type: "textarea", group: "Propuesta" },
+      { key: "publico", label: "Público", type: "text", group: "Propuesta" },
+      { key: "referencias", label: "Referencias", type: "textarea", group: "Propuesta" },
+      { key: "lineamientos", label: "Lineamientos de marca", type: "textarea", group: "Propuesta" },
+      { key: "recursos", label: "Recursos disponibles", type: "textarea", group: "Propuesta" },
+      { key: "formatos", label: "Formatos", type: "text", group: "Propuesta" },
+      { key: "consideraciones", label: "Consideraciones de diseño", type: "textarea", group: "Propuesta" },
+    ],
+  };
+}
+
 export const moduleCollections: Record<ServiceId, CollectionDef[]> = {
   "publicidad-digital": [campaigns, creatives, optimizations, paidLearnings],
   contenidos: [axes, ideas, pieces, contentLearnings],
@@ -564,7 +615,7 @@ export const moduleCollections: Record<ServiceId, CollectionDef[]> = {
   audiovisuales: [productions, scripts, shoots, cuts, deliveries],
   crm: [genericWork("crm")],
   "ia-automatizaciones": [genericWork("ia-automatizaciones")],
-  "diseno-marca": [genericWork("diseno-marca")],
+  "diseno-marca": [brandWork()],
   "soluciones-graficas": [genericWork("soluciones-graficas")],
   "mercado-libre": [genericWork("mercado-libre")],
 };

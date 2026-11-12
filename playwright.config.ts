@@ -26,6 +26,7 @@ export default defineConfig({
         "intake-presentation-model.spec.ts",
         "pptx-*-model.spec.ts",
         "modules-reports-model.spec.ts",
+        "assistant-model.spec.ts",
       ],
     },
     {
@@ -37,6 +38,7 @@ export default defineConfig({
         "strategic-documents-browser.spec.ts",
         "pptx-*-browser.spec.ts",
         "modules-browser.spec.ts",
+        "assistant-browser.spec.ts",
       ],
       use: { browserName: "chromium" },
     },

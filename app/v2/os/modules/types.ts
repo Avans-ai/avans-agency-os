@@ -37,6 +37,8 @@ export type FieldDef = {
   list?: boolean;
   placeholder?: string;
   hint?: string;
+  /** Subtítulo del formulario bajo el que se agrupa el campo (p. ej. «Propuesta»). */
+  group?: string;
 };
 
 export type CollectionDef = {

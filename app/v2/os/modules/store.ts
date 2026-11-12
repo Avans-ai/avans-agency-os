@@ -116,7 +116,7 @@ export function useModuleRecords(clientSlug: string, serviceId: ServiceId, colle
     return Array.isArray(stored) ? stored : seedRecords(clientSlug, serviceId, collection);
   }, [clientSlug, serviceId]);
 
-  const create = useCallback((def: CollectionDef, values: Record<string, string>) => {
+  const create = useCallback((def: CollectionDef, values: Record<string, string>, note?: string) => {
     const at = now();
     const id = `${def.prefix}-${Date.now().toString(36).toUpperCase()}`;
     const record: ModuleRecord = {
@@ -128,7 +128,7 @@ export function useModuleRecords(clientSlug: string, serviceId: ServiceId, colle
       source: "manual",
       createdAt: at,
       updatedAt: at,
-      history: [{ at, user: CURRENT_USER.name, text: `Creó ${def.singular}` }],
+      history: [...(note ? [{ at, user: CURRENT_USER.name, text: note }] : []), { at, user: CURRENT_USER.name, text: `Creó ${def.singular}` }],
       values,
     };
     const ok = writeLocalJson(moduleKey(clientSlug, serviceId, def.id), [record, ...current(def.id)]);

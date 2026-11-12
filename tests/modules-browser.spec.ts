@@ -88,8 +88,10 @@ test("publicidad digital: no generic flow block, own sections, campaign persists
   await nav.getByRole("link", { name: /^Campañas/ }).click();
   await expect(page).toHaveURL(/seccion=campanas/);
   await page.getByRole("button", { name: "Nueva campaña" }).click();
-  const dialog = page.getByRole("dialog", { name: "Nueva campaña" });
-  await dialog.getByRole("button", { name: "Guardar en este navegador" }).click();
+  const panel = page.getByRole("dialog", { name: "Nueva campaña" });
+  // El formulario asistido arranca como borrador; los campos están en la columna de configuración.
+  await panel.getByRole("button", { name: "Guardar borrador" }).click();
+  const dialog = panel.locator("form");
   await expect(dialog.getByText("Completá nombre")).toBeVisible();
   await dialog.getByLabel(/^Nombre/).fill("QA Campaña de prueba");
   await dialog.getByLabel("Objetivo").selectOption("Generación de leads");
@@ -99,8 +101,8 @@ test("publicidad digital: no generic flow block, own sections, campaign persists
   await dialog.getByLabel(/^Estado/).selectOption("Activa");
   await dialog.getByLabel("Responsable").selectOption("Martín Ledesma");
   await dialog.getByLabel(/^Inicio/).fill("2026-11-20");
-  await dialog.getByRole("button", { name: "Guardar en este navegador" }).click();
-  await expect(dialog).toHaveCount(0);
+  await panel.getByRole("button", { name: "Guardar en este navegador" }).click();
+  await expect(panel).toHaveCount(0);
 
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("avans-os:preview:v1:client:epsa:module:publicidad-digital:campanas") || "null")?.value);
   const created = stored.find((record: { values: { nombre: string } }) => record.values.nombre === "QA Campaña de prueba");
@@ -237,7 +239,7 @@ test("contenidos, estrategia, web and audiovisual workspaces show their own obje
   await expect(tracking.getByRole("row")).toHaveCount(4);
   await page.goto("/v2/clientes/epsa/estrategia?seccion=recomendaciones");
   await expect(page.getByRole("heading", { name: "Recomendaciones consolidadas" })).toBeVisible();
-  await expect(page.getByText("Sin conexión")).toBeVisible();
+  await expect(page.getByText("Pendiente de conexión").first()).toBeVisible();
   await page.getByRole("button", { name: "Nueva recomendación" }).click();
   await page.getByLabel(/^Recomendación/).fill("QA recomendación manual");
   await page.getByRole("button", { name: "Guardar en este navegador" }).click();

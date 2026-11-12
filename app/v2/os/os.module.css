@@ -288,6 +288,7 @@ textarea.input{resize:vertical;min-height:96px}
 .veil{position:fixed;inset:0;background:rgba(21,23,26,.45);z-index:70}
 .panel{position:fixed;top:0;right:0;bottom:0;width:480px;max-width:100vw;background:var(--av-bg-raised);z-index:71;display:flex;flex-direction:column;box-shadow:var(--av-shadow-overlay)}
 .panelWide{width:720px}
+.panelXWide{width:min(1180px,100vw)}
 .panelHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--av-border);font-size:14px;color:var(--av-text-muted)}
 .panelBody{flex:1;overflow-y:auto;padding:20px}
 .panelFoot{display:none}

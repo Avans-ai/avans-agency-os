@@ -4,7 +4,10 @@
  * alta, detalle con edición, aprobación, tareas vinculadas e historial.
  * Cada módulo la usa con sus propias definiciones (collections.ts). */
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState, type ReactNode } from "react";
+import { AssistedCreatePanel } from "../assistant/assisted-create";
+import { assistantProfile } from "../assistant/profiles";
 import { Glyph } from "../glyphs";
 import { serviceForTask } from "../director-data";
 import { type OsClient, type ServiceId, type TaskWorkItem } from "../os-data";
@@ -53,6 +56,8 @@ export function RecordForm({
   formId,
   onSubmit,
   excludeId,
+  values: controlled,
+  onValuesChange,
 }: {
   def: CollectionDef;
   initial: Record<string, string>;
@@ -61,8 +66,16 @@ export function RecordForm({
   formId: string;
   onSubmit: (values: Record<string, string>) => void;
   excludeId?: string;
+  /** Controlled mode: the assisted panel owns the values so suggestions can fill fields. */
+  values?: Record<string, string>;
+  onValuesChange?: (values: Record<string, string>) => void;
 }) {
-  const [values, setValues] = useState<Record<string, string>>(initial);
+  const [own, setOwn] = useState<Record<string, string>>(initial);
+  const values = controlled ?? own;
+  function setValues(update: (current: Record<string, string>) => Record<string, string>) {
+    if (controlled && onValuesChange) onValuesChange(update(controlled));
+    else setOwn(update);
+  }
   const [errors, setErrors] = useState<Record<string, string>>({});
   const firstRef = useRef<HTMLDivElement>(null);
 
@@ -84,8 +97,9 @@ export function RecordForm({
   return (
     <form id={formId} onSubmit={submit} noValidate>
       <div className={m.formGrid} ref={firstRef}>
-        {def.fields.map((field) => {
+        {def.fields.map((field, index) => {
           const id = `${formId}-${field.key}`;
+          const group = field.group && field.group !== def.fields[index - 1]?.group ? <p key={`${field.key}-group`} className={m.formGroup} data-wide="true">{field.group}</p> : null;
           const error = errors[field.key];
           const common = {
             id,
@@ -106,14 +120,14 @@ export function RecordForm({
           else if (field.type === "person") control = <select {...common}><option value="">Sin asignar</option>{PEOPLE.map((person) => <option key={person}>{person}</option>)}</select>;
           else if (field.type === "ref" && field.ref) control = <select {...common}><option value="">Sin vincular</option>{(refs[field.ref] ?? []).filter((record) => record.id !== excludeId).map((record) => <option key={record.id} value={record.id}>{record.values[titleKeyOf(field.ref!)] || record.id}</option>)}</select>;
           else control = <input {...common} type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"} inputMode={field.type === "number" ? "decimal" : undefined} maxLength={200} placeholder={field.placeholder} />;
-          return (
+          return [group,
             <div key={field.key} className={s.field} data-wide={field.type === "textarea" || field.key === def.titleKey ? "true" : undefined}>
               <label htmlFor={id}>{field.label}{field.required ? <span className={s.req} aria-hidden="true"> *</span> : null}</label>
               {control}
               {field.hint ? <span className={s.hint}>{field.hint}</span> : null}
               {error ? <span className={s.fieldError} id={`${id}-error`}><Glyph name="alert" size={14} />{error}</span> : null}
-            </div>
-          );
+            </div>,
+          ];
         })}
       </div>
     </form>
@@ -146,7 +160,10 @@ export function CollectionView({
   const [status, setStatus] = useState("todos");
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const params = useSearchParams();
+  // ?registro=<id> abre el detalle (enlaces desde el asistente u otras vistas).
+  const [openId, setOpenId] = useState<string | null>(() => params.get("registro"));
+  const profile = assistantProfile(serviceId, def.id);
   const statusField = def.fields.find((field) => field.key === def.statusKey);
   const columns = def.fields.filter((field) => field.list && field.key !== def.titleKey).slice(0, 6);
   const titleKeyOf = (collection: string) => (collection === def.id ? def.titleKey : FALLBACK_TITLE[collection] ?? "nombre");
@@ -160,11 +177,20 @@ export function CollectionView({
   const open = records.find((record) => record.id === openId);
   const headingId = `${def.id}-heading`;
 
-  function handleCreate(values: Record<string, string>) {
-    const record = create(def, values);
-    if (!record) { notify("No se pudo guardar en este navegador", "error"); return; }
+  function handleCreate(values: Record<string, string>, note?: string) {
+    const record = create(def, values, note);
+    if (!record) { notify("No se pudo guardar en este navegador", "error"); return null; }
     setCreating(false);
     notify(`${newLabel(def).replace(/^Nuev[oa] /, "").replace(/^./, (letter) => letter.toUpperCase())} guardado en este navegador`, "success");
+    return record;
+  }
+  /** Enlace a un registro existente que se abre en otra pestaña, sin perder el borrador. */
+  function existingHref(recordId: string) {
+    const url = new URL(window.location.href);
+    url.hash = "";
+    if (def.id === "campanas" && serviceId === "publicidad-digital") url.searchParams.set("campana", recordId);
+    else url.searchParams.set("registro", recordId);
+    return `${url.pathname}${url.search}`;
   }
 
   return (
@@ -238,7 +264,19 @@ export function CollectionView({
         </OSEmptyState>
       )}
 
-      {creating ? (
+      {creating && profile && editable ? (
+        <AssistedCreatePanel
+          client={client}
+          serviceId={serviceId}
+          def={def}
+          profile={profile}
+          refs={data}
+          titleKeyOf={titleKeyOf}
+          onCreate={(values, note) => handleCreate(values, note)}
+          onClose={() => setCreating(false)}
+          existingHref={existingHref}
+        />
+      ) : creating ? (
         <OSModal
           title={newLabel(def)}
           titleId={`${def.id}-new-title`}

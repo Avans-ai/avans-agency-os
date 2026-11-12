@@ -11,6 +11,8 @@ import s from "../os.module.css";
 import { BarChart } from "../reports/charts";
 import { ContentReportView } from "../reports/report-views";
 import { useContentReport } from "../reports/use-report-data";
+import { AssistedCreatePanel } from "../assistant/assisted-create";
+import { assistantProfile } from "../assistant/profiles";
 import { CollectionView, RecordForm, RecordPanel } from "./collection-view";
 import { collectionDef, PIECE_STATUSES } from "./collections";
 import { AttentionPanel, ApprovalsPanel, DocsPanel, NextActionsPanel, ScopePanel, TaskHealthStrip } from "./module-common";
@@ -22,6 +24,7 @@ import m from "./modules.module.css";
 
 const SERVICE = "contenidos" as const;
 const piecesDef = collectionDef(SERVICE, "piezas")!;
+const profile = assistantProfile(SERVICE, "piezas");
 const axesDef = collectionDef(SERVICE, "ejes")!;
 const ideasDef = collectionDef(SERVICE, "ideas")!;
 const learningsDef = collectionDef(SERVICE, "aprendizajes")!;
@@ -167,7 +170,25 @@ export function CalendarSection({ client, editable }: { client: OsClient; editab
         </div>
       </Panel>
       {open ? <RecordPanel key={open.id} client={client} serviceId={SERVICE} def={piecesDef} record={open} refs={data} titleKeyOf={titleKeyOf} editable={editable} onClose={() => setOpenId(null)} onSave={(values, text) => update("piezas", open.id, values, text)} /> : null}
-      {creating ? (
+      {creating && editable && profile ? (
+        <AssistedCreatePanel
+          client={client}
+          serviceId={SERVICE}
+          def={piecesDef}
+          profile={profile}
+          refs={data}
+          titleKeyOf={titleKeyOf}
+          initial={{ fecha: creating }}
+          onCreate={(values, note) => {
+            const record = create(piecesDef, values, note);
+            if (record) { setCreating(null); notify("Pieza agregada al calendario · guardado en este navegador", "success"); }
+            else notify("No se pudo guardar en este navegador", "error");
+            return record;
+          }}
+          onClose={() => setCreating(null)}
+          existingHref={(id) => `${window.location.pathname}?seccion=piezas&registro=${id}`}
+        />
+      ) : creating ? (
         <OSModal title="Nueva pieza" titleId="calendar-new-title" onClose={() => setCreating(null)} footer={<><button type="button" className={buttonClass("ghost")} onClick={() => setCreating(null)}>Cancelar</button><button type="submit" form="calendar-new-form" className={buttonClass("primary")}>Guardar en este navegador</button></>}>
           <RecordForm def={piecesDef} initial={{ fecha: creating, estado: "Idea" }} refs={data} titleKeyOf={titleKeyOf} formId="calendar-new-form" onSubmit={(values) => { const record = create(piecesDef, values); if (record) { setCreating(null); notify("Pieza agregada al calendario · guardado en este navegador", "success"); } else notify("No se pudo guardar en este navegador", "error"); }} />
         </OSModal>

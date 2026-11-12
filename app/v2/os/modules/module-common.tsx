@@ -15,6 +15,8 @@ import s from "../os.module.css";
 import { moduleCollections } from "./collections";
 import { formatDateTime, Panel, SourceTag, StatusBadge, Strip, type StripItem } from "./module-ui";
 import { useModuleTaskStats } from "./module-task-board";
+import { ASSISTANT_PROFILES } from "../assistant/profiles";
+import { useAssistantStatus, useSuggestionLog } from "../assistant/store";
 import { addManualRecommendation, RECOMMENDATION_STATUSES, setRecommendationState, useRecommendations, type RecommendationPriority } from "./recommendations";
 import { useModuleRecords } from "./store";
 import m from "./modules.module.css";
@@ -199,6 +201,9 @@ export function RecommendationsSection({ client, serviceId, editable, consolidat
   const active = servicesOf(client.slug);
   const services = useMemo(() => (consolidated ? active : [serviceId]), [active, consolidated, serviceId]);
   const { items } = useRecommendations(client.slug, services);
+  const assistant = useAssistantStatus();
+  const suggestionLog = useSuggestionLog(client.slug, serviceId);
+  const usedIn = (id: string) => suggestionLog.items.filter((entry) => entry.origin === "recomendacion" && (entry.recommendationId === id) && entry.linkedRecordId);
   const [status, setStatus] = useState<"todas" | RecommendationStatus>("todas");
   const [moduleFilter, setModuleFilter] = useState<"todos" | ServiceId>("todos");
   const [formOpen, setFormOpen] = useState(false);
@@ -268,6 +273,7 @@ export function RecommendationsSection({ client, serviceId, editable, consolidat
                     <span>{serviceLabel(item.serviceId)}</span><span>Fuente: {item.source}</span><span>{item.id}</span>
                     <span className={m.source} data-source={item.origin}>{item.origin === "demo" ? "Demo" : "Manual"}</span>
                     {item.history[0] ? <span>Último cambio: {item.history[0].text} · {formatDateTime(item.history[0].at)}</span> : null}
+                    {usedIn(item.id).map((use) => <span key={use.id}>Usada como punto de partida en {use.linkedRecordId}</span>)}
                   </small>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end", minWidth: 150 }}>
@@ -289,23 +295,36 @@ export function RecommendationsSection({ client, serviceId, editable, consolidat
         ) : <OSEmptyState icon="idea" title="No hay recomendaciones que coincidan">Las recomendaciones quedan asociadas a un módulo, con fuente, prioridad y estado.</OSEmptyState>}
       </Panel>
       <div className={m.stack}>
-        <Panel title="Asistidas por IA" id={`${serviceId}-ai`} actions={<Badge tone="stone">Sin conexión</Badge>}>
-          <div className={m.panelBody}>
-            <p style={{ margin: 0, lineHeight: 1.5 }}>No hay un proveedor de IA conectado a esta preview. No se generan ni se simulan recomendaciones automáticas.</p>
-            <p className={s.demoNote} style={{ margin: 0 }}>Cuando se conecte, cada sugerencia deberá citar su fuente (tareas, resultados, Benchmark o reuniones) y entrar como «Nueva» para revisión humana.</p>
-            <button type="button" className={buttonClass("secondary", true)} disabled>Generar sugerencias</button>
-          </div>
-        </Panel>
+        <AssistantStatusPanel serviceId={serviceId} />
         <Panel title="Fuentes" id={`${serviceId}-rec-sources`}>
           <div className={m.rows}>
             <div className={m.row}><div><strong>Carga manual</strong><small>Equipo de la cuenta · guardado en este navegador</small></div><Badge tone="cool">Activa</Badge></div>
             <div className={m.row}><div><strong>Precargadas</strong><small>Discovery, Benchmark, reuniones y resultados de demostración</small></div><Badge tone="peach">Demo</Badge></div>
-            <div className={m.row}><div><strong>Proveedor de IA</strong><small>Análisis asistido de resultados y tareas</small></div><Badge tone="stone">No conectada</Badge></div>
+            <div className={m.row}><div><strong>Proveedor de IA</strong><small>Asistente al crear trabajo del módulo</small></div><Badge tone={assistant.status?.configured ? "cool" : "stone"}>{assistant.status?.configured ? "Conectado" : "No conectado"}</Badge></div>
           </div>
         </Panel>
       </div>
       {taskFor ? <NewTaskModal clientSlug={client.slug} serviceId={taskFor.serviceId} onClose={() => setTaskFor(null)} onCreated={() => notify(`Tarea creada desde la recomendación «${taskFor.title}»`)} /> : null}
     </div>
+  );
+}
+
+/** Estado real del asistente del módulo (sin simular recomendaciones). */
+function AssistantStatusPanel({ serviceId }: { serviceId: ServiceId }) {
+  const { status, error } = useAssistantStatus();
+  const profile = ASSISTANT_PROFILES.find((item) => item.serviceId === serviceId);
+  const connected = Boolean(status?.configured);
+  return (
+    <Panel title="Asistidas por IA" id={`${serviceId}-ai`} actions={<Badge tone={connected ? "cool" : "stone"}>{connected ? "Conectado" : "Pendiente de conexión"}</Badge>}>
+      <div className={m.panelBody}>
+        {connected ? (
+          <p style={{ margin: 0, lineHeight: 1.5 }}>Proveedor {status?.provider} · {status?.model}. {profile ? `Las ideas se generan al crear trabajo en este módulo («${profile.title}»), con fundamento y fuentes del cliente.` : "Este módulo todavía no tiene un proceso de IA definido."}</p>
+        ) : (
+          <p style={{ margin: 0, lineHeight: 1.5 }}>Asistente IA pendiente de conexión. {error ? "No se pudo consultar su estado." : status?.reason} No se generan ni se simulan recomendaciones automáticas.</p>
+        )}
+        <p className={s.demoNote} style={{ margin: 0 }}>Cada sugerencia cita sus fuentes (Discovery, Benchmark, Plan, reuniones, resultados) y queda registrada con usuario, fecha, estado y el trabajo que originó. Las recomendaciones vigentes de esta lista aparecen como punto de partida al crear.</p>
+      </div>
+    </Panel>
   );
 }
 
