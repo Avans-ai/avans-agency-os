@@ -31,7 +31,7 @@
 .healthStrip span{font-size:13px;color:var(--av-text-muted)}
 .healthStrip strong{font-size:16px;font-weight:500}
 
-.viewToggle{display:flex;align-items:center;border:1px solid var(--av-text);background:var(--av-bg-raised)}
+.viewToggle{display:flex;align-items:center;width:fit-content;border:1px solid var(--av-text);background:var(--av-bg-raised)}
 .viewToggle button{min-width:42px;min-height:40px;border:0;border-right:1px solid var(--av-text);background:transparent;color:var(--av-text);display:flex;align-items:center;justify-content:center;cursor:pointer}
 .viewToggle button:last-child{border-right:0}
 .viewToggle button[aria-pressed="true"]{background:var(--av-text);color:var(--av-bg)}

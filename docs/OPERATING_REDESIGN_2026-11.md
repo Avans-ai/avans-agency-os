@@ -78,3 +78,21 @@ Detalle en `docs/MODULES_REPORTS_TASKS.md`.
   - indicadores equivalentes en las tarjetas de la grilla.
 - Para no sobrecargar la tabla, «Módulos de servicio» pasó debajo del nombre del cliente, «Cliente desde» se muestra en el detalle desplegable y Facturación y Margen comparten columna. Debajo de 1024 px la tabla se reemplaza por una lista compacta con el mismo detalle desplegable.
 - Pruebas: `tests/operations-clients-browser.spec.ts`.
+
+## Iteración 2 — Cuestionario inicial separado del Discovery
+
+- El **Cuestionario inicial** es una herramienta de relevamiento con vista propia: `/v2/clientes/<slug>?view=cuestionario` (ruta corta `/v2/clientes/<slug>/cuestionario`). Acceso destacado en la cabecera de la Ficha y del Discovery. Conserva carga de archivos y fuentes, texto pegado, preguntas, respuestas manuales, sugerencias extraídas, evidencia, aprobación, impresión vacía y completada, y estado de procesamiento. «Ver Discovery generado» lleva al documento.
+- El **Discovery del negocio** es el documento continuo y empieza en `01 Quiénes somos` → `02 Datos relevantes` → `03 Unidades de negocio` → `04 Productos y servicios` → `05 Proceso comercial` → `06 Segmentación y targeting` → `07 ICP B2B` → `08 ICP B2C` → `09 Fuentes y validaciones`.
+- Mismo modelo de conocimiento (`client:<slug>:knowledge:v1`): Cuestionario → respuestas validadas → Discovery. Aplicar dos veces no duplica propuestas ni valores; lo validado no se sobrescribe sin revisión.
+- Compatibilidad: `#discovery-cuestionario`, `/discovery/questionnaire` y `/cuestionario` llevan al cuestionario; `/discovery` lleva al documento. Las pestañas de la Ficha quedan en la URL (`?ficha=alcance|discovery`).
+
+## Iteración 2 — Asistente IA contextual en los módulos
+
+Detalle técnico en `docs/AI_ASSISTANT.md`.
+
+- Al crear trabajo en **Publicidad digital (campaña), Contenidos (pieza, también desde el calendario), Diseño de marca (pieza de marca), Audiovisuales (producción), Desarrollo web (proyecto) y Estrategia (iniciativa)** el formulario se abre en dos columnas: configuración y «Asistente IA · Ideas para …». En mobile el asistente es una sección plegable arriba del formulario.
+- Cada módulo tiene un perfil especialista (qué fuentes necesita y en qué orden, qué propone, qué campos puede completar, límites). El resto de los módulos no tiene asistente.
+- Acciones: generar ideas, regenerar, ver fundamento, ver fuentes, aplicar sugerencia, aplicar campos seleccionados, descartar. Si un campo ya fue editado a mano se pide confirmación (reemplazar o solo completar vacíos). El asistente nunca completa estado, responsable ni fechas comprometidas, y nunca crea, activa ni publica nada.
+- Recomendaciones vigentes del módulo (manuales, demo y hallazgos de Benchmark que lo impactan) aparecen como punto de partida, rotuladas por origen; usarlas no las marca como ejecutadas. Las ideas parecidas a trabajo existente muestran «Esta idea es similar a una iniciativa existente» con enlace (se abre en otra pestaña para no perder el borrador).
+- **Sin proveedor configurado** (estado actual de esta preview): «Asistente IA pendiente de conexión»; no se muestran ideas de IA simuladas.
+- Trazabilidad: `avans-os:preview:v1:client:<slug>:assistant:<serviceId>` guarda cada sugerencia con cliente, módulo, acción, usuario, fecha, origen, proveedor y modelo, estado, campos aplicados, cambios y el registro creado; el registro guarda en su historial qué sugerencias usó. Local a este navegador.

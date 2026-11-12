@@ -247,7 +247,7 @@ function ClientQuestionnaire({ client }: { client: OsClient }) {
         </div>
       </div>
       {editable ? (
-        <QuestionnaireView key={client.slug} client={client} />
+        <QuestionnaireView key={client.slug} client={client} embedded />
       ) : (
         <p className={s.demoNote}>
           El cuestionario está disponible para el administrador y el PM

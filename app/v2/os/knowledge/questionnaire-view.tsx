@@ -101,12 +101,15 @@ export function QuestionnaireView({
   client,
   compact = false,
   presentationPrep = false,
+  embedded = false,
 }: {
   client: OsClient;
   /** Tools visible, questions collapsed under «Responder preguntas». */
   compact?: boolean;
   /** Legacy presentation readiness block (the PPTX studio replaces it). */
   presentationPrep?: boolean;
+  /** Inside a page that already shows its own title. */
+  embedded?: boolean;
 }) {
   const { k, d, editable, mutate, latest } = useKnowledge(client);
   const { notify } = useOsStore();
@@ -189,7 +192,7 @@ export function QuestionnaireView({
   return (
     <div className={`${m.root} ${share ? `${m.share} ${m.printable}` : ""}`}>
       <div className={m.head}>
-        {!compact || share ? (
+        {(!compact && !embedded) || share ? (
           <div>
             <h2>Cuestionario inicial · {client.name}</h2>
             <p>
