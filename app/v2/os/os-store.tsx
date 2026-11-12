@@ -7,8 +7,9 @@
  * mutations once the Avans Supabase project is active and its RLS policies
  * have been applied and tested. */
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
-import { CURRENT_USER, ideas as seedIdeas, osClients, osTasks, serviceLabel, type DueKind, type Idea, type IdeaState, type OsTask, type Priority, type ServiceId, type TaskStatus } from "./os-data";
+import { CURRENT_USER, ideas as seedIdeas, osClients, osTasks, serviceLabel, type DueKind, type Idea, type IdeaState, type OsTask, type Priority, type ServiceId, type TaskStatus, type TaskWorkItem } from "./os-data";
 import { readLocalJson, writeLocalJson } from "./local-persistence";
+import { serviceForTask, withTaskService } from "./director-data";
 
 export type PreviewRole = "admin" | "operativo" | "pm";
 export type Toast = { id: number; message: string; tone: "default" | "success" | "error"; undo?: OsTask[] };
@@ -55,7 +56,9 @@ function validPersistedState(value: PersistedState | null, fallback: State): Per
     return fallback;
   }
   return {
-    tasks: value.tasks,
+    // Migración compatible (misma clave): las tareas guardadas antes de `serviceId` lo reciben
+    // desde serviceForTask. No se descarta ni se reescribe ningún otro dato.
+    tasks: value.tasks.map(withTaskService),
     seq: Number.isFinite(value.seq) ? value.seq : fallback.seq,
     role: value.role === "operativo" || value.role === "pm" ? value.role : "admin",
     services: { ...fallback.services, ...value.services },
@@ -92,7 +95,22 @@ function reducer(state: State, action: Action): State {
 const now = (text: string) => ({ text: `${CURRENT_USER.name} ${text}`, when: "Ahora" });
 const completionDate = (status: TaskStatus, previous?: string) => status === "Hecho" ? previous ?? new Date().toISOString() : undefined;
 
-export type NewTaskInput = { projectSlug: string; title: string; owner: string; prio: Priority; due: string; dueKind: DueKind };
+export type NewTaskInput = {
+  projectSlug: string;
+  title: string;
+  owner: string;
+  prio: Priority;
+  due: string;
+  dueKind: DueKind;
+  /** Módulo dueño de la tarea. Si falta se deduce del proyecto (serviceForTask). */
+  serviceId?: ServiceId;
+  workItem?: TaskWorkItem;
+  deliverable?: string;
+  desc?: string;
+  approver?: string;
+};
+
+export type TaskEdit = Partial<Pick<OsTask, "owner" | "due" | "dueKind" | "desc" | "approver" | "deliverable" | "workItem" | "projectSlug">>;
 
 type Store = {
   tasks: OsTask[];
@@ -113,6 +131,10 @@ type Store = {
   approve: (id: string) => void;
   requestChanges: (id: string, note?: string) => void;
   createTask: (input: NewTaskInput) => string;
+  /** Edita responsable, vencimiento, vínculos o descripción y deja constancia en la actividad. */
+  editTask: (id: string, patch: TaskEdit, activity: string) => void;
+  /** Registra una referencia de archivo (nombre/enlace). No sube binarios. */
+  addFileRef: (id: string, name: string, meta: string) => void;
   notify: (message: string, tone?: Toast["tone"]) => void;
   undo: () => void;
   dismissToast: () => void;
@@ -200,11 +222,17 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
       const id = `T-${state.seq}`;
       const created: OsTask = {
         id, projectSlug: input.projectSlug, title: input.title, owner: input.owner, prio: input.prio, due: input.due, dueKind: input.dueKind,
-        status: "Por hacer", desc: "Sin descripción todavía.", files: [], comments: [], activity: [now("creó la tarea")],
+        serviceId: input.serviceId ?? serviceForTask({ id, projectSlug: input.projectSlug }),
+        workItem: input.workItem,
+        deliverable: input.deliverable,
+        approver: input.approver,
+        status: "Por hacer", desc: input.desc?.trim() || "Sin descripción todavía.", files: [], comments: [], activity: [now("creó la tarea")],
       };
       dispatch({ type: "replace", tasks: [...state.tasks, created], seq: state.seq + 1, toast: { message: localMessage(`${id} creada en Por hacer`), tone: "default", undo: state.tasks } });
       return id;
     },
+    editTask: (id, patch, activity) => update(id, (item) => ({ ...item, ...patch, activity: [now(activity), ...item.activity] }), "Tarea actualizada", "default", true),
+    addFileRef: (id, name, meta) => update(id, (item) => ({ ...item, files: [...item.files, { name, ext: "REF", meta }], activity: [now(`registró el archivo «${name}»`), ...item.activity] }), "Referencia de archivo registrada"),
     notify: (message, tone = "default") => dispatch({ type: "toast", toast: { message, tone } }),
     undo: () => {
       if (state.toast?.undo) dispatch({ type: "replace", tasks: state.toast.undo, toast: { message: localMessage("Cambio deshecho"), tone: "default" } });

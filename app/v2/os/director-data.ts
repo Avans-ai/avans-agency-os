@@ -453,8 +453,30 @@ export function serviceForProject(projectSlug: string): ServiceId {
   return projectService[projectSlug] ?? "estrategia";
 }
 
-export function serviceForTask(task: Pick<OsTask, "id" | "projectSlug">): ServiceId {
-  return taskServiceOverrides[task.id] ?? serviceForProject(task.projectSlug);
+/** Módulo de una tarea: el `serviceId` explícito manda; los datos anteriores a ese campo
+ * se resuelven con la tabla histórica de excepciones y, por último, con el proyecto. */
+export function serviceForTask(task: Pick<OsTask, "id" | "projectSlug"> & { serviceId?: ServiceId }): ServiceId {
+  return task.serviceId ?? taskServiceOverrides[task.id] ?? serviceForProject(task.projectSlug);
+}
+
+/** Migración compatible: completa `serviceId` sin tocar ningún otro dato de la tarea. */
+export function withTaskService<T extends Pick<OsTask, "id" | "projectSlug"> & { serviceId?: ServiceId }>(task: T): T & { serviceId: ServiceId } {
+  return task.serviceId ? task as T & { serviceId: ServiceId } : { ...task, serviceId: serviceForTask(task) };
+}
+
+/** Entregables comprometidos de un servicio (alcance definido en DEFAULT_SCOPE). */
+export function scopeDeliverables(serviceId: ServiceId) {
+  return DEFAULT_SCOPE[serviceId].deliverables;
+}
+
+export function scopeForService(client: OsClient, serviceId: ServiceId): ServiceScope {
+  const override = scopeOverrides[client.slug]?.[serviceId];
+  return { serviceId, ...DEFAULT_SCOPE[serviceId], compliance: override?.compliance ?? "Pendiente", alert: override?.alert };
+}
+
+/** Tareas de un cliente y un módulo (incluye archivadas: filtrarlas con isArchivedTask). */
+export function tasksForService(tasks: OsTask[], clientSlug: string, serviceId: ServiceId) {
+  return tasksForClient(tasks, clientSlug).filter((task) => serviceForTask(task) === serviceId);
 }
 
 export function taskOwnerRole(task: Pick<OsTask, "owner">) {

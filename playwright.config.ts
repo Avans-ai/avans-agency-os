@@ -1,5 +1,6 @@
 import { defineConfig } from "@playwright/test";
-const port = process.env.PLAYWRIGHT_PORT ?? "3000";
+/* PLAYWRIGHT_PORT o E2E_PORT permiten correr la suite contra otro puerto sin chocar con otros servidores locales. */
+const port = Number(process.env.PLAYWRIGHT_PORT ?? process.env.E2E_PORT ?? 3000);
 export default defineConfig({
   testDir: "./tests",
   timeout: 60000,
@@ -24,6 +25,7 @@ export default defineConfig({
         "google-workspace.spec.ts",
         "intake-presentation-model.spec.ts",
         "pptx-*-model.spec.ts",
+        "modules-reports-model.spec.ts",
       ],
     },
     {
@@ -34,6 +36,7 @@ export default defineConfig({
         "intake-presentation-browser.spec.ts",
         "strategic-documents-browser.spec.ts",
         "pptx-*-browser.spec.ts",
+        "modules-browser.spec.ts",
       ],
       use: { browserName: "chromium" },
     },
