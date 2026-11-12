@@ -479,10 +479,11 @@ export function buildPresentationManifest(
     slides.push(output);
     return output;
   };
+  // Registered visual resources: local images (data URLs) or https links.
   const imageLinks = (s: string) =>
-    s
-      .split(/[\s,]+/)
-      .filter((u) => /^(https:\/\/|data:image\/(png|jpeg);base64,)/.test(u));
+    s.match(
+      /data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/=]+|https:\/\/[^\s,]+/g,
+    ) ?? [];
   add(
     1,
     { 20: client.name },

@@ -262,6 +262,74 @@ test("products, ICPs, competitor blocks and campaigns are duplicated from their 
   expect(allText(texts)).not.toMatch(/pendiente/i);
 });
 
+test("long texts are fitted inside their boxes (smaller size or free space), never left as placeholders", async () => {
+  const k = richEpsa();
+  const long = (topic: string, n = 3) =>
+    Array.from({ length: n }, (_, i) => `${topic} ${i + 1}: la empresa necesita una explicación concreta, medible y verificable con evidencia del cliente`).join(". ");
+  const d = k.discovery;
+  d.companyProfile.definition = long("Definición", 3);
+  d.companyProfile.tagline = long("Frase", 1);
+  d.offerings[0].description = long("Descripción", 4);
+  d.offerings[0].reasonToBelieve = long("Prueba", 3);
+  d.b2bIcps[0] = {
+    ...d.b2bIcps[0],
+    industry: long("Industria", 2),
+    interests: long("Intereses", 3),
+    location: "Argentina, Uruguay, Paraguay, sur de Brasil y Chile, con foco en polos industriales",
+    insight: long("Insight", 3),
+    trigger: long("Disparador", 2),
+    barriers: long("Barreras", 3),
+    benefit: long("Beneficio", 2),
+  };
+  const { file, texts, manifest } = await generate(k, epsa, epsa.services, "internal-draft", "epsa-stress-draft");
+  // Realistic long texts fit (Quiénes somos, product page); extreme ones in the
+  // one-line rows of the ICP page are kept whole and reported for review.
+  const at = (n: number) => file.report.slides[manifest.slides.find((s) => s.templateSlideNumber === n)!.outputOrder - 1];
+  expect(at(5).pending.filter((p) => p.kind === "text")).toEqual([]);
+  expect(at(8).pending.filter((p) => p.kind === "text")).toEqual([]);
+  const overflow = file.report.slides.flatMap((s) => s.pending.filter((p) => p.kind === "text"));
+  for (const o of overflow) expect(o.label).toMatch(/^Texto demasiado extenso para «[^[\]]+»/);
+  expect(file.report.warnings.length).toBe(overflow.length);
+  const adjustments = file.report.slides.flatMap((s) => s.adjustments);
+  expect(adjustments.some((a) => /reducido/.test(a))).toBe(true);
+  const icp = texts[manifest.slides.find((s) => s.templateSlideNumber === 11)!.outputOrder - 1].join(" ");
+  expect(icp).toContain("Barreras 3");
+  expect(allText(texts)).not.toMatch(/\[[^\]]*\]/);
+});
+
+test("image placeholders take registered local images, remote links are listed and never fetched", async () => {
+  const k = seedKnowledge(epsa);
+  const png =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  k.discovery.offerings[0].image = png;
+  k.discovery.offerings[1].image = "https://example.com/foto-posventa.jpg";
+  const originalFetch = globalThis.fetch;
+  let fetched = 0;
+  globalThis.fetch = (async () => {
+    fetched++;
+    throw new Error("no network");
+  }) as typeof fetch;
+  try {
+    const { manifest, file, deck } = await generate(k, epsa, epsa.services, "internal-draft", "epsa-images-draft");
+    const pages = manifest.slides.filter((s) => s.templateSlideNumber === 8);
+    const withImage = deck.slides[pages[0].outputOrder - 1].elements;
+    const placed = withImage.filter((e) => e.kind === "picture" && e.media?.includes("avans-os-"));
+    expect(placed.length).toBe(1);
+    const files = readZip(file.bytes);
+    expect(files.has(placed[0].kind === "picture" ? placed[0].media! : "")).toBe(true);
+    const withLink = deck.slides[pages[1].outputOrder - 1].elements;
+    // Logo kept, placeholder picture and its grey frame removed.
+    expect(withLink.filter((e) => e.kind === "picture").length).toBe(1);
+    const linkPending = file.report.slides[pages[1].outputOrder - 1].pending;
+    expect(linkPending.some((p) => p.kind === "image" && p.label.includes("https://example.com/foto-posventa.jpg"))).toBe(true);
+    // The template's placeholder icon is no longer in the package when unused.
+    expect(files.has("ppt/media/image5.png")).toBe(false);
+    expect(fetched).toBe(0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("client version is blocked while data are missing and has no draft marker when allowed", async () => {
   const k = seedKnowledge(epsa);
   const blocked = buildPresentationManifest(k, epsa, epsa.services, "client", ctx);

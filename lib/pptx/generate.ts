@@ -240,12 +240,15 @@ function buildSlide(
     if (r.size < r.baseSize)
       adjustments.push(`Objeto ${target.id}: texto reducido de ${r.baseSize / 100} a ${r.size / 100} pt`);
     if (r.grown) adjustments.push(`Objeto ${target.id}: caja ampliada hacia espacio libre`);
-    if (!r.fits)
+    if (!r.fits) {
+      const field = current.text.replace(/[[\]]/g, "").replace(/\s+/g, " ").trim();
+      const short = field.length > 70 ? `${field.slice(0, 67)}…` : field;
       pending.push({
         kind: "text",
-        label: `Texto extenso en «${spec.title}»: revisar el ajuste (objeto ${target.id})`,
+        label: `Texto demasiado extenso para «${short}»: resumirlo o revisar el ajuste en el archivo`,
         objectId: target.id,
       });
+    }
     xml = replaceShapes(xml, new Map([[target.id, r.xml]]));
   }
 
@@ -290,7 +293,16 @@ function buildSlide(
   }
 
   return {
-    slide: { xml, rels: rels.filter((r) => r.type !== REL.notesSlide) },
+    slide: {
+      xml,
+      // Notes are not carried over; images whose object was removed lose
+      // their relationship so unused media leave the package.
+      rels: rels.filter(
+        (r) =>
+          r.type !== REL.notesSlide &&
+          (r.type !== REL.image || new RegExp(`r:(embed|link)="${r.id}"`).test(xml)),
+      ),
+    },
     report: {
       index,
       template: spec.template,
