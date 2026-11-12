@@ -222,6 +222,22 @@ function MobileSheet({ onClose, active }: { onClose: () => void; active: string 
 }
 
 export function OsShell({ active, root, title, crumbs, children }: { active: string; root: string; title: string; crumbs: Crumb[]; children: ReactNode }) {
+  const desktopHeaderRef = useRef<HTMLElement>(null);
+  const mobileHeaderRef = useRef<HTMLElement>(null);
+  // Sticky elements below the header (document indexes) read --os-header-h,
+  // because the desktop header wraps to two rows on narrower screens.
+  useEffect(() => {
+    const nodes = [desktopHeaderRef.current, mobileHeaderRef.current].filter((node): node is HTMLElement => !!node);
+    const update = () => {
+      const height = Math.max(0, ...nodes.map((node) => node.getBoundingClientRect().height));
+      document.documentElement.style.setProperty("--os-header-h", `${Math.round(height)}px`);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, []);
+
   const { tasks, role, notify } = useOsStore();
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
@@ -263,7 +279,7 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
       </nav>
 
       <div className={s.main}>
-        <header className={s.header}>
+        <header className={s.header} ref={desktopHeaderRef}>
           <nav className={s.crumbs} aria-label="Ubicación">
             <ol>
               {crumbs.map((crumb, index) => {
@@ -284,7 +300,7 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
             <ProfileMenu />
           </div>
         </header>
-        <header className={s.mobileHeader}>
+        <header className={s.mobileHeader} ref={mobileHeaderRef}>
           <Link href="/v2" aria-label="Avans OS — Inicio"><AvansIsotipo size={28} /></Link>
           <p className={s.mobileTitle}>{title}</p>
           <span className={s.demoBadge} title="Datos de demostración">Demo</span>

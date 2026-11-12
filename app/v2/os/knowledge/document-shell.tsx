@@ -88,8 +88,9 @@ export function DocumentShell({
     const nav = navRef.current;
     const link = nav?.querySelector<HTMLElement>(`[data-section="${active}"]`);
     if (nav && link) {
-      const left = link.offsetLeft - nav.clientWidth / 2 + link.clientWidth / 2;
-      nav.scrollTo({ left: Math.max(0, left), behavior: prefersReducedMotion() ? "auto" : "smooth" });
+      const start = link.offsetLeft - nav.offsetLeft;
+      const outside = start < nav.scrollLeft || start + link.offsetWidth > nav.scrollLeft + nav.clientWidth;
+      if (outside) nav.scrollLeft = Math.max(0, start - 16);
     }
   }, [active]);
 
@@ -105,7 +106,7 @@ export function DocumentShell({
   }
 
   return (
-    <article className={d.document} aria-label={label}>
+    <div className={d.document} role="region" aria-label={label}>
       {header}
       <nav ref={navRef} className={d.index} aria-label={`Índice de ${label}`}>
         {sections.map((section) => (
@@ -124,7 +125,7 @@ export function DocumentShell({
         ))}
       </nav>
       <div className={d.body}>{children}</div>
-    </article>
+    </div>
   );
 }
 

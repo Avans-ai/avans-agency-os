@@ -376,8 +376,8 @@ export function BenchmarkView({
           <header className={m.docHead}>
             <div className={m.head}>
               <div>
-                <p className={m.eyebrowDoc}>02 · Benchmark</p>
-                <h2>Análisis competitivo</h2>
+                <p className={m.eyebrowDoc}>02 · Análisis competitivo</p>
+                <h2>Benchmark</h2>
                 <p>
                   Marca propia, competidores y conclusiones respaldadas por
                   relevamientos fechados. Las conclusiones alimentan el Plan de

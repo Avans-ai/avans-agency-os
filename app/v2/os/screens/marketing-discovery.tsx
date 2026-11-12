@@ -704,7 +704,7 @@ export function MarketingDiscoveryView({
         ) : null}
         <div className={m.recordFoot}>
           <span>{row.owner || "Responsable pendiente"}</span>
-          {editable ? (
+          {editable && !singleton ? (
             <div className={m.actions}>
               <button
                 type="button"
@@ -860,12 +860,15 @@ export function MarketingDiscoveryView({
                 {applies ? "Marcar que no aplica" : "Marcar que aplica"}
               </button>
             ) : null}
-            {applies ? add(kind, "perfil") : null}
+            {applies ? add(kind, kind === "b2bIcps" ? "ICP B2B" : "ICP B2C") : null}
           </>
         }
       >
         {applies ? (
-          collection(kind)
+          <>
+            <p className={m.muted}>Aplica a este negocio</p>
+            {collection(kind)}
+          </>
         ) : (
           <div className={m.applicability}>
             <strong>No aplica a este negocio</strong>

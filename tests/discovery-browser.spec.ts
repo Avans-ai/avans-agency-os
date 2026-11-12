@@ -7,11 +7,29 @@ async function openDiscovery(page: Page, slug = "epsa") {
     page.getByRole("heading", { name: "Discovery del negocio", exact: true }),
   ).toBeVisible();
 }
+const INDEX: Record<string, { link: string; heading: string }> = {
+  "Quiénes somos": { link: "Empresa", heading: "Quiénes somos" },
+  "Datos relevantes": { link: "Datos", heading: "Datos relevantes" },
+  "Unidades de negocio": { link: "Unidades", heading: "Unidades de negocio" },
+  "Productos y servicios": { link: "Productos", heading: "Productos y servicios" },
+  "Proceso comercial": { link: "Comercial", heading: "Cómo se vende hoy" },
+  Segmentación: { link: "Targeting", heading: "Matriz de targeting" },
+  "ICP B2B": { link: "ICP B2B", heading: "ICP B2B" },
+  "ICP B2C": { link: "ICP B2C", heading: "ICP B2C" },
+  Fuentes: { link: "Fuentes", heading: "Fuentes y trazabilidad" },
+  Cuestionario: { link: "Cuestionario", heading: "Cuestionario inicial" },
+};
+/** Continuous document: the sticky index scrolls to the section and marks it as current. */
 async function section(page: Page, label: string) {
-  await page
-    .getByRole("navigation", { name: "Índice del Discovery" })
-    .getByRole("button", { name: new RegExp(label) })
-    .click();
+  const target = INDEX[label];
+  const link = page
+    .getByRole("navigation", { name: "Índice de Discovery del negocio" })
+    .getByRole("link", { name: target.link, exact: true });
+  await link.click();
+  await expect(
+    page.getByRole("heading", { name: target.heading, exact: true }),
+  ).toBeInViewport();
+  await expect(link).toHaveAttribute("aria-current", "location");
 }
 async function save(page: Page) {
   await page
@@ -20,8 +38,15 @@ async function save(page: Page) {
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 }
+const ADD_LABEL: Record<string, string> = {
+  "Agregar icp b2b": "+ Agregar ICP B2B",
+  "Agregar icp b2c": "+ Agregar ICP B2C",
+  "Agregar etapa comercial": "+ Agregar etapa",
+};
 async function add(page: Page, button: string, name: string) {
-  await page.getByRole("button", { name: button, exact: true }).click();
+  await page
+    .getByRole("button", { name: ADD_LABEL[button] ?? `+ ${button}`, exact: true })
+    .click();
   await page.locator("#discovery-field-name").fill(name);
 }
 function card(page: Page, name: string): Locator {
@@ -60,8 +85,11 @@ test("complete PM journey: eight sections, CRUD, relationships, quadrants, ICP, 
     "ICP B2C",
   ]) {
     await section(page, label);
-    await expect(page.locator("#discovery-section-heading")).toHaveText(label);
   }
+  await expect(
+    page.getByRole("navigation", { name: "Índice de Discovery del negocio" }).getByRole("link").first(),
+  ).toHaveText("Cuestionario");
+  await expect(page.getByText(/cobertura general/i)).toHaveCount(0);
   await section(page, "Datos relevantes");
   await add(page, "Agregar dato relevante", "Dato de QA persistente");
   await page.locator("#discovery-field-value").fill("Hecho de prueba");
@@ -110,8 +138,13 @@ test("complete PM journey: eight sections, CRUD, relationships, quadrants, ICP, 
   await page
     .getByLabel("Filtrar por unidad de negocio")
     .selectOption({ label: "Unidad QA" });
-  await expect(card(page, "Producto QA")).toBeVisible();
-  await expect(card(page, "Line Up")).toHaveCount(0);
+  const products = page.locator("#discovery-productos");
+  await expect(
+    products.locator("article").filter({ has: page.getByRole("heading", { name: "Producto QA", exact: true }) }),
+  ).toBeVisible();
+  await expect(
+    products.locator("article").filter({ has: page.getByRole("heading", { name: "Line Up", exact: true }) }),
+  ).toHaveCount(0);
   await section(page, "Unidades de negocio");
   await card(page, "Unidad QA")
     .getByRole("button", { name: "Eliminar", exact: true })
@@ -176,7 +209,9 @@ test("complete PM journey: eight sections, CRUD, relationships, quadrants, ICP, 
     .selectOption({ label: "Segmento B2C QA" });
   await save(page);
   await expect(
-    page.getByText("Aplica a este negocio", { exact: true }),
+    page
+      .locator("#discovery-icp-b2c")
+      .getByText("Aplica a este negocio", { exact: true }),
   ).toBeVisible();
   await section(page, "Proceso comercial");
   await add(page, "Agregar etapa comercial", "Seguimiento QA");
@@ -185,29 +220,17 @@ test("complete PM journey: eight sections, CRUD, relationships, quadrants, ICP, 
   await page
     .getByRole("button", { name: "Subir Seguimiento QA", exact: true })
     .click();
-  await section(page, "Cobertura");
   await page
-    .locator("details")
-    .filter({ has: page.locator("summary", { hasText: /^Campos faltantes/ }) })
-    .first()
-    .locator("summary")
-    .click();
-  await expect(page.getByText(/EPSA \/ Line Up: Cobertura/)).toBeVisible();
-  await page
-    .getByRole("button", {
-      name: "Vista previa del contenido de presentación",
-      exact: true,
-    })
-    .click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page
-    .getByRole("dialog")
-    .locator("summary", { hasText: "Filmina 8" })
+    .locator("summary", { hasText: /^Pendientes antes de exportar/ })
     .click();
   await expect(
-    page.getByRole("dialog").getByRole("heading", { name: /Producto QA/ }),
+    page.getByRole("link", { name: "Cómo se vende hoy", exact: true }),
   ).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", {
+      name: "Vista previa del contenido de presentación",
+    }),
+  ).toHaveCount(0);
   await openDiscovery(page, "aca");
   await section(page, "Datos relevantes");
   await expect(card(page, "Dato de QA persistente")).toHaveCount(0);
@@ -226,32 +249,32 @@ test("roles enforce admin, assigned PM, unassigned PM and readonly operative aft
 }) => {
   await openDiscovery(page);
   await expect(
-    page.getByRole("button", { name: "Editar Discovery", exact: true }),
+    page.locator("#discovery-empresa").getByRole("button", { name: "Editar", exact: true }),
   ).toBeVisible();
   await role(page, "Ejecutiva de cuentas");
   await expect(
-    page.getByRole("button", { name: "Editar Discovery", exact: true }),
+    page.locator("#discovery-empresa").getByRole("button", { name: "Editar", exact: true }),
   ).toHaveCount(0);
   await section(page, "Datos relevantes");
   await expect(
-    page.getByRole("button", { name: "Agregar dato relevante", exact: true }),
+    page.getByRole("button", { name: "+ Agregar dato relevante", exact: true }),
   ).toHaveCount(0);
   await page.reload();
   await page.getByRole("tab", { name: "Discovery del negocio" }).click();
   await expect(
-    page.getByRole("button", { name: "Editar Discovery", exact: true }),
+    page.locator("#discovery-empresa").getByRole("button", { name: "Editar", exact: true }),
   ).toHaveCount(0);
   await role(page, "Project Manager · Valentina Ríos");
   await expect(
-    page.getByRole("button", { name: "Editar Discovery", exact: true }),
+    page.locator("#discovery-empresa").getByRole("button", { name: "Editar", exact: true }),
   ).toBeVisible();
   await openDiscovery(page, "aca");
   await expect(
-    page.getByRole("button", { name: "Editar Discovery", exact: true }),
+    page.locator("#discovery-empresa").getByRole("button", { name: "Editar", exact: true }),
   ).toHaveCount(0);
   await role(page, "Administrador");
   await expect(
-    page.getByRole("button", { name: "Editar Discovery", exact: true }),
+    page.locator("#discovery-empresa").getByRole("button", { name: "Editar", exact: true }),
   ).toBeVisible();
 });
 
@@ -260,7 +283,7 @@ test("sources, actual validation, failed storage, cross-tab conflict and keyboar
   context,
 }) => {
   await openDiscovery(page);
-  await page.getByRole("button", { name: /^Fuentes y trazabilidad/ }).click();
+  await section(page, "Fuentes");
   await add(page, "Agregar fuente", "Fuente QA");
   await page.locator("#discovery-field-type").selectOption("Carga manual");
   await page.locator("#discovery-field-reference").fill("Referencia de QA");
