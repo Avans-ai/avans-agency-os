@@ -12,17 +12,19 @@ async function state(page: Page, slug = "epsa") {
     slug,
   );
 }
+/** Discovery is one continuous document; the questionnaire is its first section. */
+async function openQuestions(page: Page) {
+  const summary = page.locator("summary", { hasText: /^Responder preguntas/ });
+  const parent = summary.locator("..");
+  if (!(await parent.getAttribute("open"))) await summary.click();
+}
 async function open(page: Page) {
   await page.goto("/v2/clientes/epsa?view=ficha");
   await page.getByRole("tab", { name: "Discovery del negocio" }).click();
-  await page
-    .getByRole("button", { name: "Cuestionario inicial", exact: true })
-    .click();
   await expect(
-    page.getByRole("heading", {
-      name: "Cuestionario inicial · EPSA / Line Up",
-    }),
+    page.getByRole("heading", { name: "Cuestionario inicial", exact: true }),
   ).toBeVisible();
+  await openQuestions(page);
 }
 async function details(page: Page, id: string) {
   const locator = page.locator(`#${id}`);
@@ -132,9 +134,7 @@ test("source intake extracts PDF, DOCX, PPTX and pasted text; duplicate, empty, 
     .toBe(true);
   await page.reload();
   await page.getByRole("tab", { name: "Discovery del negocio" }).click();
-  await page
-    .getByRole("button", { name: "Cuestionario inicial", exact: true })
-    .click();
+  await openQuestions(page);
   expect(
     (await state(page)).sources.find(
       (s: { title: string }) => s.title === "Texto comercial QA",
@@ -209,9 +209,7 @@ test("suggestions expose evidence and conflicts; edit, approve, reject and ask-c
   await activity.getByRole("button", { name: "Preguntar al cliente" }).click();
   await page.reload();
   await page.getByRole("tab", { name: "Discovery del negocio" }).click();
-  await page
-    .getByRole("button", { name: "Cuestionario inicial", exact: true })
-    .click();
+  await openQuestions(page);
   await expect(
     page.getByLabel("¿Qué cobertura tiene?", { exact: true }),
   ).toHaveValue("Cobertura revisada QA");
@@ -299,13 +297,12 @@ test("presentation readiness, generated PPTX versions, documents history, blocke
   request,
 }) => {
   await open(page);
-  const prep = await details(page, "presentation-preparation");
-  await expect(prep.getByText(/Versión para cliente bloqueada/)).toBeVisible();
-  await expect(
-    prep.getByRole("button", { name: "Crear en Google Slides" }),
-  ).toBeDisabled();
+  const header = page.getByRole("region", { name: "Discovery del negocio" });
   for (const version of [1, 2]) {
-    await prep.getByRole("button", { name: "Generar presentación" }).click();
+    await header
+      .getByRole("button", { name: "Generar presentación", exact: true })
+      .first()
+      .click();
     const studio = page.getByRole("dialog", { name: /Marketing Discovery/ });
     await expect(
       studio.getByRole("radio", { name: /Versión final para cliente/ }),

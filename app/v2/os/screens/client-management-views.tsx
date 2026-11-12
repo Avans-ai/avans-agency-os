@@ -6,6 +6,7 @@ import { PlanView } from "../knowledge/plan-view";
 import { DocumentsView } from "../knowledge/documents-view";
 import { MarketingDiscoveryView } from "./marketing-discovery";
 import { AddServiceModuleButton } from "./service-modules-dialog";
+import { GeneratePresentationButton } from "../knowledge/presentation/presentation-studio";
 import { useState } from "react";
 import type { ClientBenchmark } from "../../benchmark-data";
 import { directorMeta, scopeForClient } from "../director-data";
@@ -41,12 +42,19 @@ export function ClientManagementContent({
 }) {
   if (view === "ficha") return <ClientSheet client={client} />;
   if (view === "benchmark")
-    return <BenchmarkView key={client.slug} client={client} />;
+    return (
+      <BenchmarkView
+        key={client.slug}
+        client={client}
+        headerActions={<GeneratePresentationButton client={client} small />}
+      />
+    );
   if (view === "plan")
     return (
       <PlanView
         key={client.slug}
         client={client}
+        headerActions={<GeneratePresentationButton client={client} small />}
         manageModules={
           <AddServiceModuleButton
             client={client}
@@ -167,7 +175,11 @@ function ClientSheet({ client }: { client: OsClient }) {
             </p>
           </>
         ) : (
-          <MarketingDiscoveryView key={client.slug} client={client} />
+          <MarketingDiscoveryView
+            key={client.slug}
+            client={client}
+            headerActions={<GeneratePresentationButton client={client} small />}
+          />
         )}
       </div>
     </div>
