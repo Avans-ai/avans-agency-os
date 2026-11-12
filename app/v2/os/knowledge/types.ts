@@ -114,6 +114,8 @@ export type KnowledgeChangeProposal = {
   dedupKey: string;
   affectedModules: string[];
   versionId?: string;
+  /** Questionnaire question that produced this proposal (when it came from the questionnaire). */
+  originQuestionId?: string;
 };
 export type KnowledgeDependency = {
   sourceEntityType: string;

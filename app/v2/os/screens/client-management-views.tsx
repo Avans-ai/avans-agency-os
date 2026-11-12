@@ -5,6 +5,7 @@ import { BenchmarkView } from "../knowledge/benchmark-view";
 import { PlanView } from "../knowledge/plan-view";
 import { DocumentsView } from "../knowledge/documents-view";
 import { MarketingDiscoveryView } from "./marketing-discovery";
+import { AddServiceModuleButton } from "./service-modules-dialog";
 import { useState } from "react";
 import type { ClientBenchmark } from "../../benchmark-data";
 import { directorMeta, scopeForClient } from "../director-data";
@@ -41,7 +42,20 @@ export function ClientManagementContent({
   if (view === "ficha") return <ClientSheet client={client} />;
   if (view === "benchmark")
     return <BenchmarkView key={client.slug} client={client} />;
-  if (view === "plan") return <PlanView key={client.slug} client={client} />;
+  if (view === "plan")
+    return (
+      <PlanView
+        key={client.slug}
+        client={client}
+        manageModules={
+          <AddServiceModuleButton
+            client={client}
+            label="Gestionar módulos"
+            variant="secondary"
+          />
+        }
+      />
+    );
   if (view === "reportes") return <ClientReports client={client} />;
   return <DocumentsView key={client.slug} client={client} />;
 }

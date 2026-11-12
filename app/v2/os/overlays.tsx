@@ -38,7 +38,7 @@ function useDialog(onClose: () => void, initialFocus?: React.RefObject<HTMLEleme
   return ref;
 }
 
-export function OSSidePanel({ label, heading, onClose, children, footer, titleRef, persistentFooter = false }: {
+export function OSSidePanel({ label, heading, onClose, children, footer, titleRef, persistentFooter = false, wide = false }: {
   label: string;
   heading: ReactNode;
   onClose: () => void;
@@ -46,12 +46,14 @@ export function OSSidePanel({ label, heading, onClose, children, footer, titleRe
   footer?: ReactNode;
   titleRef?: React.RefObject<HTMLElement | null>;
   persistentFooter?: boolean;
+  /** 720 px instead of 480 px on desktop, for catalog-style dialogs. */
+  wide?: boolean;
 }) {
   const ref = useDialog(onClose, titleRef);
   return (
     <>
       <div className={s.veil} onClick={onClose} aria-hidden="true" />
-      <div ref={ref} className={s.panel} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1}>
+      <div ref={ref} className={`${s.panel} ${wide ? s.panelWide : ""}`} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1}>
         <div className={s.panelHead}>
           <button type="button" className={s.backBtn} onClick={onClose} aria-label="Volver"><Glyph name="chevron-left" size={22} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>{heading}</div>

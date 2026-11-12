@@ -173,6 +173,7 @@ export function questionnaireToProposals(
         r.clarification
       )
         continue;
+      const firstProposal = proposals.length;
       const answerSourceId =
         r.sourceId && next.sources.some((s) => s.id === r.sourceId)
           ? r.sourceId
@@ -282,6 +283,8 @@ export function questionnaireToProposals(
         )
           proposals.push(proposal);
       }
+      for (let i = firstProposal; i < proposals.length; i += 1)
+        proposals[i] = { ...proposals[i], originQuestionId: q.id };
     }
   next = addProposals(next, proposals);
   return {
@@ -644,4 +647,61 @@ export function discoveryAndFindingsToPlan(k: KnowledgeState) {
       (f) => f.status === "Validado" && !f.demo,
     ),
   };
+}
+
+/** Answers the user explicitly marked as «Validada» feed the structured
+ * Discovery directly: their proposals are generated and approved in one step
+ * (the validation is the individual review), with the same evidence, version
+ * and audit trail as a manual approval. Answers that are only «Respondida»
+ * stay as pending proposals. A proposal that cannot be applied (for example,
+ * because the current value changed) remains pending for manual review. */
+export function applyValidatedAnswers(
+  k: KnowledgeState,
+  ctx: MutationContext,
+): { state: KnowledgeState; result: { applied: number; pending: number } } {
+  const validated = new Set(
+    Object.entries(k.questionnaire.responses)
+      .filter(([, r]) => r.status === "validated" && !r.clarification)
+      .map(([id]) => id),
+  );
+  const labels = new Map(
+    questionnaireTemplate.sections.flatMap((section) =>
+      section.questions.map((q) => [q.id, `${q.label}\n`] as const),
+    ),
+  );
+  let next = questionnaireToProposals(k, ctx);
+  const candidates = next.proposals.filter(
+    (p) =>
+      p.status === "pending" &&
+      (p.originQuestionId
+        ? validated.has(p.originQuestionId)
+        : [...validated].some((id) =>
+            p.evidence.some((e) => e.excerpt.startsWith(labels.get(id) ?? "\u0000")),
+          )),
+  );
+  let applied = 0;
+  let pending = 0;
+  for (const proposal of candidates) {
+    try {
+      next = reviewProposal(next, proposal.id, "approve", ctx);
+      applied += 1;
+    } catch {
+      pending += 1;
+    }
+  }
+  if (applied)
+    next = {
+      ...next,
+      audit: [
+        ...next.audit,
+        {
+          id: newId(),
+          at: ctx.at,
+          actor: ctx.actor,
+          sourceId: "questionnaire-initial",
+          action: `Respuestas validadas aplicadas al Discovery (${applied})`,
+        },
+      ],
+    };
+  return { state: next, result: { applied, pending } };
 }

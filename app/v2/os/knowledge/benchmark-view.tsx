@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { serviceLabel, type OsClient } from "../os-data";
 import { buttonClass } from "../ui";
 import { OSSidePanel } from "../overlays";
@@ -19,7 +19,7 @@ import {
   captureBenchmark,
   benchmarkReport,
 } from "./benchmark";
-import { versionChange } from "./state";
+import { discoveryOf, versionChange } from "./state";
 import { validatedDiscoveryToBenchmark } from "./proposals";
 import type { BenchmarkBrand, KnowledgeItem } from "./types";
 import {
@@ -32,6 +32,13 @@ import {
   formatValue,
 } from "./shared-ui";
 import m from "./knowledge.module.css";
+import o from "../os.module.css";
+import {
+  DocumentSection,
+  DocumentShell,
+  SectionStateBadge,
+  type SectionState,
+} from "./document-shell";
 import { saveBenchmarkItem, deleteBenchmarkItem } from "./mutations";
 function BrandEditor({
   client,
@@ -155,11 +162,23 @@ function BrandEditor({
     </OSSidePanel>
   );
 }
-export function BenchmarkView({ client }: { client: OsClient }) {
+type BlockCoverage = ReturnType<typeof benchmarkCoverage>[number]["blocks"][number];
+function blockState(block?: BlockCoverage): SectionState {
+  if (!block || block.count === 0) return "empty";
+  if (block.missing.length) return "missing";
+  if (block.requiresValidation) return "pending-validation";
+  return "validated";
+}
+
+export function BenchmarkView({
+  client,
+  headerActions,
+}: {
+  client: OsClient;
+  /** Document-level actions (e.g. Generar presentación). */
+  headerActions?: ReactNode;
+}) {
   const { k, editable, invalid, mutate, context } = useKnowledge(client);
-  const [tab, setTab] = useState("coverage");
-  const [brandId, setBrandId] = useState("own");
-  const [block, setBlock] = useState("overview");
   const [brandEditor, setBrandEditor] = useState<BenchmarkBrand | null>(null);
   const [editor, setEditor] = useState<{
     item: KnowledgeItem;
@@ -167,12 +186,14 @@ export function BenchmarkView({ client }: { client: OsClient }) {
     brandId?: string;
     revision: number;
   } | null>(null);
-  const brand =
-    k.benchmark.brands.find((b) => b.id === brandId) ?? k.benchmark.brands[0];
-  const bp = benchmarkBlueprints.find((b) => b.id === block)!;
   const inputs = validatedDiscoveryToBenchmark(k);
   const coverage = benchmarkCoverage(k.benchmark);
   const reports = benchmarkReport(k);
+  const segments = discoveryOf(k).targetSegments;
+  const own = k.benchmark.brands.find((b) => b.type === "Propia");
+  const competitors = k.benchmark.brands
+    .filter((b) => b.type !== "Propia")
+    .sort((a, b) => Number(b.principal) - Number(a.principal));
   const findingsBlueprint: Blueprint = {
     ...findingBlueprint,
     fields: [
@@ -200,318 +221,395 @@ export function BenchmarkView({ client }: { client: OsClient }) {
   function deleteItem(item: KnowledgeItem) {
     mutate((s, c) => deleteBenchmarkItem(s, item, c));
   }
+  const coverageOf = (brandId: string, blockId: string) =>
+    coverage.find((row) => row.brandId === brandId)?.blocks.find((b) => b.id === blockId);
+  const addButton = (brand: BenchmarkBrand, bp: Blueprint) =>
+    editable ? (
+      <button
+        type="button"
+        className={buttonClass("secondary", true)}
+        onClick={() =>
+          setEditor({
+            item: newItem(bp.id, context()),
+            bp,
+            brandId: brand.id,
+            revision: k.revision,
+          })
+        }
+      >
+        + Agregar
+      </button>
+    ) : null;
+  function blockItems(brand: BenchmarkBrand, bp: Blueprint) {
+    const rows = brand.items.filter((i) => i.section === bp.id);
+    const block = coverageOf(brand.id, bp.id);
+    return (
+      <>
+        {rows.length ? (
+          rows.map((item) => (
+            <article className={m.card} key={item.id}>
+              <p className={m.badge}>
+                {item.status} · {item.observedAt || "Fecha de relevamiento pendiente"}
+                {item.demo ? " · DEMO" : ""}
+              </p>
+              <ItemDetails item={item} bp={bp} k={k} />
+              {editable ? (
+                <div className={m.actions}>
+                  <button
+                    className={buttonClass("secondary", true)}
+                    onClick={() =>
+                      setEditor({ item, bp, brandId: brand.id, revision: k.revision })
+                    }
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className={buttonClass("ghost", true)}
+                    onClick={() => deleteItem(item)}
+                  >
+                    Quitar
+                  </button>
+                </div>
+              ) : null}
+            </article>
+          ))
+        ) : (
+          <p className={m.empty}>
+            Sin relevamiento de {bp.label.toLowerCase()} para {brand.name}.
+            {editable ? " Usá «+ Agregar» para registrar texto, enlaces, métricas, capturas de referencia, fuentes y evidencia." : ""}
+          </p>
+        )}
+        {block && block.count > 0 && block.missing.length ? (
+          <p className={m.small}>Falta completar: {block.missing.slice(0, 6).join(" · ")}{block.missing.length > 6 ? ` y ${block.missing.length - 6} más` : ""}</p>
+        ) : null}
+      </>
+    );
+  }
+  function brandMeta(brand: BenchmarkBrand) {
+    return (
+      <p className={m.small}>
+        {brand.type}
+        {brand.principal ? " · Competidor principal" : ""} ·{" "}
+        {brand.region || "Región pendiente"} · Responsable:{" "}
+        {brand.owner || "Pendiente"} ·{" "}
+        {brand.clientValidated
+          ? "Selección validada con el cliente"
+          : "Validación del cliente pendiente"}
+        {brand.demo ? " · DEMO" : ""}
+      </p>
+    );
+  }
+  function brandTools(brand: BenchmarkBrand) {
+    return editable ? (
+      <>
+        <button
+          className={buttonClass("ghost", true)}
+          onClick={() => setBrandEditor(brand)}
+        >
+          Editar marca
+        </button>
+        <button
+          disabled={!brand.items.length}
+          className={buttonClass("ghost", true)}
+          onClick={() => mutate((s, c) => captureBenchmark(s, brand.id, c))}
+        >
+          Guardar snapshot fechado
+        </button>
+      </>
+    ) : null;
+  }
+  function snapshots(brand: BenchmarkBrand) {
+    const list = k.benchmark.snapshots.filter((s) => s.brandId === brand.id);
+    return list.length ? (
+      <details className={m.card}>
+        <summary>Snapshots fechados de {brand.name} · {list.length}</summary>
+        {list.map((s) => (
+          <details key={s.id}>
+            <summary>
+              {s.capturedAt} · {s.capturedBy}
+            </summary>
+            <pre className={m.pre}>{formatValue(s.brand)}</pre>
+          </details>
+        ))}
+      </details>
+    ) : null;
+  }
+  const ownBlocks = benchmarkBlueprints.map((bp, i) => ({
+    bp,
+    id: `benchmark-propia-${bp.id}`,
+    number: String(i + 2).padStart(2, "0"),
+    title:
+      bp.id === "overview"
+        ? `Análisis de ${own?.name ?? client.name}`
+        : bp.id === "content"
+          ? "Contenidos propios"
+          : bp.id === "paid"
+            ? "Paid media propio"
+            : bp.id === "web"
+              ? "Sitio web propio"
+              : "Diseño propio",
+    short:
+      bp.id === "overview"
+        ? "Marca del cliente"
+        : bp.id === "content"
+          ? "Contenidos"
+          : bp.id === "paid"
+            ? "Paid media"
+            : bp.id === "web"
+              ? "Web"
+              : "Diseño",
+  }));
+  const firstCompetitorNumber = ownBlocks.length + 2;
+  const index = [
+    { id: "benchmark-marcas", label: "Marcas" },
+    ...(own ? ownBlocks.map((b) => ({ id: b.id, label: b.short })) : []),
+    ...competitors.map((c) => ({ id: `benchmark-competidor-${c.id}`, label: c.name })),
+    { id: "benchmark-conclusiones", label: "Conclusiones" },
+    { id: "benchmark-monitoreo", label: "Monitoreo" },
+  ];
   return (
     <div className={m.root}>
-      <div className={m.head}>
-        <div>
-          <h2>Benchmark</h2>
-          <p>
-            Marca propia, competidores y decisiones respaldadas por
-            relevamientos fechados.
-          </p>
-        </div>
-        <button
-          disabled={!editable}
-          className={buttonClass("primary", true)}
-          onClick={() => setBrandEditor(newBrand())}
-        >
-          Agregar marca
-        </button>
-      </div>
-      <LocalNotice invalid={invalid} />
-      <ReviewBanner client={client} type="benchmark" id="all" />
-      <nav className={m.tabs} aria-label="Secciones del Benchmark">
-        {[
-          ["coverage", "Cobertura del Benchmark"],
-          ["analysis", "Marcas y análisis"],
-          ["findings", "Conclusiones"],
-          ["monitoring", "Monitoreo y reporte quincenal"],
-        ].map(([id, label]) => (
-          <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
-            {label}
-          </button>
-        ))}
-      </nav>
-      {tab === "coverage" ? (
-        <>
-          <div className={m.notice}>
-            Entradas validadas del Discovery: {inputs.segments.length} segmentos
-            · {inputs.offerings.length} ofertas.{" "}
-            {inputs.company
-              ? "Perfil de empresa validado."
-              : "Perfil de empresa pendiente de validación."}
-          </div>
-          <div className={m.grid}>
-            {coverage.map((row) => (
-              <article key={row.brandId} className={m.card}>
-                <h3>
-                  {row.name} · {row.percent}%
-                </h3>
-                <progress
-                  aria-label={`Cobertura de ${row.name}`}
-                  className={m.progress}
-                  value={row.percent}
-                  max={100}
-                />
-                {row.blocks.map((b) => (
-                  <div className={m.row} key={b.id}>
-                    <div>
-                      <strong>
-                        {b.label} · {b.percent}%
-                      </strong>
-                      <p className={m.small}>
-                        {b.owner || "Responsable pendiente"} ·{" "}
-                        {b.requiresValidation
-                          ? "Requiere validación"
-                          : "Sin observaciones pendientes"}
-                      </p>
-                      {b.missing.length ? (
-                        <details>
-                          <summary>
-                            {b.missing.length} campos pendientes
-                          </summary>
-                          <ul>
-                            {b.missing.map((x, i) => (
-                              <li key={i}>{x}</li>
-                            ))}
-                          </ul>
-                        </details>
-                      ) : null}
-                    </div>
-                    <button
-                      className={buttonClass("ghost", true)}
-                      onClick={() => {
-                        setBrandId(row.brandId);
-                        setBlock(b.id);
-                        setTab("analysis");
-                      }}
-                    >
-                      Abrir {b.label}
-                    </button>
-                  </div>
-                ))}
-              </article>
-            ))}
-          </div>
-          <p className={m.muted}>
-            Conclusiones: {k.benchmark.findings.length} · Fuentes:{" "}
-            {
-              new Set(
-                k.benchmark.brands.flatMap((b) =>
-                  b.items.flatMap((i) => i.sourceIds),
-                ),
-              ).size
-            }{" "}
-            · Última actualización: {k.updatedAt || "Sin relevamiento"}
-          </p>
-        </>
-      ) : null}
-      {tab === "analysis" ? (
-        <>
-          <nav className={m.tabs} aria-label="Marcas">
-            {k.benchmark.brands.map((b) => (
+      <DocumentShell
+        label="Benchmark"
+        sections={index}
+        header={
+          <header className={m.docHead}>
+            <div className={m.head}>
+              <div>
+                <p className={m.eyebrowDoc}>02 · Benchmark</p>
+                <h2>Análisis competitivo</h2>
+                <p>
+                  Marca propia, competidores y conclusiones respaldadas por
+                  relevamientos fechados. Las conclusiones alimentan el Plan de
+                  Marketing.
+                </p>
+              </div>
+              {headerActions ? <div className={m.actions}>{headerActions}</div> : null}
+            </div>
+            <p className={m.small}>
+              Entradas validadas del Discovery: {inputs.segments.length}{" "}
+              segmentos · {inputs.offerings.length} ofertas ·{" "}
+              {inputs.company
+                ? "perfil de empresa validado"
+                : "perfil de empresa pendiente de validación"}{" "}
+              · {k.benchmark.findings.length} conclusiones · Última
+              actualización: {k.updatedAt || "sin relevamiento"}
+            </p>
+            <LocalNotice invalid={invalid} />
+            <ReviewBanner client={client} type="benchmark" id="all" />
+          </header>
+        }
+      >
+        <DocumentSection
+          id="benchmark-marcas"
+          number="01"
+          title="Marcas seleccionadas"
+          hint="Hasta cuatro competidores principales, elegidos con criterio y validados con el cliente. La marca propia se analiza con la misma estructura."
+          actions={
+            editable ? (
               <button
-                key={b.id}
-                aria-pressed={brand?.id === b.id}
-                onClick={() => setBrandId(b.id)}
+                className={buttonClass("secondary", true)}
+                onClick={() => setBrandEditor(newBrand())}
               >
-                {b.name} · {b.type}
-                {b.demo ? " · DEMO" : ""}
+                + Agregar marca
               </button>
-            ))}
-          </nav>
-          {brand ? (
-            <>
-              <div className={m.card}>
-                <div className={m.head}>
-                  <h3>{brand.name}</h3>
+            ) : null
+          }
+        >
+          {k.benchmark.brands.length ? (
+            <div className={o.tableWrap}>
+              <table className={o.table}>
+                <thead>
+                  <tr>
+                    <th scope="col">Marca</th>
+                    <th scope="col">Tipo</th>
+                    <th scope="col">Segmento en el que compite</th>
+                    <th scope="col">Por qué la elegimos</th>
+                    <th scope="col">Validación</th>
+                    {editable ? <th scope="col"><span className={o.srOnly}>Acciones</span></th> : null}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...(own ? [own] : []), ...competitors].map((b) => (
+                    <tr key={b.id}>
+                      <td>
+                        <a className={o.linkInk} href={b.type === "Propia" ? "#benchmark-propia-overview" : `#benchmark-competidor-${b.id}`}>{b.name}</a>
+                        {b.demo ? <span className={m.small}> · DEMO</span> : null}
+                      </td>
+                      <td>{b.type}{b.principal ? " · principal" : ""}</td>
+                      <td>
+                        {b.segmentIds
+                          .map((id) => segments.find((x) => x.id === id)?.name)
+                          .filter(Boolean)
+                          .join(" · ") || "Pendiente"}
+                      </td>
+                      <td>{b.rationale || "Criterio pendiente"}</td>
+                      <td>{b.clientValidated ? "Validada con el cliente" : "Pendiente"} · {b.status}</td>
+                      {editable ? (
+                        <td>
+                          <button className={buttonClass("ghost", true)} onClick={() => setBrandEditor(b)}>Editar</button>
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className={m.empty}>Todavía no hay marcas seleccionadas.</p>
+          )}
+        </DocumentSection>
+        {own
+          ? ownBlocks.map((block) => (
+              <DocumentSection
+                key={block.id}
+                id={block.id}
+                number={block.number}
+                title={block.title}
+                hint={block.bp.id === "overview" ? undefined : `Cómo trabaja ${own.name} en ${block.bp.label.toLowerCase()}.`}
+                state={blockState(coverageOf(own.id, block.bp.id))}
+                actions={
+                  <>
+                    {block.bp.id === "overview" ? brandTools(own) : null}
+                    {addButton(own, block.bp)}
+                  </>
+                }
+              >
+                {block.bp.id === "overview" ? (
+                  <>
+                    {brandMeta(own)}
+                    <ReviewBanner client={client} type="benchmark" id={own.id} />
+                  </>
+                ) : null}
+                {blockItems(own, block.bp)}
+                {block.bp.id === "design" ? snapshots(own) : null}
+              </DocumentSection>
+            ))
+          : null}
+        {competitors.map((brand, i) => (
+          <DocumentSection
+            key={brand.id}
+            id={`benchmark-competidor-${brand.id}`}
+            number={String(firstCompetitorNumber + i).padStart(2, "0")}
+            title={brand.name}
+            hint={brand.rationale || "Criterio de selección pendiente"}
+            actions={brandTools(brand)}
+          >
+            {brandMeta(brand)}
+            <ReviewBanner client={client} type="benchmark" id={brand.id} />
+            {benchmarkBlueprints.map((bp) => (
+              <div className={m.block} key={bp.id}>
+                <div className={m.blockHead}>
+                  <h4>{bp.id === "overview" ? "Análisis individual" : bp.label}</h4>
                   <div className={m.actions}>
-                    <button
-                      disabled={!editable}
-                      className={buttonClass("secondary", true)}
-                      onClick={() => setBrandEditor(brand)}
-                    >
-                      Editar selección
-                    </button>
-                    <button
-                      disabled={!editable || !brand.items.length}
-                      className={buttonClass("secondary", true)}
-                      onClick={() =>
-                        mutate((s, c) => captureBenchmark(s, brand.id, c))
-                      }
-                    >
-                      Guardar snapshot fechado
-                    </button>
+                    <SectionStateBadge state={blockState(coverageOf(brand.id, bp.id))} />
+                    {addButton(brand, bp)}
                   </div>
                 </div>
-                <p>{brand.rationale || "Criterio de selección pendiente"}</p>
-                <p className={m.small}>
-                  {brand.region || "Región pendiente"} · Responsable:{" "}
-                  {brand.owner || "Pendiente"} ·{" "}
-                  {brand.clientValidated
-                    ? "Selección validada con el cliente"
-                    : "Validación del cliente pendiente"}{" "}
-                  · {brand.status}
-                </p>
-                <ReviewBanner client={client} type="benchmark" id={brand.id} />
+                {blockItems(brand, bp)}
               </div>
-              <nav className={m.tabs} aria-label="Bloques del análisis">
-                {benchmarkBlueprints.map((b) => (
-                  <button
-                    key={b.id}
-                    aria-pressed={block === b.id}
-                    onClick={() => setBlock(b.id)}
-                  >
-                    {b.label}
-                  </button>
-                ))}
-              </nav>
-              <div className={m.head}>
-                <h3>{bp.label}</h3>
-                <button
-                  disabled={!editable}
-                  className={buttonClass("primary", true)}
-                  onClick={() =>
-                    setEditor({
-                      item: newItem(bp.id, context()),
-                      bp,
-                      brandId: brand.id,
-                      revision: k.revision,
-                    })
-                  }
-                >
-                  Agregar {bp.label.toLowerCase()}
-                </button>
-              </div>
-              {brand.items.filter((i) => i.section === block).length ? (
-                brand.items
-                  .filter((i) => i.section === block)
-                  .map((item) => (
-                    <article className={m.card} key={item.id}>
-                      <p className={m.badge}>
-                        {item.status} · {item.observedAt || "Fecha pendiente"}
-                      </p>
-                      <ItemDetails item={item} bp={bp} k={k} />
-                      <div className={m.actions}>
-                        <button
-                          disabled={!editable}
-                          className={buttonClass("secondary", true)}
-                          onClick={() =>
-                            setEditor({
-                              item,
-                              bp,
-                              brandId: brand.id,
-                              revision: k.revision,
-                            })
-                          }
-                        >
-                          Editar análisis
-                        </button>
-                        <button
-                          disabled={!editable}
-                          className={buttonClass("ghost", true)}
-                          onClick={() => deleteItem(item)}
-                        >
-                          Quitar análisis
-                        </button>
-                      </div>
-                    </article>
-                  ))
-              ) : (
-                <p className={m.empty}>
-                  Todavía no hay observaciones de {bp.label.toLowerCase()} para
-                  esta marca.
-                </p>
-              )}
-              <details className={m.card}>
-                <summary>Snapshots de {brand.name}</summary>
-                {k.benchmark.snapshots
-                  .filter((s) => s.brandId === brand.id)
-                  .map((s) => (
-                    <details key={s.id}>
-                      <summary>
-                        {s.capturedAt} · {s.capturedBy}
-                      </summary>
-                      <pre className={m.pre}>{formatValue(s.brand)}</pre>
-                    </details>
-                  ))}
-              </details>
-            </>
-          ) : null}
-        </>
-      ) : null}
-      {tab === "findings" ? (
-        <>
-          <div className={m.head}>
-            <h3>Conclusiones del Benchmark</h3>
-            <button
-              disabled={!editable}
-              className={buttonClass("primary", true)}
-              onClick={() =>
-                setEditor({
-                  item: newItem("finding", context()),
-                  bp: findingsBlueprint,
-                  revision: k.revision,
-                })
-              }
-            >
-              Agregar conclusión
-            </button>
+            ))}
+            {snapshots(brand)}
+          </DocumentSection>
+        ))}
+        <DocumentSection
+          id="benchmark-conclusiones"
+          number={String(firstCompetitorNumber + competitors.length).padStart(2, "0")}
+          title="Conclusiones generales"
+          hint="Qué podemos tomar, qué debemos evitar y cómo diferenciarnos. Cada decisión del Plan tiene que poder apoyarse en una de estas conclusiones."
+          state={
+            k.benchmark.findings.length === 0
+              ? "empty"
+              : k.benchmark.findings.some((f) => f.status !== "Validado")
+                ? "pending-validation"
+                : "validated"
+          }
+          actions={
+            editable ? (
+              <button
+                className={buttonClass("secondary", true)}
+                onClick={() =>
+                  setEditor({
+                    item: newItem("finding", context()),
+                    bp: findingsBlueprint,
+                    revision: k.revision,
+                  })
+                }
+              >
+                + Agregar conclusión
+              </button>
+            ) : null
+          }
+        >
+          <div className={m.findingGrid}>
+            {findingBlueprint.fields[0].options?.map((category) => {
+              const list = k.benchmark.findings.filter(
+                (f) => f.values.category === category,
+              );
+              return (
+                <section className={m.card} key={category}>
+                  <h4>{category}</h4>
+                  {list.length ? (
+                    list.map((item) => (
+                      <article className={m.findingItem} key={item.id}>
+                        <ItemDetails item={item} bp={findingBlueprint} k={k} />
+                        <p className={m.small}>
+                          Módulos afectados:{" "}
+                          {item.impactedServices.map(serviceLabel).join(" · ") ||
+                            "Pendientes"}
+                        </p>
+                        {editable ? (
+                          <div className={m.actions}>
+                            <button
+                              className={buttonClass("secondary", true)}
+                              onClick={() =>
+                                setEditor({
+                                  item: {
+                                    ...item,
+                                    values: {
+                                      ...item.values,
+                                      impactedServices: item.impactedServices,
+                                    },
+                                  },
+                                  bp: findingsBlueprint,
+                                  revision: k.revision,
+                                })
+                              }
+                            >
+                              Editar
+                            </button>
+                            <button
+                              className={buttonClass("ghost", true)}
+                              onClick={() => deleteItem(item)}
+                            >
+                              Quitar
+                            </button>
+                          </div>
+                        ) : null}
+                      </article>
+                    ))
+                  ) : (
+                    <p className={m.empty}>Sin conclusiones registradas.</p>
+                  )}
+                </section>
+              );
+            })}
           </div>
-          {findingBlueprint.fields[0].options?.map((category) => (
-            <section className={m.card} key={category}>
-              <h3>{category}</h3>
-              {k.benchmark.findings
-                .filter((f) => f.values.category === category)
-                .map((item) => (
-                  <article className={m.card} key={item.id}>
-                    <ItemDetails item={item} bp={findingBlueprint} k={k} />
-                    <p>
-                      Módulos afectados:{" "}
-                      {item.impactedServices.map(serviceLabel).join(" · ") ||
-                        "Pendientes"}
-                    </p>
-                    <div className={m.actions}>
-                      <button
-                        disabled={!editable}
-                        className={buttonClass("secondary", true)}
-                        onClick={() =>
-                          setEditor({
-                            item: {
-                              ...item,
-                              values: {
-                                ...item.values,
-                                impactedServices: item.impactedServices,
-                              },
-                            },
-                            bp: findingsBlueprint,
-                            revision: k.revision,
-                          })
-                        }
-                      >
-                        Editar conclusión
-                      </button>
-                      <button
-                        disabled={!editable}
-                        className={buttonClass("ghost", true)}
-                        onClick={() => deleteItem(item)}
-                      >
-                        Quitar conclusión
-                      </button>
-                    </div>
-                  </article>
-                ))}
-            </section>
-          ))}
-        </>
-      ) : null}
-      {tab === "monitoring" ? (
-        <>
+        </DocumentSection>
+        <DocumentSection
+          id="benchmark-monitoreo"
+          title="Monitoreo y cambios entre relevamientos"
+          hint="Cada nuevo relevamiento registra la fuente, se compara con el anterior y propone cambios. Las conclusiones solo se actualizan después de validarlas."
+          state="not-applicable"
+        >
           <section className={m.card}>
-            <h3>Monitoreo pendiente de configurar</h3>
+            <h4>Monitoreo automático: sin proveedor conectado</h4>
             <p>
-              No hay proveedor conectado. Los snapshots manuales se guardan con
-              la fecha y el responsable del relevamiento.
+              No hay fuentes ni ejecuciones reales de escaneo. Los snapshots
+              manuales se guardan con fecha y responsable. Circuito previsto:
+              registrar fuente → comparar con el último análisis → detectar
+              cambios → proponer actualización → revisión → actualizar
+              conclusiones tras validar.
             </p>
             <label className={m.field}>
               Frecuencia
@@ -525,8 +623,7 @@ export function BenchmarkView({ client }: { client: OsClient }) {
                       ...s.benchmark,
                       scan: {
                         ...s.benchmark.scan,
-                        cadence: e.target.value as
-                          "weekly" | "biweekly" | "monthly",
+                        cadence: e.target.value as "weekly" | "biweekly" | "monthly",
                       },
                     },
                   }))
@@ -557,31 +654,30 @@ export function BenchmarkView({ client }: { client: OsClient }) {
               disabled={!editable}
               k={k}
             />
-            <p>
+            <p className={m.small}>
               Último escaneo: {k.benchmark.scan.lastRunAt || "Nunca"} · Próxima
               ejecución: {k.benchmark.scan.nextRunAt || "Sin programar"}
             </p>
-            <button disabled className={buttonClass("secondary", true)}>
-              Ejecutar escaneo
+            <button
+              disabled
+              className={buttonClass("secondary", true)}
+              title="Sin proveedor de escaneo conectado"
+            >
+              Ejecutar escaneo · sin proveedor conectado
             </button>
           </section>
           <section className={m.card}>
-            <h3>Reporte quincenal · cambios entre snapshots</h3>
-            <p className={m.muted}>
-              Comparación de los dos últimos relevamientos guardados por marca.
-              Las fechas muestran el período real disponible.
-            </p>
+            <h4>Cambios entre los dos últimos snapshots</h4>
             {reports.map((r) => (
-              <article key={r.brand} className={m.card}>
-                <h4>{r.brand}</h4>
+              <article key={r.brand} className={m.findingItem}>
+                <strong>{r.brand}</strong>
                 {r.pending ? (
-                  <p>
-                    Se necesitan dos snapshots para detectar diferencias. No hay
-                    datos suficientes para este período.
+                  <p className={m.small}>
+                    Se necesitan dos snapshots para detectar diferencias.
                   </p>
                 ) : (
                   <>
-                    <p>
+                    <p className={m.small}>
                       {r.baseline} → {r.last}
                     </p>
                     {r.changes.length ? (
@@ -589,41 +685,22 @@ export function BenchmarkView({ client }: { client: OsClient }) {
                         <details key={change.section}>
                           <summary>Cambios en {change.section}</summary>
                           <div className={m.diff}>
-                            <pre className={m.pre}>
-                              {formatValue(change.before)}
-                            </pre>
-                            <pre className={m.pre}>
-                              {formatValue(change.after)}
-                            </pre>
+                            <pre className={m.pre}>{formatValue(change.before)}</pre>
+                            <pre className={m.pre}>{formatValue(change.after)}</pre>
                           </div>
                         </details>
                       ))
                     ) : (
-                      <p>Sin cambios registrados entre estos relevamientos.</p>
+                      <p className={m.small}>Sin cambios entre estos relevamientos.</p>
                     )}
                   </>
                 )}
               </article>
             ))}
-            <h4>Oportunidades, amenazas y recomendaciones registradas</h4>
-            {k.benchmark.findings.length ? (
-              k.benchmark.findings.map((f) => (
-                <p key={f.id}>
-                  {String(f.values.category)}: {String(f.values.statement)} ·{" "}
-                  {f.status}
-                </p>
-              ))
-            ) : (
-              <p>
-                Sin conclusiones registradas. Contenidos, campañas y
-                lanzamientos se informarán cuando exista evidencia en los
-                relevamientos.
-              </p>
-            )}
           </section>
-        </>
-      ) : null}
-      {editable ? <History k={k} /> : null}
+          {editable ? <History k={k} /> : null}
+        </DocumentSection>
+      </DocumentShell>
       {brandEditor ? (
         <BrandEditor
           client={client}

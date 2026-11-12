@@ -15,7 +15,7 @@ import {
   type QuestionnaireResponse,
   type AnswerValue,
 } from "./questionnaire";
-import { questionnaireToProposals } from "./proposals";
+import { applyValidatedAnswers, questionnaireToProposals } from "./proposals";
 import { useKnowledge } from "./use-knowledge";
 import m from "./knowledge.module.css";
 type Row = Record<string, string | number | boolean | null | string[]>;
@@ -97,7 +97,14 @@ function AnswerField({
     </label>
   );
 }
-export function QuestionnaireView({ client }: { client: OsClient }) {
+export function QuestionnaireView({
+  client,
+  compact = false,
+}: {
+  client: OsClient;
+  /** Inside the continuous Discovery: tools visible, questions collapsed. */
+  compact?: boolean;
+}) {
   const { k, d, editable, mutate, latest } = useKnowledge(client);
   const { notify } = useOsStore();
   const [responses, setResponses] = useState(k.questionnaire.responses);
@@ -179,13 +186,15 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
   return (
     <div className={`${m.root} ${share ? `${m.share} ${m.printable}` : ""}`}>
       <div className={m.head}>
-        <div>
-          <h2>Cuestionario inicial · {client.name}</h2>
-          <p>
-            Una conversación para entender tu negocio, tus clientes y los
-            materiales disponibles.
-          </p>
-        </div>
+        {!compact || share ? (
+          <div>
+            <h2>Cuestionario inicial · {client.name}</h2>
+            <p>
+              Una conversación para entender tu negocio, tus clientes y los
+              materiales disponibles.
+            </p>
+          </div>
+        ) : null}
         <div className={`${m.actions} ${m.noPrint}`}>
           <button
             className={buttonClass("secondary", true)}
@@ -238,14 +247,13 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
       </div>
       <div>
         <strong>
-          Progreso general: {progress.percent}% · {progress.answered} de{" "}
-          {progress.total}
+          {progress.answered} de {progress.total} preguntas respondidas
         </strong>
         <progress
-          aria-label="Progreso del cuestionario"
+          aria-label={`${progress.answered} de ${progress.total} preguntas respondidas`}
           className={m.progress}
-          max={100}
-          value={progress.percent}
+          max={progress.total || 1}
+          value={progress.answered}
         />
       </div>
       <p className={m.muted}>
@@ -259,6 +267,14 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
           onResponsesChanged={refreshResponses}
         />
       ) : null}
+      <details
+        className={m.questions}
+        open={!compact || share ? true : undefined}
+      >
+        <summary>
+          Responder preguntas · {progress.answered} de {progress.total}{" "}
+          respondidas
+        </summary>
       <div className={share ? m.root : m.twoCol}>
         {!share ? (
           <nav className={m.side} aria-label="Bloques del cuestionario">
@@ -268,7 +284,7 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
                 aria-current={active === s.id ? "page" : undefined}
                 onClick={() => setActive(s.id)}
               >
-                {s.label} · {s.percent}%
+                {s.label}
                 {s.clarification ? ` · ${s.clarification} aclaraciones` : ""}
               </button>
             ))}
@@ -517,6 +533,7 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
           ))}
         </div>
       </div>
+      </details>
       <div className={`${m.actions} ${m.noPrint}`}>
         <button
           disabled={!editable}
@@ -529,7 +546,7 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
         </button>
         <button
           disabled={!editable}
-          className={buttonClass("primary")}
+          className={buttonClass(compact ? "dark" : "primary")}
           onClick={() => {
             save();
           }}
@@ -549,11 +566,38 @@ export function QuestionnaireView({ client }: { client: OsClient }) {
               }
             }}
           >
-            Generar propuestas desde respuestas
+            Enviar respuestas a revisión
+          </button>
+        ) : null}
+        {!share ? (
+          <button
+            disabled={!editable}
+            className={buttonClass("dark")}
+            onClick={() => {
+              if (!save()) return;
+              let result = { applied: 0, pending: 0 };
+              if (
+                mutate((st, c) => {
+                  const out = applyValidatedAnswers(st, c);
+                  result = out.result;
+                  return out.state;
+                })
+              ) {
+                refreshResponses();
+                notify(
+                  result.applied
+                    ? `${result.applied} cambio(s) aplicados al Discovery desde respuestas validadas${result.pending ? ` · ${result.pending} quedan en revisión por conflicto` : ""}`
+                    : "No hay respuestas validadas nuevas para aplicar. Marcá la respuesta como «Validada» primero.",
+                  result.applied ? "success" : "default",
+                );
+              }
+            }}
+          >
+            Aplicar respuestas validadas al Discovery
           </button>
         ) : null}
       </div>
-      {!share && editable ? (
+      {!share && editable && !compact ? (
         <PresentationView client={client} beforeGenerate={save} />
       ) : null}
     </div>

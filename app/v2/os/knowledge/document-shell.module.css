@@ -1,0 +1,22 @@
+/* Continuous strategic documents (Discovery, Benchmark, Plan). */
+.document{display:flex;flex-direction:column;gap:0;min-width:0}
+.index{position:sticky;top:64px;z-index:15;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:16px 0 0;padding:6px;background:var(--av-bg-raised);border:1px solid var(--av-border);box-shadow:0 6px 14px rgba(21,23,26,.04)}
+.index::-webkit-scrollbar{display:none}
+.index a{flex:none;display:inline-flex;align-items:center;min-height:36px;padding:0 12px;font-size:14px;color:var(--av-text-muted);text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent}
+.index a:hover{color:var(--av-text);background:var(--av-bg)}
+.index a[aria-current="location"]{color:var(--av-text);font-weight:500;border-bottom-color:var(--av-coral-300);background:var(--av-bg)}
+.body{display:flex;flex-direction:column;gap:0}
+.section{scroll-margin-top:132px;padding:34px 0 30px;border-bottom:1px solid var(--av-border)}
+.section:last-child{border-bottom:0}
+.sectionHead{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px 20px;margin-bottom:16px}
+.sectionHead h3{margin:2px 0 0;font-size:24px;line-height:1.2;font-weight:400;letter-spacing:-.015em}
+.sectionHead h3:focus{outline:none}
+.sectionHead p{margin:6px 0 0;max-width:760px;font-size:15px;color:var(--av-text-muted)}
+.number{display:block;font-size:13px;font-weight:500;letter-spacing:var(--av-tracking-rotulo);text-transform:uppercase;color:var(--av-link)}
+.sectionTools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.sectionBody{display:flex;flex-direction:column;gap:14px;min-width:0}
+@media (max-width:767px){
+  .index{top:72px;margin-top:12px}
+  .section{scroll-margin-top:140px;padding:26px 0 22px}
+  .sectionHead h3{font-size:21px}
+}

@@ -1,11 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import { useKnowledge } from "../knowledge/use-knowledge";
 import { discoveryOf } from "../knowledge/state";
 import { ReviewBanner } from "../knowledge/shared-ui";
+import {
+  DocumentSection,
+  DocumentShell,
+  type SectionState,
+} from "../knowledge/document-shell";
 import { QuestionnaireView } from "../knowledge/questionnaire-view";
 import { OSModal, OSSidePanel } from "../overlays";
 import { Badge, buttonClass } from "../ui";
@@ -19,11 +24,9 @@ import {
   recordsOf,
   referencesTo,
   targetingQuadrant,
-  toDiscoveryPresentation,
   validateEntity,
   type EntityMap,
   type MarketingDiscovery,
-  type SectionCompletion,
   type Trace,
 } from "../discovery/model";
 import {
@@ -39,7 +42,6 @@ import {
 import s from "../os.module.css";
 import m from "./marketing-discovery.module.css";
 
-type View = SectionKey | "coverage" | "sources" | "questionnaire";
 type Editor = { kind: EntityKind; value: EditableRecord; original?: string };
 const titles: Record<EntityKind, string> = {
   companyProfile: "Quiénes somos",
@@ -136,59 +138,6 @@ function ValidationBadge({
     </Badge>
   );
 }
-function CoverageCard({
-  item,
-  onOpen,
-  expanded = false,
-}: {
-  item: SectionCompletion;
-  onOpen: () => void;
-  expanded?: boolean;
-}) {
-  return (
-    <article className={m.coverageCard}>
-      <button type="button" onClick={onOpen}>
-        <strong>
-          {item.label === "Unidades de negocio"
-            ? "Qué hacemos"
-            : item.label === "Proceso comercial"
-              ? "Cómo se vende hoy"
-              : item.label === "Segmentación"
-                ? "Matriz de targeting"
-                : item.label}
-        </strong>
-        <b>{item.percent}%</b>
-      </button>
-      <progress
-        aria-label={`Cobertura de ${item.label}`}
-        max={100}
-        value={item.percent}
-      />
-      <span>
-        {item.state} ·{" "}
-        {item.notApplicable ? "No aplica" : `${item.count} elemento(s)`}
-      </span>
-      {expanded ? (
-        <>
-          <span>{item.unvalidated} registro(s) pendientes de validar</span>
-          <details>
-            <summary>Campos faltantes ({item.missing.length})</summary>
-            {item.missing.length ? (
-              <ul>
-                {item.missing.map((f, i) => (
-                  <li key={i}>{f}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>Sin campos obligatorios faltantes.</p>
-            )}
-          </details>
-        </>
-      ) : null}
-    </article>
-  );
-}
-
 function EntityEditor({
   editor,
   d,
@@ -521,152 +470,50 @@ function TargetingMatrix({
   );
 }
 
-function PresentationPreview({
-  d,
-  onClose,
-}: {
-  d: MarketingDiscovery;
-  onClose: () => void;
-}) {
-  const presentation = toDiscoveryPresentation(d);
-  const rows: Record<SectionKey, Trace[]> = {
-    companyProfile: [presentation.companyOverview],
-    relevantFacts: presentation.relevantFacts,
-    businessUnits: presentation.businessUnits,
-    offerings: presentation.offeringSlides,
-    salesProcess: [presentation.salesProcess],
-    targetSegments: presentation.targetingMatrix,
-    b2bIcps: presentation.b2bIcpSlides,
-    b2cIcps: presentation.b2cIcpSlides,
-  };
-  return (
-    <OSSidePanel
-      label="Vista previa del contenido de presentación"
-      heading={<h2 className={m.drawerTitle}>Contenido de presentación</h2>}
-      onClose={onClose}
-    >
-      <div className={m.preview}>
-        <p>
-          Plan de contenido de las futuras filminas 5–12. No es un PowerPoint
-          generado. Los borradores y datos demostrativos requieren revisión
-          antes de presentar.
-        </p>
-        {sections.map((section) => {
-          const coverage = presentation.coverage.sections.find(
-            (c) => c.key === section.key,
-          )!;
-          const repeated = ["offerings", "b2bIcps", "b2cIcps"].includes(
-            section.key,
-          );
-          return (
-            <details key={section.key}>
-              <summary>
-                Filmina {section.slide} · {section.label}
-                <small>
-                  {coverage.notApplicable
-                    ? "No aplica · se omite"
-                    : `${repeated ? rows[section.key].length : 1} filmina(s) · ${coverage.state}`}
-                </small>
-              </summary>
-              {repeated ? (
-                <p>
-                  Se duplica una filmina por{" "}
-                  {section.key === "offerings"
-                    ? "producto o servicio"
-                    : "perfil"}
-                  .
-                </p>
-              ) : null}
-              {section.key === "relevantFacts" ? (
-                <p>
-                  Se incluyen únicamente los datos destacados (
-                  {presentation.relevantFacts.length} de{" "}
-                  {d.relevantFacts.length}).
-                </p>
-              ) : null}
-              {coverage.notApplicable ? (
-                <p>
-                  {d.applicability[section.key as "b2bIcps" | "b2cIcps"].reason}
-                </p>
-              ) : null}
-              {rows[section.key].map((row, i) => (
-                <article key={row.id}>
-                  <h3>
-                    {i + 1}. {String(toRecord(row).name || section.label)}
-                  </h3>
-                  <ValidationBadge d={d} kind={section.key} record={row} />
-                  <RecordDetails
-                    d={d}
-                    kind={section.key}
-                    record={toRecord(row)}
-                  />
-                  {section.key === "targetSegments" ? (
-                    <p>
-                      Cuadrante:{" "}
-                      {targetingQuadrant(
-                        toRecord(row).match as number | null,
-                        toRecord(row).potential as number | null,
-                      )}
-                    </p>
-                  ) : null}
-                </article>
-              ))}
-              {section.key === "salesProcess"
-                ? presentation.salesProcess.stages.map((stage, i) => (
-                    <article key={stage.id}>
-                      <h3>
-                        {i + 1}. {stage.name}
-                      </h3>
-                      <RecordDetails d={d} kind="stages" record={stage} />
-                    </article>
-                  ))
-                : null}
-              <p>{coverage.unvalidated} registro(s) requieren validación.</p>
-              <details>
-                <summary>
-                  Información faltante ({coverage.missing.length})
-                </summary>
-                <ul>
-                  {coverage.missing.map((x, i) => (
-                    <li key={i}>{x}</li>
-                  ))}
-                </ul>
-              </details>
-            </details>
-          );
-        })}
-      </div>
-    </OSSidePanel>
-  );
-}
+const sectionAnchor: Record<SectionKey, string> = {
+  companyProfile: "discovery-empresa",
+  relevantFacts: "discovery-datos",
+  businessUnits: "discovery-unidades",
+  offerings: "discovery-productos",
+  salesProcess: "discovery-comercial",
+  targetSegments: "discovery-targeting",
+  b2bIcps: "discovery-icp-b2b",
+  b2cIcps: "discovery-icp-b2c",
+};
+const sectionTitle: Record<SectionKey, string> = {
+  companyProfile: "Quiénes somos",
+  relevantFacts: "Datos relevantes",
+  businessUnits: "Unidades de negocio",
+  offerings: "Productos y servicios",
+  salesProcess: "Cómo se vende hoy",
+  targetSegments: "Matriz de targeting",
+  b2bIcps: "ICP B2B",
+  b2cIcps: "ICP B2C",
+};
 
-export function MarketingDiscoveryView({ client }: { client: OsClient }) {
+export function MarketingDiscoveryView({
+  client,
+  headerActions,
+}: {
+  client: OsClient;
+  /** Document-level actions (e.g. Generar presentación). */
+  headerActions?: ReactNode;
+}) {
   const { role, notify } = useOsStore();
   const knowledge = useKnowledge(client);
   const { d, editable, invalid: invalidStorage, hydrated } = knowledge;
-  const [active, setActive] = useState<View>("companyProfile");
   const [editor, setEditor] = useState<Editor | null>(null);
   const [deletion, setDeletion] = useState<{
     kind: CollectionKey;
     id: string;
     name: string;
   } | null>(null);
-  const [preview, setPreview] = useState(false);
   const [unitFilter, setUnitFilter] = useState("");
   const [selectedSegment, setSelectedSegment] = useState("");
   const [applicability, setApplicability] = useState<{
     kind: "b2bIcps" | "b2cIcps";
     reason: string;
   } | null>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const currentSection = sections.find((section) => section.key === active);
-  function navigate(view: View) {
-    setActive(view);
-    requestAnimationFrame(() => {
-      headingRef.current?.focus({ preventScroll: true });
-      headingRef.current?.scrollIntoView({ block: "start" });
-    });
-  }
   function latest(): MarketingDiscovery | null {
     try {
       return discoveryOf(knowledge.latest());
@@ -924,17 +771,6 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
         : all;
     return (
       <>
-        {editable ? (
-          <div className={m.toolbar}>
-            <button
-              type="button"
-              className={buttonClass("primary", true)}
-              onClick={() => openEditor(kind)}
-            >
-              Agregar {titles[kind].toLowerCase()}
-            </button>
-          </div>
-        ) : null}
         {filtered.length ? (
           <div className={kind === "stages" ? m.steps : m.records}>
             {filtered.map((r) =>
@@ -943,25 +779,135 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
           </div>
         ) : (
           <p className={m.empty}>
-            Pendiente de completar.{" "}
             {kind === "offerings" && unitFilter
               ? "Sin productos en esta unidad."
-              : "Todavía no hay registros cargados."}
+              : editable
+                ? "Todavía no hay registros. Usá «+ Agregar» o cargá fuentes en el cuestionario."
+                : "Todavía no hay registros cargados."}
           </p>
         )}
       </>
     );
   }
+  function sectionState(key: SectionKey): SectionState {
+    const c = d.completion.sections.find((x) => x.key === key);
+    if (!c) return "empty";
+    if (c.notApplicable) return "not-applicable";
+    if (c.state === "Completa") return "validated";
+    if (c.state === "Requiere validación") return "pending-validation";
+    return c.count === 0 ? "empty" : "missing";
+  }
+  const pending = d.completion.sections.filter(
+    (c) => !c.notApplicable && c.state !== "Completa",
+  );
+  const add = (kind: CollectionKey, label?: string) =>
+    editable ? (
+      <button
+        type="button"
+        className={buttonClass("secondary", true)}
+        onClick={() => openEditor(kind)}
+      >
+        + Agregar {label ?? titles[kind].toLowerCase()}
+      </button>
+    ) : null;
+  const edit = (kind: "companyProfile" | "salesProcess") =>
+    editable ? (
+      <button
+        type="button"
+        className={buttonClass("secondary", true)}
+        onClick={() => openEditor(kind, d[kind])}
+      >
+        Editar
+      </button>
+    ) : null;
+  const hint = (key: SectionKey) =>
+    sections.find((section) => section.key === key)?.hint;
+  function icpSection(kind: "b2bIcps" | "b2cIcps", number: string) {
+    const applies = d.applicability[kind].applies;
+    return (
+      <DocumentSection
+        id={kind === "b2bIcps" ? "discovery-icp-b2b" : "discovery-icp-b2c"}
+        number={number}
+        title={kind === "b2bIcps" ? "ICP B2B" : "ICP B2C"}
+        hint={hint(kind)}
+        state={sectionState(kind)}
+        actions={
+          <>
+            {editable ? (
+              <button
+                type="button"
+                className={buttonClass("ghost", true)}
+                onClick={() => {
+                  if (applies) setApplicability({ kind, reason: "" });
+                  else {
+                    const current = latest();
+                    if (current)
+                      persist({
+                        ...current,
+                        applicability: {
+                          ...current.applicability,
+                          [kind]: {
+                            applies: true,
+                            reason: "",
+                            updatedAt: new Date().toISOString(),
+                            updatedBy: discoveryActor(role),
+                          },
+                        },
+                      });
+                  }
+                }}
+              >
+                {applies ? "Marcar que no aplica" : "Marcar que aplica"}
+              </button>
+            ) : null}
+            {applies ? add(kind, "perfil") : null}
+          </>
+        }
+      >
+        {applies ? (
+          collection(kind)
+        ) : (
+          <div className={m.applicability}>
+            <strong>No aplica a este negocio</strong>
+            {d.applicability[kind].reason ? (
+              <p>{d.applicability[kind].reason}</p>
+            ) : null}
+          </div>
+        )}
+      </DocumentSection>
+    );
+  }
+  const index = [
+    { id: "discovery-cuestionario", label: "Cuestionario" },
+    { id: "discovery-empresa", label: "Empresa" },
+    { id: "discovery-datos", label: "Datos" },
+    { id: "discovery-unidades", label: "Unidades" },
+    { id: "discovery-productos", label: "Productos" },
+    { id: "discovery-comercial", label: "Comercial" },
+    { id: "discovery-targeting", label: "Targeting" },
+    { id: "discovery-icp-b2b", label: "ICP B2B" },
+    { id: "discovery-icp-b2c", label: "ICP B2C" },
+    { id: "discovery-fuentes", label: "Fuentes" },
+  ];
   return (
-    <section className={m.discovery} aria-label="Marketing Discovery">
-      <header className={m.header}>
-        <div>
-          <span className={m.eyebrow}>01 · Análisis del negocio</span>
-          <h2>Discovery del negocio</h2>
-          <p>
-            Una base compartida para entender qué hace, qué vende y a quién le
-            vende {client.name}.
-          </p>
+    <div className={m.discovery}>
+    <DocumentShell
+      label="Discovery del negocio"
+      sections={index}
+      header={
+        <header className={m.docHeader}>
+          <div className={m.docTitle}>
+            <div>
+              <span className={m.eyebrow}>01 · Análisis del negocio</span>
+              <h2>Discovery del negocio</h2>
+              <p>
+                Qué hace, qué vende y a quién le vende {client.name}. Un único
+                documento: el cuestionario alimenta el análisis y el análisis
+                alimenta Benchmark y Plan.
+              </p>
+            </div>
+            <div className={m.docActions}>{headerActions}</div>
+          </div>
           <div className={m.meta}>
             <Badge tone={d.status === "Validado" ? "cool" : "peach"}>
               {d.status}
@@ -970,290 +916,182 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
               Responsable: {d.companyProfile.owner || "Pendiente de asignar"}
             </span>
             <span>{d.sources.length} fuente(s)</span>
+            <span>
+              Última actualización: {formatDate(d.updatedAt)}
+              {d.updatedBy ? ` · ${d.updatedBy}` : ""}
+            </span>
+            <span className={m.saveState}>
+              {!hydrated
+                ? "Leyendo datos locales…"
+                : knowledge.k.revision > 0 && !invalidStorage
+                  ? "Guardado en este navegador"
+                  : "Datos demostrativos · sin cambios locales"}{" "}
+              · Sin sincronización multiusuario
+            </span>
+            {!editable ? <Badge>Solo lectura</Badge> : null}
           </div>
-          <p className={m.muted}>
-            Última actualización: {formatDate(d.updatedAt)}
-            {d.updatedBy ? ` · ${d.updatedBy}` : ""}
-          </p>
-        </div>
-        <div className={m.overall}>
-          <strong>
-            {d.completion.percent}
-            <small>%</small>
-          </strong>
-          <span>cobertura general</span>
-          <button
-            type="button"
-            className={buttonClass("secondary", true)}
-            onClick={() => navigate("coverage")}
-          >
-            Ver faltantes
-          </button>
-        </div>
-      </header>
-      <div className={m.statusBar}>
-        <span>
-          {!hydrated
-            ? "Leyendo datos locales…"
-            : knowledge.k.revision > 0 && !invalidStorage
-              ? "Guardado en este navegador"
-              : "Datos demostrativos · sin cambios locales"}{" "}
-          · Pendiente de sincronización multiusuario
-        </span>
-        {!editable ? <Badge>Solo lectura</Badge> : null}
-      </div>
-      {invalidStorage ? (
-        <p role="alert" className={m.error}>
-          El Discovery guardado usa un formato incompatible. Se muestra la demo
-          sin sobrescribir los datos locales. Se requiere revisar o migrar esa
-          versión.
-        </p>
-      ) : null}
-      <div className={m.actions}>
-        {editable ? (
-          <button
-            type="button"
-            className={buttonClass("primary")}
-            onClick={() => openEditor("companyProfile", d.companyProfile)}
-          >
-            Editar Discovery
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className={buttonClass("secondary")}
-          onClick={() => navigate("sources")}
-        >
-          Fuentes y trazabilidad ({d.sources.length})
-        </button>
-        <button
-          type="button"
-          className={buttonClass("secondary")}
-          onClick={() => setPreview(true)}
-        >
-          Vista previa del contenido de presentación
-        </button>
-      </div>
-      <details className={m.method}>
-        <summary>Cómo completar este Discovery</summary>
-        <p>
-          El Project Manager lidera y delega el relevamiento. Completá el brief,
-          contrastalo en reunión y registrá la evidencia. Las unidades,
-          productos y perfiles se repiten según el negocio. Después del análisis
-          se construyen Benchmark y Plan de Marketing.
-        </p>
-        <p>
-          La definición de empresa debe ser literal. Los faltantes y las
-          instrucciones internas se revisan antes de presentar. Los documentos
-          se referencian manualmente: no se extrajeron automáticamente.
-        </p>
-      </details>
-      <section
-        className={m.coverage}
-        aria-label="Cobertura del Marketing Discovery"
-      >
-        <div className={m.sectionHead}>
-          <h3>Cobertura del Marketing Discovery</h3>
-          <button
-            type="button"
-            className={buttonClass("ghost", true)}
-            onClick={() => navigate("coverage")}
-          >
-            Ver reglas y campos faltantes
-          </button>
-        </div>
-        <div className={m.coverageGrid}>
-          {d.completion.sections.map((item) => (
-            <CoverageCard
-              key={item.key}
-              item={item}
-              onOpen={() => navigate(item.key)}
-            />
-          ))}
-        </div>
-      </section>
-      <nav className={m.index} aria-label="Índice del Discovery">
-        {sections.map((section, i) => (
-          <button
-            type="button"
-            key={section.key}
-            aria-current={active === section.key ? "page" : undefined}
-            onClick={() => navigate(section.key)}
-          >
-            {i + 1}. {section.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          aria-current={active === "coverage" ? "page" : undefined}
-          onClick={() => navigate("coverage")}
-        >
-          9. Cobertura
-        </button>
-        <button
-          type="button"
-          aria-current={active === "questionnaire" ? "page" : undefined}
-          onClick={() => navigate("questionnaire")}
-        >
-          Cuestionario inicial
-        </button>
-      </nav>
-      <section
-        className={m.content}
-        aria-labelledby="discovery-section-heading"
-      >
-        <div className={m.sectionHead}>
-          <div>
-            <h3 ref={headingRef} tabIndex={-1} id="discovery-section-heading">
-              {currentSection?.label ??
-                (active === "questionnaire"
-                  ? "Cuestionario inicial"
-                  : active === "coverage"
-                    ? "Cobertura del Marketing Discovery"
-                    : "Fuentes y trazabilidad")}
-            </h3>
-            <p>
-              {currentSection?.hint ??
-                (active === "questionnaire"
-                  ? "Preguntas para completar junto al cliente y generar propuestas revisables."
-                  : active === "coverage"
-                    ? "Completitud de contenido y validación se evalúan por separado."
-                    : "Cada fuente puede vincularse a varios registros. La carga de archivos y la extracción continúan pendientes.")}
+          {invalidStorage ? (
+            <p role="alert" className={m.error}>
+              El Discovery guardado usa un formato incompatible. Se muestra la
+              demo sin sobrescribir los datos locales. Se requiere revisar o
+              migrar esa versión.
             </p>
-          </div>
-          {currentSection ? (
-            <span className={m.eyebrow}>Filmina {currentSection.slide}</span>
           ) : null}
-        </div>
-        {active === "questionnaire" ? (
-          editable ? (
-            <QuestionnaireView key={client.slug} client={client} />
-          ) : (
-            <p>
-              El cuestionario está disponible para el administrador y el PM
-              asignado.
-            </p>
-          )
-        ) : null}
-        {active === "companyProfile"
-          ? recordCard("companyProfile", d.companyProfile, 0, 1)
-          : null}
-        {active === "relevantFacts" ||
-        active === "businessUnits" ||
-        active === "sources"
-          ? collection(active)
-          : null}
-        {active === "offerings" ? (
-          <>
-            <label className={s.field}>
-              <span>Filtrar por unidad de negocio</span>
-              <select
-                className={s.input}
-                value={unitFilter}
-                onChange={(e) => setUnitFilter(e.target.value)}
-              >
-                <option value="">Todas las unidades</option>
-                {d.businessUnits.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
+          {pending.length ? (
+            <details className={m.pending}>
+              <summary>
+                Pendientes antes de exportar · {pending.length}{" "}
+                {pending.length === 1 ? "sección" : "secciones"}
+              </summary>
+              <ul>
+                {pending.map((c) => (
+                  <li key={c.key}>
+                    <a href={`#${sectionAnchor[c.key]}`}>
+                      {sectionTitle[c.key]}
+                    </a>
+                    <span>
+                      {c.count === 0
+                        ? "Sin información cargada"
+                        : c.missing.length
+                          ? `Falta: ${c.missing.slice(0, 4).join(" · ")}${c.missing.length > 4 ? ` y ${c.missing.length - 4} más` : ""}`
+                          : `${c.unvalidated} registro(s) pendientes de validar`}
+                    </span>
+                  </li>
                 ))}
-              </select>
-            </label>
-            {collection("offerings")}
-          </>
-        ) : null}
-        {active === "salesProcess" ? (
-          <>
-            {recordCard("salesProcess", d.salesProcess, 0, 1)}
-            <h4>Secuencia comercial</h4>
-            {collection("stages")}
-          </>
-        ) : null}
-        {active === "targetSegments" ? (
-          <>
-            <TargetingMatrix
-              d={d}
-              selected={selectedSegment}
-              onSelect={setSelectedSegment}
-            />
-            {collection("targetSegments")}
-          </>
-        ) : null}
-        {active === "b2bIcps" || active === "b2cIcps" ? (
-          <>
-            <div className={m.applicability}>
-              <strong>
-                {d.applicability[active].applies
-                  ? "Aplica a este negocio"
-                  : "No aplica a este negocio"}
-              </strong>
-              {d.applicability[active].reason ? (
-                <p>{d.applicability[active].reason}</p>
-              ) : null}
-              {editable ? (
-                <button
-                  type="button"
-                  className={buttonClass("secondary", true)}
-                  onClick={() => {
-                    if (d.applicability[active].applies)
-                      setApplicability({ kind: active, reason: "" });
-                    else {
-                      const current = latest();
-                      if (current)
-                        persist({
-                          ...current,
-                          applicability: {
-                            ...current.applicability,
-                            [active]: {
-                              applies: true,
-                              reason: "",
-                              updatedAt: new Date().toISOString(),
-                              updatedBy: discoveryActor(role),
-                            },
-                          },
-                        });
-                    }
-                  }}
-                >
-                  {d.applicability[active].applies
-                    ? "Marcar que no aplica"
-                    : "Marcar que aplica"}
-                </button>
-              ) : null}
-            </div>
-            {collection(active)}
-          </>
-        ) : null}
-        {active === "coverage" ? (
-          <>
+              </ul>
+              <p className={m.muted}>
+                Para validar un registro se necesitan todos los campos
+                obligatorios, evidencia, responsable y fuentes validadas que no
+                sean de demostración.
+              </p>
+            </details>
+          ) : (
             <p className={m.muted}>
-              Ocho secciones con el mismo peso. Se cuentan los campos requeridos
-              de todos los registros. Datos relevantes exige tres registros
-              validados; el proceso exige etapas y responsables; cada segmento
-              con ICP solicitado necesita su perfil. “No aplica” con motivo y
-              sin segmentos ni perfiles de ese tipo cuenta como completo. Solo
-              se valida contenido con evidencia y fuentes validadas, sin datos
-              demostrativos.
+              Todas las secciones están completas y validadas.
             </p>
-            <div className={m.coverageGrid}>
-              {d.completion.sections.map((item) => (
-                <CoverageCard
-                  key={item.key}
-                  item={item}
-                  expanded
-                  onOpen={() => navigate(item.key)}
-                />
+          )}
+        </header>
+      }
+    >
+      <DocumentSection
+        id="discovery-cuestionario"
+        number="01"
+        title="Cuestionario inicial"
+        hint="Relevamiento y carga inicial: cargá documentos, pegá textos o sumá fuentes; el análisis sugiere respuestas y vos las revisás. No hace falta responder a mano lo que ya está en las fuentes."
+      >
+        {editable ? (
+          <QuestionnaireView key={client.slug} client={client} compact />
+        ) : (
+          <p className={m.muted}>
+            El cuestionario está disponible para el administrador y el PM
+            asignado.
+          </p>
+        )}
+      </DocumentSection>
+      <DocumentSection
+        id="discovery-empresa"
+        number="02"
+        title="Quiénes somos"
+        hint={hint("companyProfile")}
+        state={sectionState("companyProfile")}
+        actions={edit("companyProfile")}
+      >
+        {recordCard("companyProfile", d.companyProfile, 0, 1)}
+      </DocumentSection>
+      <DocumentSection
+        id="discovery-datos"
+        number="03"
+        title="Datos relevantes"
+        hint={hint("relevantFacts")}
+        state={sectionState("relevantFacts")}
+        actions={add("relevantFacts")}
+      >
+        {collection("relevantFacts")}
+      </DocumentSection>
+      <DocumentSection
+        id="discovery-unidades"
+        number="04"
+        title="Unidades de negocio"
+        hint={hint("businessUnits")}
+        state={sectionState("businessUnits")}
+        actions={add("businessUnits")}
+      >
+        {collection("businessUnits")}
+      </DocumentSection>
+      <DocumentSection
+        id="discovery-productos"
+        number="05"
+        title="Productos y servicios"
+        hint={hint("offerings")}
+        state={sectionState("offerings")}
+        actions={add("offerings")}
+      >
+        {d.businessUnits.length > 1 ? (
+          <label className={`${s.field} ${m.filter}`}>
+            <span>Filtrar por unidad de negocio</span>
+            <select
+              className={s.input}
+              value={unitFilter}
+              onChange={(e) => setUnitFilter(e.target.value)}
+            >
+              <option value="">Todas las unidades</option>
+              {d.businessUnits.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
               ))}
-            </div>
-          </>
+            </select>
+          </label>
         ) : null}
-      </section>
-      <p className={m.muted}>
-        Permisos de preview: Administrador y PM asignado pueden editar; los
-        demás perfiles consultan. La seguridad de producción requiere
-        autenticación, API y RLS reales.
-      </p>
+        {collection("offerings")}
+      </DocumentSection>
+      <DocumentSection
+        id="discovery-comercial"
+        number="06"
+        title="Cómo se vende hoy"
+        hint={hint("salesProcess")}
+        state={sectionState("salesProcess")}
+        actions={
+          <>
+            {edit("salesProcess")}
+            {add("stages", "etapa")}
+          </>
+        }
+      >
+        {recordCard("salesProcess", d.salesProcess, 0, 1)}
+        <h4 className={m.subhead}>Secuencia comercial</h4>
+        {collection("stages")}
+      </DocumentSection>
+      <DocumentSection
+        id="discovery-targeting"
+        number="07"
+        title="Matriz de targeting"
+        hint={hint("targetSegments")}
+        state={sectionState("targetSegments")}
+        actions={add("targetSegments")}
+      >
+        <TargetingMatrix
+          d={d}
+          selected={selectedSegment}
+          onSelect={setSelectedSegment}
+        />
+        {collection("targetSegments")}
+      </DocumentSection>
+      {icpSection("b2bIcps", "08")}
+      {icpSection("b2cIcps", "09")}
+      <DocumentSection
+        id="discovery-fuentes"
+        title="Fuentes y trazabilidad"
+        hint="Cada fuente puede respaldar varios registros. Revisar una fuente vuelve a pedir validación de los registros vinculados."
+        actions={add("sources")}
+      >
+        {collection("sources")}
+        <p className={m.muted}>
+          Permisos de preview: Administrador y PM asignado pueden editar; los
+          demás perfiles consultan. La seguridad de producción requiere
+          autenticación, API y RLS reales.
+        </p>
+      </DocumentSection>
       {editor && editable ? (
         <EntityEditor
           key={`${editor.kind}-${editor.value.id}`}
@@ -1390,9 +1228,7 @@ export function MarketingDiscoveryView({ client }: { client: OsClient }) {
           </form>
         </OSModal>
       ) : null}
-      {preview ? (
-        <PresentationPreview d={d} onClose={() => setPreview(false)} />
-      ) : null}
-    </section>
+    </DocumentShell>
+    </div>
   );
 }

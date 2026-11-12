@@ -23,6 +23,7 @@ import sc from "../screens.module.css";
 import d from "./director-update.module.css";
 import { ClientManagementContent, type ClientManagementView } from "./client-management-views";
 import { ClientOperationNav } from "./client-operation-nav";
+import { AddServiceModuleButton } from "./service-modules-dialog";
 
 const MANAGEMENT_VIEWS: { id: ClientManagementView; label: string; description: string }[] = [
   { id: "ficha", label: "Ficha del cliente", description: "Alcance y negocio" },
@@ -142,7 +143,8 @@ function ClientDailyHome({ client, activeServices }: { client: OsClient; activeS
     <div className={sc.stack}>
       <div className={d.dailyGrid}>
         <section className={sc.stack} aria-labelledby="modules-summary-title">
-          <div className={s.pageHead}><div><h2 id="modules-summary-title" style={{ margin: 0, fontSize: 23, fontWeight: 500 }}>Resumen de módulos</h2><p>Los puntos más importantes de cada servicio contratado.</p></div></div>
+          <div className={s.pageHead}><div><h2 id="modules-summary-title" style={{ margin: 0, fontSize: 23, fontWeight: 500 }}>Resumen de módulos</h2><p>Los puntos más importantes de cada servicio contratado.</p></div><AddServiceModuleButton client={client} /></div>
+          {!summaries.length ? <OSEmptyState icon="ajuste" title="Sin módulos de servicio activos">Agregá los módulos contratados para habilitar su navegación, su espacio de trabajo y sus secciones del Plan de Marketing.</OSEmptyState> : null}
           <div className={d.moduleGrid}>
             {summaries.map((summary) => {
               const definition = serviceCatalog.find((service) => service.id === summary.serviceId);
