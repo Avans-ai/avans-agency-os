@@ -30,6 +30,7 @@ export default defineConfig({
         "discovery-browser.spec.ts",
         "knowledge-browser.spec.ts",
         "intake-presentation-browser.spec.ts",
+        "strategic-documents-browser.spec.ts",
       ],
       use: { browserName: "chromium" },
     },

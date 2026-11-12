@@ -229,7 +229,7 @@ export function PlanView({
               <ReviewBanner client={client} type="marketing-plan" id={module.service} />
               {module.templatePending ? (
                 <section className={m.block}>
-                  <p>Plantilla estratégica pendiente de definición.</p>
+                  <p>Plantilla estratégica pendiente de definición</p>
                   <p className={m.small}>
                     El módulo operativo del servicio sigue disponible desde la
                     navegación del cliente.

@@ -240,7 +240,7 @@ textarea.input{resize:vertical;min-height:96px}
 .searchField:focus-within{outline:2px solid var(--av-focus);outline-offset:2px}
 .searchFieldRaised{background:var(--av-bg-raised)}
 
-.tableWrap{overflow-x:auto;background:var(--av-bg-raised)}
+.tableWrap{position:relative;overflow-x:auto;background:var(--av-bg-raised)}
 .table{width:100%;min-width:0;border-collapse:collapse;font-size:14px}
 .table caption{caption-side:top;text-align:left;padding:16px;font-size:14px;color:var(--av-text-muted)}
 .table th{font-family:inherit;background:var(--av-bg-sunken);text-align:left;font-size:13px;font-weight:500;letter-spacing:var(--av-tracking-rotulo);text-transform:uppercase;padding:14px 16px;vertical-align:middle;color:var(--av-text)}

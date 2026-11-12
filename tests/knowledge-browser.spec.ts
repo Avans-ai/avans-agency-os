@@ -27,6 +27,29 @@ async function switchRole(page: Page, name: string) {
     .click();
   await page.getByRole("button", { name: /^Perfil:/ }).click();
 }
+async function setModules(page: Page, changes: Record<string, boolean>) {
+  await page.getByRole("button", { name: "Gestionar módulos", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  for (const [label, active] of Object.entries(changes)) {
+    const item = dialog
+      .locator("li")
+      .filter({ has: page.getByText(label, { exact: true }) })
+      .first();
+    const box = item.getByRole("checkbox").first();
+    if (active) {
+      await box.check();
+      await item.getByRole("button", { name: "Demostración", exact: true }).click();
+    } else await box.uncheck();
+  }
+  await dialog.getByRole("button", { name: /^Guardar \d+ cambio/ }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+}
+function planBlock(page: Page, service: string, block: string) {
+  return page
+    .locator(`#plan-${service}`)
+    .locator("[class*=block]")
+    .filter({ has: page.getByRole("heading", { name: block, exact: true }) });
+}
 async function saveRecord(page: Page) {
   await page
     .getByRole("dialog")
@@ -42,7 +65,7 @@ test("questionnaire to proposal to approved Discovery, dependencies, persistence
   await open(page, "ficha");
   await page.getByRole("tab", { name: "Discovery del negocio" }).click();
   await page
-    .getByRole("button", { name: "Cuestionario inicial", exact: true })
+    .locator("summary", { hasText: /^Responder preguntas/ })
     .click();
   await page
     .getByLabel("¿Qué cobertura tiene?", { exact: true })
@@ -54,7 +77,7 @@ test("questionnaire to proposal to approved Discovery, dependencies, persistence
   await q.getByLabel("Fuente o referencia").fill("Conversación QA");
   await q.getByLabel("Permiso de publicación").selectOption("public");
   await page
-    .getByRole("button", { name: "Generar propuestas desde respuestas" })
+    .getByRole("button", { name: "Enviar respuestas a revisión" })
     .click();
   await expect
     .poll(async () => (await knowledge(page))?.proposals.length)
@@ -176,7 +199,7 @@ test("Benchmark brand baseline, competitor, evidence, conclusions and immutable 
 }) => {
   await open(page, "benchmark");
   await page
-    .getByRole("button", { name: "Agregar marca", exact: true })
+    .getByRole("button", { name: "+ Agregar marca", exact: true })
     .click();
   await page
     .getByRole("dialog")
@@ -191,14 +214,15 @@ test("Benchmark brand baseline, competitor, evidence, conclusions and immutable 
     .getByRole("button", { name: "Guardar marca" })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation", { name: "Índice de Benchmark" }).getByRole("link", { name: "Competidor QA", exact: true }),
+  ).toBeVisible();
+  const own = page.locator("#benchmark-propia-overview");
   await page
-    .getByRole("button", { name: "Marcas y análisis", exact: true })
+    .getByRole("navigation", { name: "Índice de Benchmark" })
+    .getByRole("link", { name: "Marca del cliente", exact: true })
     .click();
-  await page
-    .getByRole("navigation", { name: "Marcas", exact: true })
-    .getByRole("button", { name: /Propia/ })
-    .click();
-  await page.getByRole("button", { name: "Agregar resumen general" }).click();
+  await own.getByRole("button", { name: "+ Agregar", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Claim o promesa").fill("Promesa propia QA");
   await dialog
@@ -206,21 +230,24 @@ test("Benchmark brand baseline, competitor, evidence, conclusions and immutable 
     .fill("Descripción basada en evidencia QA");
   await dialog.getByLabel("Fecha del relevamiento").fill("2026-11-10");
   await saveRecord(page);
-  await page.getByRole("button", { name: "Guardar snapshot fechado" }).click();
-  await page.getByRole("button", { name: "Editar análisis" }).click();
+  await own.getByRole("button", { name: "Guardar snapshot fechado" }).click();
+  await own.getByRole("button", { name: "Editar", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByLabel("Claim o promesa")
     .fill("Promesa propia revisada");
   await saveRecord(page);
-  await page.getByRole("button", { name: "Guardar snapshot fechado" }).click();
+  await own.getByRole("button", { name: "Guardar snapshot fechado" }).click();
   const state = await knowledge(page);
   expect(state.benchmark.snapshots).toHaveLength(2);
   expect(state.benchmark.snapshots[0].brand.items[0].values.claim).toBe(
     "Promesa propia QA",
   );
-  await page.getByRole("button", { name: "Conclusiones", exact: true }).click();
-  await page.getByRole("button", { name: "Agregar conclusión" }).click();
+  await page
+    .getByRole("navigation", { name: "Índice de Benchmark" })
+    .getByRole("link", { name: "Conclusiones", exact: true })
+    .click();
+  await page.getByRole("button", { name: "+ Agregar conclusión" }).click();
   await page
     .getByRole("dialog")
     .getByLabel("Tipo de conclusión")
@@ -244,10 +271,11 @@ test("Benchmark brand baseline, competitor, evidence, conclusions and immutable 
     ),
   ).toBe(true);
   await page
-    .getByRole("button", { name: "Monitoreo y reporte quincenal" })
+    .getByRole("navigation", { name: "Índice de Benchmark" })
+    .getByRole("link", { name: "Monitoreo", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Ejecutar escaneo" }),
+    page.getByRole("button", { name: /^Ejecutar escaneo/ }),
   ).toBeDisabled();
   await expect(page.getByText("Cambios en Resumen general")).toBeVisible();
 });
@@ -256,66 +284,40 @@ test("Plan modules preserve decisions across activation, show conditional fields
 }) => {
   await open(page, "plan");
   await switchRole(page, "Administrador");
-  await page
-    .getByText("Servicios activos del cliente", { exact: true })
+  await setModules(page, {
+    "Diseño de marca": true,
+    Audiovisuales: true,
+    "Desarrollo web": true,
+    "Implementación de CRM": true,
+  });
+  const index = page.getByRole("navigation", { name: "Índice de Plan de Marketing" });
+  await expect(index.getByRole("link", { name: "Desarrollo web", exact: true })).toBeVisible();
+  await planBlock(page, "estrategia", "Objetivos")
+    .getByRole("button", { name: "+ Agregar", exact: true })
     .click();
-  for (const label of [
-    "Diseño de marca",
-    "Audiovisuales",
-    "Desarrollo web",
-    "CRM",
-  ]) {
-    await page.getByLabel(label, { exact: false }).first().check();
-  }
-  await page
-    .getByRole("navigation", { name: "Módulos del Plan" })
-    .getByRole("button", { name: "Estrategia y coordinación", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Agregar objetivos" }).click();
   await page
     .getByRole("dialog")
     .getByLabel("Enunciado")
     .fill("Objetivo persistente QA");
   await saveRecord(page);
-  await page
-    .getByLabel("Estrategia y coordinación", { exact: false })
-    .first()
-    .uncheck();
+  await setModules(page, { "Estrategia y coordinación": false });
+  await expect(page.locator("#plan-estrategia")).toHaveCount(0);
   await expect(
-    page
-      .getByRole("navigation", { name: "Módulos del Plan" })
-      .getByRole("button", { name: "Estrategia y coordinación", exact: true }),
+    index.getByRole("link", { name: "Estrategia y coordinación", exact: true }),
   ).toHaveCount(0);
-  await page
-    .getByLabel("Estrategia y coordinación", { exact: false })
-    .first()
-    .check();
-  await page
-    .getByRole("navigation", { name: "Módulos del Plan" })
-    .getByRole("button", { name: "Estrategia y coordinación", exact: true })
-    .click();
+  await setModules(page, { "Estrategia y coordinación": true });
   await expect(
     page.getByText("Objetivo persistente QA", { exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("navigation", { name: "Módulos del Plan" })
-    .getByRole("button", { name: /CRM/ })
-    .click();
   await expect(
-    page.getByText("Plantilla estratégica pendiente de definición", {
-      exact: true,
-    }),
+    page
+      .locator("#plan-crm")
+      .getByText("Plantilla estratégica pendiente de definición", {
+        exact: true,
+      }),
   ).toBeVisible();
-  await page
-    .getByRole("navigation", { name: "Módulos del Plan" })
-    .getByRole("button", { name: "Publicidad digital", exact: true })
-    .click();
-  await page
-    .getByRole("navigation", { name: "Bloques del Plan" })
-    .getByRole("button", { name: "KPIs de publicidad", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Agregar kpis de publicidad" })
+  await planBlock(page, "publicidad-digital", "KPIs de publicidad")
+    .getByRole("button", { name: "+ Agregar", exact: true })
     .click();
   await page.getByRole("dialog").getByLabel("Modelo").selectOption("Leads");
   await expect(
@@ -336,6 +338,7 @@ test("Plan modules preserve decisions across activation, show conditional fields
   expect(
     (await knowledge(page)).plan.modules.estrategia[0].values.statement,
   ).toBe("Objetivo persistente QA");
+  await expect(index.getByRole("link", { name: "Audiovisuales", exact: true })).toBeVisible();
 });
 test("mobile and existing workspaces stay navigable; Google routes fail closed", async ({
   page,
