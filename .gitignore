@@ -18,3 +18,6 @@ supabase/.temp/
 
 # Generated from the pinned pdfjs-dist dependency
 /public/vendor/pdf.worker.min.mjs
+
+# Generated from assets/templates by scripts/copy-presentation-template.mjs
+/public/templates/

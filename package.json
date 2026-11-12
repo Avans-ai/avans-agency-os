@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "next dev",
     "typecheck": "tsc --noEmit",
+    "prebuild": "node scripts/copy-presentation-template.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "test:discovery": "playwright test --project=domain",
     "test:discovery:browser": "playwright test --project=browser",
-    "postinstall": "node scripts/copy-pdf-worker.mjs"
+    "postinstall": "node scripts/copy-pdf-worker.mjs && node scripts/copy-presentation-template.mjs",
+    "test:pptx": "playwright test --project=domain tests/pptx-generation-model.spec.ts",
+    "validate:pptx": "python3 scripts/pptx-validate.py"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

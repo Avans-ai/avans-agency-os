@@ -55,7 +55,102 @@ function chunks<T>(items: T[], size: number): T[][] {
   return out.length ? out : [[]];
 }
 const binding = (ids: (string | number)[], vals: unknown[]) =>
-  Object.fromEntries(ids.map((id, i) => [String(id), safeText(vals[i])]));
+  Object.fromEntries(
+    ids.map((id, i) => [
+      String(id),
+      vals[i] === FILLER ? FILLER : safeText(vals[i]),
+    ]),
+  );
+/**
+ * Marks a template cell that stays empty because there are fewer records than
+ * cells (e.g. three facts in a grid of six). It is removed silently, unlike a
+ * record whose field has no data, which is reported as pending.
+ */
+export const FILLER = "\u0000";
+/** Padding for a grid: with no records at all, the first record is pending. */
+const padFor = (records: number, total: number, perRecord: number) =>
+  Array.from({ length: Math.max(0, total - records * perRecord) }, (_, i) =>
+    records === 0 && i < perRecord ? "" : FILLER,
+  );
+const moduleOf = (
+  slide: number,
+): NonNullable<PresentationSlideManifest["pending"]>[number]["module"] =>
+  slide >= 5 && slide <= 12
+    ? "discovery"
+    : slide >= 13 && slide <= 25
+      ? "benchmark"
+      : slide >= 26 && slide <= 53
+        ? "marketing-plan"
+        : "template";
+const moduleView: Record<string, string> = {
+  discovery: "ficha",
+  benchmark: "benchmark",
+  "marketing-plan": "plan",
+  template: "ficha",
+};
+/** Rows of the services index (page 26): service, separator, number, label. */
+const INDEX_ROWS: [ServiceId, string | null, string, string, number][] = [
+  ["estrategia", "673", "674", "675", 2920305],
+  ["diseno-marca", "676", "677", "678", 3543151],
+  ["publicidad-digital", "679", "680", "681", 4165997],
+  ["contenidos", "682", "683", "684", 4788843],
+  ["audiovisuales", "685", "686", "687", 5411688],
+  ["desarrollo-web", null, "688", "689", 6034534],
+];
+/** Targeting matrix of page 10 (EMU): plot area and the five bubbles. */
+const TARGETING_MATRIX = {
+  x0: 914400,
+  x1: 14249400,
+  y0: 3448050,
+  y1: 8582025,
+  pad: 127000,
+  labelHeight: 431100,
+};
+const TARGETING_BUBBLES = [
+  { circle: "241", label: "242", x: 9346853, y: 4083248, size: 1809600, labelCenterX: 10251723 },
+  { circle: "243", label: "244", x: 4207073, y: 4171057, size: 1428900, labelCenterX: 4921444 },
+  { circle: "247", label: "248", x: 10765334, y: 6386661, size: 1104900, labelCenterX: 11317779 },
+  { circle: "245", label: "246", x: 2332286, y: 6173837, size: 914400, labelCenterX: 2789481 },
+  { circle: "249", label: "250", x: 6177707, y: 7006828, size: 685800, labelCenterX: 6520602 },
+];
+/**
+ * Cells of repeated grids: when every data object of a cell is unused, its
+ * decoration (card, bubble, separator line, label) goes with it.
+ */
+const CELL_GROUPS: Record<number, { data: string[]; decoration: string[] }[]> =
+  {
+    9: [
+      { data: ["195", "196"], decoration: ["193", "194"] },
+      { data: ["199", "200"], decoration: ["197", "198"] },
+      { data: ["203", "204"], decoration: ["201", "202"] },
+      { data: ["207", "208"], decoration: ["205", "206"] },
+      { data: ["211", "212"], decoration: ["209", "210"] },
+    ],
+    10: [
+      { data: ["242"], decoration: ["241"] },
+      { data: ["244"], decoration: ["243"] },
+      { data: ["246"], decoration: ["245"] },
+      { data: ["248"], decoration: ["247"] },
+      { data: ["250"], decoration: ["249"] },
+    ],
+    14: [
+      { data: ["363", "365", "367", "369"], decoration: ["362", "364", "366", "368"] },
+      { data: ["371", "373", "375", "377"], decoration: ["370", "372", "374", "376"] },
+      { data: ["379", "381", "383", "385"], decoration: ["378", "380", "382", "384"] },
+      { data: ["386", "387", "388", "389"], decoration: [] },
+    ],
+    36: [
+      { data: ["884", "886", "888"], decoration: ["883", "885", "887"] },
+      { data: ["890", "892", "894"], decoration: ["889", "891", "893"] },
+      { data: ["896", "898", "900"], decoration: ["895", "897", "899"] },
+      { data: ["901", "902", "903"], decoration: [] },
+    ],
+    37: [
+      { data: ["924", "925"], decoration: ["923"] },
+      { data: ["927", "928"], decoration: ["926"] },
+      { data: ["930", "931"], decoration: ["929"] },
+    ],
+  };
 export function presentationSnapshot(
   k: KnowledgeState,
   active: ServiceId[],
@@ -306,38 +401,50 @@ export function buildPresentationManifest(
       replacements: {},
       images: [],
       removeInstructionLayers: true,
-      removeObjectKeys: [
-        ...template.instructionIds,
-        ...remove,
-        ...((
-          { 18: ["467", "472"], 23: ["598", "603"], 33: ["816"] } as Record<
-            number,
-            string[]
-          >
-        )[number] ?? []),
-      ],
+      removeObjectKeys: [...template.instructionIds, ...remove],
       warnings: [],
+      pending: [],
     };
+    const owner = moduleOf(number),
+      href = `/v2/clientes/${client.slug}?view=${moduleView[owner]}`;
+    const unused = new Set<string>();
     for (const slot of template.slots) {
       const value = replacements[slot.id];
-      if (value) {
+      const field = slot.text.replace(/[\[\]]/g, "").replace(/\s+/g, " ").trim();
+      if (value === FILLER) {
+        unused.add(slot.id);
+        output.removeObjectKeys.push(slot.id);
+      } else if (value) {
         output.replacements[slot.id] = safeText(value);
         if (value.length > 700)
           output.warnings.push(
             `Texto extenso en ${slot.id}: requiere revisión de ajuste en la plantilla.`,
           );
-      } else if (value === "") {
-        output.removeObjectKeys.push(slot.id);
       } else {
-        const label = `Slide ${number} · ${title ?? template.title} · ${slot.text.replace(/[\[\]]/g, "").trim()}`;
-        missing.push(label);
-        output.replacements[slot.id] =
-          mode === "internal-draft" ? "Pendiente de completar" : "";
+        // No data: never show the template text; the object is removed and
+        // the field is reported as pending on this slide.
+        if (value === undefined)
+          missing.push(`Slide ${number} · ${title ?? template.title} · ${field}`);
+        output.removeObjectKeys.push(slot.id);
+        output.pending!.push({
+          objectKey: slot.id,
+          label: field,
+          module: owner,
+          href,
+          kind: "field",
+        });
       }
     }
     for (const [id, text] of Object.entries(replacements))
-      if (!template.slots.some((s) => s.id === id))
-        output.replacements[id] = safeText(text);
+      if (!template.slots.some((s) => s.id === id)) {
+        if (text === FILLER) {
+          unused.add(id);
+          output.removeObjectKeys.push(id);
+        } else output.replacements[id] = safeText(text);
+      }
+    for (const cell of CELL_GROUPS[number] ?? [])
+      if (cell.data.every((id) => unused.has(id)))
+        output.removeObjectKeys.push(...cell.decoration);
     let imageIndex = 0;
     output.images = template.pictures.map((pic) => {
       if (!pic.media.endsWith("/image5.png"))
@@ -347,7 +454,7 @@ export function buildPresentationManifest(
           description: "Elemento original de la plantilla Avans",
         };
       const url = imageUrls[imageIndex++];
-      if (url && /^https:\/\//.test(url))
+      if (url && /^(https:\/\/|data:image\/(png|jpeg);base64,)/.test(url))
         return {
           templateObjectKey: pic.id,
           action: "replace" as const,
@@ -356,6 +463,13 @@ export function buildPresentationManifest(
         };
       const label = `Slide ${number} · ${output.title} · imagen ${imageIndex}`;
       missingImages.push(label);
+      output.pending!.push({
+        objectKey: pic.id,
+        label: `Imagen ${imageIndex} (captura, moodboard o referencia)`,
+        module: owner,
+        href,
+        kind: "image",
+      });
       return {
         templateObjectKey: pic.id,
         action: "delete" as const,
@@ -366,7 +480,9 @@ export function buildPresentationManifest(
     return output;
   };
   const imageLinks = (s: string) =>
-    s.split(/[\s,]+/).filter((u) => /^https:\/\//.test(u));
+    s
+      .split(/[\s,]+/)
+      .filter((u) => /^(https:\/\/|data:image\/(png|jpeg);base64,)/.test(u));
   add(
     1,
     { 20: client.name },
@@ -399,7 +515,7 @@ export function buildPresentationManifest(
         [114, 115, 118, 119, 121, 122, 124, 125, 127, 128, 129, 130],
         group
           .flatMap((f) => [join(f.value, f.unit), join(f.name, f.relevance)])
-          .concat(Array(Math.max(0, 12 - group.length * 2)).fill("")),
+          .concat(padFor(group.length, 12, 2)),
       ),
       `facts-${i}`,
       "Datos relevantes",
@@ -412,7 +528,7 @@ export function buildPresentationManifest(
           [144, 145, 148, 149, 152, 153],
           group
             .flatMap((u) => [u.name, join(u.problem, u.customerType)])
-            .concat(Array(Math.max(0, 6 - group.length * 2)).fill("")),
+            .concat(padFor(group.length, 6, 2)),
         ),
         `units-${i}`,
         "Unidades de negocio",
@@ -443,7 +559,7 @@ export function buildPresentationManifest(
               s.name,
               join(s.channel, s.customerAction, s.internalAction),
             ])
-            .concat(Array(Math.max(0, 10 - stages.length * 2)).fill("")),
+            .concat(padFor(stages.length, 10, 2)),
         ),
         215: d.salesProcess.cycleDuration,
         218: join(
@@ -461,21 +577,60 @@ export function buildPresentationManifest(
       `sales-${i}`,
       "Cómo se vende hoy",
     );
-  for (const [i, group] of chunks(d.targetSegments, 5).entries())
-    add(
+  for (const [i, chunk] of chunks(d.targetSegments, 5).entries()) {
+    // Bigger relevance → bigger bubble; position from match (x) and
+    // potential (y) when both are known, as the matrix of the master reads.
+    const group = [...chunk].sort(
+      (a, b) => (b.currentRelevance ?? -1) - (a.currentRelevance ?? -1),
+    );
+    const slide = add(
       10,
       binding(
-        [242, 244, 246, 248, 250],
-        group
-          .map(
-            (s) =>
-              `${s.name} · Match ${s.match ?? "pendiente"} · Potencial ${s.potential ?? "pendiente"} · Relevancia ${s.currentRelevance ?? "pendiente"}`,
-          )
-          .concat(Array(Math.max(0, 5 - group.length)).fill("")),
+        TARGETING_BUBBLES.map((b) => b.label),
+        group.map((s) => s.name).concat(padFor(group.length, 5, 1)),
       ),
       `targeting-${i}`,
       "Matriz de targeting",
     );
+    slide.moves = {};
+    group.forEach((segment, j) => {
+      const bubble = TARGETING_BUBBLES[j];
+      const { match, potential } = segment;
+      if (
+        typeof match !== "number" ||
+        typeof potential !== "number" ||
+        !Number.isFinite(match) ||
+        !Number.isFinite(potential)
+      ) {
+        slide.pending!.push({
+          objectKey: bubble.circle,
+          label: `${segment.name || "Segmento"}: match y potencial (0–100) para ubicarlo en la matriz`,
+          module: "discovery",
+          href: `/v2/clientes/${client.slug}?view=ficha`,
+          kind: "field",
+        });
+        return;
+      }
+      const m = TARGETING_MATRIX,
+        r = bubble.size / 2;
+      const clamp = (v: number, lo: number, hi: number) =>
+        Math.min(hi, Math.max(lo, v));
+      const cx = clamp(
+        m.x0 + (Math.min(100, Math.max(0, match)) / 100) * (m.x1 - m.x0),
+        m.x0 + r + m.pad,
+        m.x1 - r - m.pad,
+      );
+      const cy = clamp(
+        m.y1 - (Math.min(100, Math.max(0, potential)) / 100) * (m.y1 - m.y0),
+        m.y0 + r + m.pad,
+        m.y1 - r - m.labelHeight - m.pad,
+      );
+      const dx = Math.round(cx - (bubble.x + r)),
+        dy = Math.round(cy - (bubble.y + r));
+      slide.moves![bubble.circle] = { dx, dy };
+      slide.moves![bubble.label] = { dx: Math.round(cx - bubble.labelCenterX), dy };
+    });
+  }
   const offeringNames = (ids: string[]) =>
     ids
       .map(
@@ -553,7 +708,7 @@ export function buildPresentationManifest(
               .join(" · "),
             b.rationale,
           ])
-          .concat(Array(Math.max(0, 16 - group.length * 4)).fill("")),
+          .concat(padFor(group.length, 16, 4)),
       ),
       `brands-${i}`,
       "Marcas a analizar",
@@ -562,12 +717,12 @@ export function buildPresentationManifest(
     const own = b.type === "Propia",
       overview = b.items.find((i) => i.section === "overview");
     if (own)
-      add(15, { 398: `02 · BENCHMARK · ${b.name}`, 399: b.name }, b.id, b.name);
+      add(15, { 398: `02 · BENCHMARK · ${b.name.toLocaleUpperCase("es")}`, 399: b.name }, b.id, b.name);
     else
       add(
         20,
         {
-          518: `02 · BENCHMARK · ${b.name}`,
+          518: `02 · BENCHMARK · ${b.name.toLocaleUpperCase("es")}`,
           519: b.name,
           520: values(overview, "claim"),
           522: values(overview, "description", "size", "age"),
@@ -624,19 +779,19 @@ export function buildPresentationManifest(
               web: [599, 604, 606, 607, 608, 609, 612],
               design: [634, 635, 636, 637, 640],
             };
-        r[ids.header] = `02 · BENCHMARK · ${b.name}`;
+        r[ids.header] = `02 · BENCHMARK · ${b.name.toLocaleUpperCase("es")}`;
         if (section === "content")
           Object.assign(
             r,
             binding(
               ids.links,
-              group.map((i) => values(i, "links")).concat(["", "", "", ""]),
+              group.map((i) => values(i, "links")).concat(padFor(group.length, 4, 1)),
             ),
             binding(
               ids.channels,
               group
                 .map((i) => values(i, "channel", "followers", "frequency"))
-                .concat(["", "", ""]),
+                .concat(padFor(group.length, 3, 1)),
             ),
             {
               [ids.contentSummary]: group
@@ -653,7 +808,7 @@ export function buildPresentationManifest(
               ids.platforms,
               group
                 .map((i) => values(i, "platforms", "campaignTypes"))
-                .concat(["", "", ""]),
+                .concat(padFor(group.length, 3, 1)),
             ),
             {
               [ids.paidSummary]: group
@@ -716,24 +871,28 @@ export function buildPresentationManifest(
     undefined,
     "Conclusiones del Benchmark",
   );
-  const indexRows = [
-    ["estrategia", 673, 674, 675],
-    ["diseno-marca", 676, 677, 678],
-    ["publicidad-digital", 679, 680, 681],
-    ["contenidos", 682, 683, 684],
-    ["audiovisuales", 685, 686, 687],
-    ["desarrollo-web", 0, 688, 689],
-  ];
-  add(
+  // Services index: keep only contracted modules, close the gaps and number
+  // them again (01, 02, …); the last row has no separator below, as in the
+  // master.
+  const keptRows = INDEX_ROWS.filter(([service]) => active.includes(service));
+  const indexSlide = add(
     26,
-    {},
+    Object.fromEntries(
+      keptRows.map(([, , number], i) => [number, String(i + 1).padStart(2, "0")]),
+    ),
     undefined,
     "Plan de Marketing",
     [],
-    indexRows
-      .filter((row) => !active.includes(row[0] as ServiceId))
-      .flatMap((row) => row.slice(1).filter(Boolean).map(String)),
+    INDEX_ROWS.filter(([service]) => !active.includes(service)).flatMap(
+      ([, line, number, label]) => [line, number, label].filter(Boolean) as string[],
+    ),
   );
+  indexSlide.moves = {};
+  keptRows.forEach(([, line, number, label, y], i) => {
+    const dy = INDEX_ROWS[i][4] - y;
+    if (dy) for (const id of [line, number, label]) if (id) indexSlide.moves![id] = { dy };
+    if (i === keptRows.length - 1 && line) indexSlide.removeObjectKeys.push(line);
+  });
   if (active.includes("estrategia")) {
     for (const [i, group] of chunks(
       items("estrategia", "objectives"),
@@ -748,7 +907,7 @@ export function buildPresentationManifest(
               values(item, "statement"),
               values(item, "outcome", "reason", "indicator"),
             ])
-            .concat(Array(Math.max(0, 4 - group.length * 2)).fill("")),
+            .concat(padFor(group.length, 4, 2)),
         ),
         `objectives-${i}`,
         "Objetivos",
@@ -849,7 +1008,7 @@ export function buildPresentationManifest(
             [831, 833, 835, 837, 839, 841],
             group
               .map((c) => values(c, "hex", "function"))
-              .concat(["", "", "", "", "", ""]),
+              .concat(padFor(group.length, 6, 1)),
           ),
           844: values(system, "headingFont"),
           845: values(system, "weights", "uses"),
@@ -879,7 +1038,7 @@ export function buildPresentationManifest(
             values(campaign, "name", "focus", "objective"),
             values(campaign, "platforms"),
             values(campaign, "share") ? `${values(campaign, "share")}%` : "",
-            ...Array(9).fill(""),
+            ...Array(9).fill(FILLER),
           ],
         ),
         campaign?.id,
@@ -895,10 +1054,9 @@ export function buildPresentationManifest(
           37,
           {
             917: values(campaign, "name"),
-            920: join(
-              values(campaign, "monthlyInvestment", "currency"),
-              "/ mes",
-            ),
+            920: values(campaign, "monthlyInvestment")
+              ? join(values(campaign, "monthlyInvestment", "currency"), "/ mes")
+              : "",
             ...binding(
               [924, 925, 927, 928, 930, 931],
               group
@@ -906,7 +1064,7 @@ export function buildPresentationManifest(
                   `${values(a, "share")}%`,
                   values(a, "channel"),
                 ])
-                .concat(Array(Math.max(0, 6 - group.length * 2)).fill("")),
+                .concat(padFor(group.length, 6, 2)),
             ),
           },
           `${campaign?.id ?? "pending"}-${j}`,
@@ -945,7 +1103,7 @@ export function buildPresentationManifest(
               values(a, "insight"),
               values(a, "piecesPerMonth"),
             ])
-            .concat(Array(Math.max(0, 20 - group.length * 5)).fill("")),
+            .concat(padFor(group.length, 20, 5)),
         ),
         `axes-${i}`,
         "Ejes temáticos",
@@ -970,13 +1128,13 @@ export function buildPresentationManifest(
             [1082, 1083, 1084, 1085],
             (yes[i] ?? [])
               .map((r) => values(r, "rule", "basis", "examples"))
-              .concat(["", "", "", ""]),
+              .concat(padFor((yes[i] ?? []).length, 4, 1)),
           ),
           ...binding(
             [1088, 1089, 1090, 1091],
             (no[i] ?? [])
               .map((r) => values(r, "rule", "basis", "examples"))
-              .concat(["", "", "", ""]),
+              .concat(padFor((no[i] ?? []).length, 4, 1)),
           ),
         },
         `rules-${i}`,
@@ -1015,7 +1173,7 @@ export function buildPresentationManifest(
           [1171, 1175, 1179],
           group
             .map((i) => values(i, "description", "take", "avoid"))
-            .concat(["", "", ""]),
+            .concat(padFor(group.length, 3, 1)),
         ),
         `references-${i}`,
         "Referencias visuales",
@@ -1054,7 +1212,7 @@ export function buildPresentationManifest(
               values(page, "name", "type"),
               values(page, "blocks", "objective", "cta"),
             ])
-            .concat(Array(Math.max(0, 10 - group.length * 2)).fill("")),
+            .concat(padFor(group.length, 10, 2)),
         ),
         `sitemap-${i}`,
         "Sitemap",
@@ -1191,6 +1349,60 @@ export function saveManifestPreview(
         at: ctx.at,
         actor: ctx.actor,
         action: `Vista previa de presentación v${version} guardada · archivo no generado`,
+      },
+    ],
+  };
+}
+export function nextPresentationVersion(k: KnowledgeState) {
+  return (
+    (k.presentationExports ?? []).reduce((n, e) => Math.max(n, e.version), 0) +
+    1
+  );
+}
+/**
+ * Records a generated PPTX in the local history. The manifest (with its data
+ * snapshot) is stored in the knowledge state; the bytes live in IndexedDB and
+ * can be rebuilt byte-for-byte from the manifest and the master.
+ */
+export function savePptxExport(
+  k: KnowledgeState,
+  manifest: PresentationManifest,
+  file: NonNullable<PresentationExport["file"]>,
+  version: number,
+  id: string,
+  ctx: MutationContext,
+) {
+  if (k.clientSlug !== manifest.clientSlug)
+    throw new Error("Cliente incompatible.");
+  if ((k.presentationExports ?? []).length >= 10)
+    throw new Error(
+      "Límite local de 10 versiones. Conservá las anteriores fuera del navegador antes de continuar; no se sobrescriben.",
+    );
+  if ((k.presentationExports ?? []).some((e) => e.version === version))
+    throw new Error("Otra pestaña guardó esta versión. Generá nuevamente.");
+  const record: PresentationExport = {
+    id,
+    clientSlug: k.clientSlug,
+    format: "pptx",
+    mode: manifest.mode,
+    version,
+    status: "ready",
+    manifest: structuredClone(manifest),
+    fileName: file.fileName,
+    file,
+    generatedAt: ctx.at,
+    generatedBy: ctx.actor,
+  };
+  return {
+    ...k,
+    presentationExports: [...(k.presentationExports ?? []), record],
+    audit: [
+      ...k.audit,
+      {
+        id: newId(),
+        at: ctx.at,
+        actor: ctx.actor,
+        action: `Presentación PPTX v${version} generada desde el master · ${manifest.mode === "client" ? "versión para cliente" : "borrador interno"} · ${file.slideCount} slides`,
       },
     ],
   };
