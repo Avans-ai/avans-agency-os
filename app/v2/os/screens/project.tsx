@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AvansIcon } from "../brand";
 import { Glyph } from "../glyphs";
-import { CURRENT_USER, PRIORITIES, TASK_STATUSES, shortName, type OsProject, type OsTask, type Priority, type TaskStatus } from "../os-data";
+import { CURRENT_USER, TASK_STATUSES, serviceLabel, shortName, type OsProject, type OsTask } from "../os-data";
+import { serviceForTask } from "../director-data";
 import { useOsStore } from "../os-store";
-import { OSSidePanel } from "../overlays";
-import { dueFull, dueLabel, getClient, isSoon, projectProgress, tasksOf, waitsForMe } from "../selectors";
-import { NewTaskModal } from "../task-blocks";
+import { dueLabel, getClient, isSoon, projectProgress, tasksOf } from "../selectors";
+import { NewTaskModal, TaskSidePanel } from "../task-blocks";
 import { Avatar, buttonClass, cx, OSDue, OSEmptyState, OSPriority, OSStatus, Progress } from "../ui";
 import s from "../os.module.css";
 import sc from "../screens.module.css";
@@ -134,7 +134,7 @@ export function ProjectScreen({ project }: { project: OsProject }) {
                 </div>
               </section>
             )}
-            <p className={sc.footNote}>Arrastrar tarjetas entre columnas queda pendiente (con alternativa de teclado). Por ahora el estado se cambia desde el panel de la tarea. Los cambios se mantienen solo en esta sesión.</p>
+            <p className={sc.footNote}>Arrastrar tarjetas entre columnas queda pendiente (con alternativa de teclado). Por ahora el estado se cambia desde el panel de la tarea. Cada tarea pertenece a un módulo y también se ve en su Kanban. Guardado en este navegador.</p>
           </>
         ) : (
           <OSEmptyState
@@ -147,7 +147,7 @@ export function ProjectScreen({ project }: { project: OsProject }) {
         )}
       </div>
 
-      {selected ? <TaskPanel key={selected.id} item={selected} project={project} onClose={() => setParam("task", null)} /> : null}
+      {selected ? <TaskSidePanel key={selected.id} item={selected} onClose={() => setParam("task", null)} /> : null}
       {modal ? <NewTaskModal projectSlug={project.slug} onClose={() => setModal(false)} onCreated={() => { setFilter("todas"); setQuery(""); }} /> : null}
     </>
   );
@@ -169,103 +169,12 @@ function TaskCard({ item, selected, onOpen }: { item: OsTask; selected: boolean;
     >
       <span className={sc.cardTop}><span>{item.id}</span>{item.blocked ? <span className={sc.blockedTag}><Glyph name="blocked" size={12} />Bloqueada</span> : null}</span>
       <span className={sc.cardTitle}>{item.title}</span>
+      <span className={sc.cardTop}><span>{serviceLabel(serviceForTask(item))}</span></span>
       <span className={sc.cardFoot}>
         <span className={sc.owner}><Avatar name={item.owner} />{shortName(item.owner)}</span>
         <OSPriority prio={item.prio} />
         <OSDue label={due} kind={item.dueKind} status={item.status} />
       </span>
     </button>
-  );
-}
-
-function TaskPanel({ item, project, onClose }: { item: OsTask; project: OsProject; onClose: () => void }) {
-  const { setStatus, setPriority, addComment, unblock, approve, requestChanges, notify } = useOsStore();
-  const [draft, setDraft] = useState("");
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const mine = waitsForMe(item);
-  const client = getClient(project.clientSlug);
-  const decision = mine ? (
-    <>
-      <button type="button" className={buttonClass("secondary")} onClick={() => { requestChanges(item.id, draft.trim() || undefined); setDraft(""); }}>Pedir cambios</button>
-      <button type="button" className={buttonClass("primary")} onClick={() => approve(item.id)}>Aprobar</button>
-    </>
-  ) : null;
-
-  return (
-    <OSSidePanel
-      label={`${item.id} ${item.title}`}
-      onClose={onClose}
-      titleRef={titleRef}
-      heading={<span>{item.id} · {project.name}<span className={s.srOnly}> · {client?.name}</span></span>}
-      footer={decision}
-    >
-      <h2 className={sc.panelTitle} ref={titleRef} tabIndex={-1}>{item.title}</h2>
-
-      {mine ? (
-        <div className={sc.approveBox}>
-          <div className={cx(s.alert, s.alertPeach)} role="status"><span aria-hidden="true">▲</span><span>Espera tu aprobación · {item.dueKind === "late" ? `vencida ${item.due}` : item.dueKind === "today" ? "vence hoy" : `vence ${item.due}`}</span></div>
-          <div className={sc.approveInline}>{decision}</div>
-        </div>
-      ) : null}
-
-      {item.blocked ? (
-        <div className={sc.blockedBox} role="status">
-          <span><Glyph name="blocked" size={16} /> Bloqueada: {item.blocked}</span>
-          <button type="button" className={buttonClass("ghost")} onClick={() => unblock(item.id)}>Quitar bloqueo</button>
-        </div>
-      ) : null}
-
-      <div className={sc.panelGrid}>
-        <label>
-          <span className={s.cellSub}>Estado</span>
-          <select className={cx(s.input, s.inputSm)} value={item.status} onChange={event => setStatus(item.id, event.target.value as TaskStatus)}>
-            {TASK_STATUSES.map(status => <option key={status}>{status}</option>)}
-          </select>
-        </label>
-        <label>
-          <span className={s.cellSub}>Prioridad</span>
-          <select className={cx(s.input, s.inputSm)} value={item.prio} onChange={event => setPriority(item.id, event.target.value as Priority)}>
-            {PRIORITIES.map(prio => <option key={prio}>{prio}</option>)}
-          </select>
-        </label>
-        <div><span>Responsable</span><span style={{ display: "flex", alignItems: "center", gap: 8 }}><Avatar name={item.owner} />{item.owner}</span></div>
-        <div><span>Vencimiento</span><OSDue label={dueFull(item)} kind={item.dueKind} status={item.status} /></div>
-        {item.approver ? <div><span>Aprueba</span><span>{item.approver}{item.approver === CURRENT_USER.name ? " (vos)" : ""}</span></div> : null}
-      </div>
-
-      <section className={sc.panelSection} aria-label="Descripción">
-        <p className={cx(s.rotulo, s.rotuloInk)}>Descripción</p>
-        <p>{item.desc}</p>
-      </section>
-
-      <section className={sc.panelSection} aria-label="Archivos">
-        <div className={sc.sectionHead}><p className={cx(s.rotulo, s.rotuloInk)}>Archivos · {item.files.length}</p><button type="button" className={buttonClass("ghost")} onClick={() => notify("Adjuntar archivos: pendiente de implementación (Drive)")}>Adjuntar</button></div>
-        {item.files.length ? (
-          <ul className={sc.fileList}>{item.files.map(file => <li key={file.name}><span>{file.ext}</span><span>{file.name}</span><span>{file.meta}</span></li>)}</ul>
-        ) : <p className={s.cellSub}>Sin archivos adjuntos.</p>}
-      </section>
-
-      <section className={sc.panelSection} aria-label="Comentarios">
-        <p className={cx(s.rotulo, s.rotuloInk)}>Comentarios · {item.comments.length}</p>
-        {item.comments.map((comment, index) => (
-          <div className={sc.comment} key={`${comment.who}-${index}`}>
-            <Avatar name={comment.who} size="md" />
-            <div><strong style={{ fontWeight: 600 }}>{comment.who}</strong> <small>{comment.when}</small><p>{comment.text}</p></div>
-          </div>
-        ))}
-        <form onSubmit={event => { event.preventDefault(); const text = draft.trim(); if (!text) return; addComment(item.id, text); setDraft(""); }} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <label className={s.field}>
-            <span>Nuevo comentario</span>
-            <textarea className={s.input} rows={3} value={draft} onChange={event => setDraft(event.target.value)} placeholder="Escribí un comentario" maxLength={1000} />
-          </label>
-          <div className={sc.commentActions}><button type="submit" className={buttonClass("dark", true)} disabled={!draft.trim()}>Comentar</button></div>
-        </form>
-      </section>
-
-      <section className={sc.panelSection} aria-label="Actividad">
-        <p className={cx(s.rotulo, s.rotuloInk)}>Actividad · {item.activity.length}</p>
-        {item.activity.length ? <ul className={sc.activity}>{item.activity.map((entry, index) => <li key={`${entry.text}-${index}`}>{entry.text} <span>· {entry.when}</span></li>)}</ul> : <p className={s.cellSub}>Sin actividad registrada.</p>}
-      </section>
-    </OSSidePanel>
   );
 }
