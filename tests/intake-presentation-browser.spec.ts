@@ -294,64 +294,44 @@ test("blank and filled print are independent A4 Avans documents with pagination 
     (filled.toString("latin1").match(/\/Type \/Page\b/g) || []).length,
   ).toBe(await page.locator("main>section").count());
 });
-test("presentation readiness, manifest, two versions, documents history, blocked exports and mobile regression", async ({
+test("presentation readiness, generated PPTX versions, documents history, blocked Google export and mobile regression", async ({
   page,
   request,
 }) => {
   await open(page);
   const prep = await details(page, "presentation-preparation");
-  await prep
-    .getByRole("button", { name: "Generar manifest y vista previa" })
-    .click();
-  let dialog = page.getByRole("dialog");
-  await expect(
-    dialog.getByText("BORRADOR INTERNO — NO ENVIAR AL CLIENTE", {
-      exact: true,
-    }),
-  ).toBeVisible();
-  await expect(dialog.getByText(/Slides eliminadas/)).toBeVisible();
-  await dialog.getByText("Slides eliminadas", { exact: true }).click();
-  await expect(
-    dialog.getByText("Página 2: Página interna de instrucciones", {
-      exact: true,
-    }),
-  ).toBeVisible();
-  await dialog.getByRole("button", { name: "Volver al cuestionario" }).click();
-  await prep.getByLabel("Modo de presentación").selectOption("client");
   await expect(prep.getByText(/Versión para cliente bloqueada/)).toBeVisible();
-  await prep
-    .getByRole("button", { name: "Generar manifest y vista previa" })
-    .click();
-  dialog = page.getByRole("dialog");
-  await expect(
-    dialog.getByLabel(
-      "Revisé y acepto las advertencias no críticas para esta versión",
-    ),
-  ).toBeDisabled();
-  await dialog.getByRole("button", { name: "Volver al cuestionario" }).click();
-  expect(
-    (await state(page)).presentationExports.map(
-      (e: { version: number }) => e.version,
-    ),
-  ).toEqual([1, 2]);
-  await prep.getByRole("button", { name: "Exportar PPT", exact: true }).click();
-  await expect(prep.getByRole("alert")).toContainText(
-    "No se generó ningún archivo",
-  );
   await expect(
     prep.getByRole("button", { name: "Crear en Google Slides" }),
   ).toBeDisabled();
+  for (const version of [1, 2]) {
+    await prep.getByRole("button", { name: "Generar presentación" }).click();
+    const studio = page.getByRole("dialog", { name: /Marketing Discovery/ });
+    await expect(
+      studio.getByRole("radio", { name: /Versión final para cliente/ }),
+    ).toBeDisabled();
+    await studio.getByRole("button", { name: "Generar borrador" }).click();
+    await expect(
+      studio.getByText(`Presentación generada · versión ${version}`),
+    ).toBeVisible({ timeout: 60000 });
+    await expect(
+      studio
+        .locator("button[aria-label^='Ampliar slide']")
+        .getByText("BORRADOR INTERNO — NO ENVIAR AL CLIENTE", { exact: true }),
+    ).toBeVisible();
+    await studio.getByRole("button", { name: "Cerrar presentación" }).click();
+  }
+  expect(
+    (await state(page)).presentationExports.map(
+      (e: { version: number; format: string }) => `${e.format}-${e.version}`,
+    ),
+  ).toEqual(["pptx-1", "pptx-2"]);
   await page.getByRole("link", { name: /^Documentos / }).click();
   await page
     .getByRole("button", { name: "Presentaciones generadas", exact: true })
     .click();
-  await page.getByText("Exportaciones anteriores · 2", { exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Ver manifest v1" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Ver manifest v2" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Abrir v1" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Abrir v2" })).toBeVisible();
   expect(
     (
       await request.post("/api/presentations/create-google-slides", {

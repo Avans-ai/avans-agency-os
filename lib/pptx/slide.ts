@@ -339,13 +339,17 @@ export function textShapeXml(o: {
   typeface: string;
   align: "l" | "r" | "ctr";
   bold?: boolean;
+  /** Solid background (hex) with small insets, for text over pictures. */
+  fill?: string;
 }): string {
   const font = escapeXml(o.typeface);
+  const fill = o.fill ? `<a:solidFill><a:srgbClr val="${o.fill}"/></a:solidFill>` : "<a:noFill/>";
+  const inset = o.fill ? 76200 : 0;
   return (
     `<p:sp><p:nvSpPr><p:cNvPr id="${o.id}" name="${escapeXml(o.name)}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
     `<p:spPr><a:xfrm><a:off x="${Math.round(o.box.x)}" y="${Math.round(o.box.y)}"/><a:ext cx="${Math.round(o.box.cx)}" cy="${Math.round(o.box.cy)}"/></a:xfrm>` +
-    `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr>` +
-    `<p:txBody><a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t" anchorCtr="0"><a:noAutofit/></a:bodyPr><a:lstStyle/>` +
+    `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fill}<a:ln><a:noFill/></a:ln></p:spPr>` +
+    `<p:txBody><a:bodyPr wrap="square" lIns="${inset}" tIns="${inset / 2}" rIns="${inset}" bIns="${inset / 2}" anchor="ctr" anchorCtr="0"><a:noAutofit/></a:bodyPr><a:lstStyle/>` +
     `<a:p><a:pPr marL="0" indent="0" algn="${o.align}"><a:lnSpc><a:spcPct val="100000"/></a:lnSpc><a:spcBef><a:spcPts val="0"/></a:spcBef><a:spcAft><a:spcPts val="0"/></a:spcAft><a:buNone/></a:pPr>` +
     `<a:r><a:rPr lang="es-AR" sz="${o.size}" b="${o.bold ? 1 : 0}" i="0" u="none" strike="noStrike" cap="none"><a:solidFill><a:srgbClr val="${o.color}"/></a:solidFill>` +
     `<a:latin typeface="${font}"/><a:ea typeface="${font}"/><a:cs typeface="${font}"/><a:sym typeface="${font}"/></a:rPr>` +

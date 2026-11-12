@@ -270,24 +270,46 @@ function buildSlide(
   if (draftMarker) {
     const bg = slideBackground(xml) ?? "FFFFFF";
     const coral = "FF6C4C";
-    const color = contrast(coral, bg) >= 2.2 ? coral : contrast("15171A", bg) > contrast("FFFFFF", bg) ? "15171A" : "FFFFFF";
     const w = 520 * EMU_PER_PT;
+    const box = {
+      x: ctx.width - 56 * EMU_PER_PT - w,
+      y: Math.round(ctx.height * 0.8938),
+      cx: w,
+      cy: 18 * EMU_PER_PT,
+    };
+    // Over a picture (e.g. the closing collage) the marker gets its own
+    // dark band so it stays legible; elsewhere it is plain text.
+    const overPicture = listShapes(xml).some(
+      (sh) =>
+        sh.kind === "pic" &&
+        sh.box &&
+        sh.box.x < box.x + box.cx &&
+        sh.box.x + sh.box.cx > box.x &&
+        sh.box.y < box.y + box.cy &&
+        sh.box.y + sh.box.cy > box.y,
+    );
+    const color = overPicture
+      ? "F1F1EE"
+      : contrast(coral, bg) >= 2.2
+        ? coral
+        : contrast("15171A", bg) > contrast("FFFFFF", bg)
+          ? "15171A"
+          : "FFFFFF";
+    const label = overPicture ? 340 * EMU_PER_PT : w;
     xml = insertShape(
       xml,
       textShapeXml({
         id: maxShapeId(xml) + 1,
         name: "Avans OS · Marca de borrador",
-        box: {
-          x: ctx.width - 56 * EMU_PER_PT - w,
-          y: Math.round(ctx.height * 0.8938),
-          cx: w,
-          cy: 18 * EMU_PER_PT,
-        },
+        box: overPicture
+          ? { x: box.x + w - label, y: box.y - 4 * EMU_PER_PT, cx: label, cy: 24 * EMU_PER_PT }
+          : box,
         text: draftMarker,
         size: 1350,
         color,
         typeface: "Figtree",
-        align: "r",
+        align: overPicture ? "ctr" : "r",
+        fill: overPicture ? "15171A" : undefined,
       }),
     );
   }
