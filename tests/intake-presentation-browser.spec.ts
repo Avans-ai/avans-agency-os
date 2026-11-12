@@ -346,7 +346,6 @@ test("presentation readiness, generated PPTX versions, documents history, blocke
   await page.setViewportSize({ width: 390, height: 844 });
   for (const path of [
     "/v2",
-    "/v2/operaciones",
     "/v2/clientes",
     "/v2/clientes/epsa?view=ficha",
     "/v2/clientes/epsa?view=benchmark",

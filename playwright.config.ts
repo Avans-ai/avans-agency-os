@@ -37,6 +37,7 @@ export default defineConfig({
         "strategic-documents-browser.spec.ts",
         "pptx-*-browser.spec.ts",
         "modules-browser.spec.ts",
+        "operations-clients-browser.spec.ts",
       ],
       use: { browserName: "chromium" },
     },
