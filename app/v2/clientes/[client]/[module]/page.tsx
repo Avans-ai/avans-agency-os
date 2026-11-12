@@ -24,7 +24,7 @@ export default async function ClientServicePage({ params }: { params: Promise<{ 
   if (moduleSlug === "reportes") redirect(`/v2/clientes/${client.slug}?view=reportes`);
 
   const crumbs = (label: string) => [
-    { label: "Operaciones", href: "/v2/operaciones" },
+    { label: "Operaciones", href: "/v2/clientes" },
     { label: "Clientes", href: "/v2/clientes" },
     { label: client.name, href: `/v2/clientes/${client.slug}` },
     { label },

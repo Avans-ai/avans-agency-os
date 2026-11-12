@@ -184,7 +184,7 @@ export function ManagementHub() {
       value: `${criticalOperationalExceptions} bloqueos altos`,
       detail: `${totalOpenActions} acciones abiertas en ${totalWorkstreams} frentes`,
       tone: "critical" as const,
-      href: "/v2/operaciones",
+      href: "/v2/clientes",
     },
     {
       label: "Ventas",
@@ -229,7 +229,7 @@ export function ManagementHub() {
       status: "Disponible" as const,
       signal: `${totalWorkstreams} frentes · ${totalOpenActions} acciones · ${criticalOperationalExceptions} bloqueos altos`,
       source: "Procesos, proyectos y bandeja",
-      href: "/v2/operaciones",
+      href: "/v2/clientes",
     },
     {
       area: "Ventas",

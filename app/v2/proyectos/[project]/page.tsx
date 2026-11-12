@@ -22,7 +22,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
       title={project.name}
       legacy={false}
       crumbs={[
-        { label: "Operaciones", href: "/v2/operaciones" },
+        { label: "Operaciones", href: "/v2/clientes" },
         { label: "Clientes", href: "/v2/clientes" },
         { label: client?.name ?? "Cliente", href: `/v2/clientes/${project.clientSlug}` },
         { label: project.name },

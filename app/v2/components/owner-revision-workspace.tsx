@@ -73,7 +73,7 @@ function RevisionRecords({ config }: { config: RevisionModule }) {
     </form>}
     <div className={s.tableScroll} role="region" aria-label={`Registros de ${config.label}`} tabIndex={0}><table className={s.table}><caption>{config.label} · datos de ejemplo</caption><thead><tr>{config.columns.map(key => <th scope="col" key={key}>{labels[key] ?? key}</th>)}<th scope="col">Acción</th></tr></thead><tbody>{visible.map(row => <tr key={row.id}>{config.columns.map(key => <td key={key}>{key === "status" ? <span className={s.state}>{row[key]}</span> : row[key] || "Por definir"}</td>)}<td><button type="button" className={s.textButton} onClick={() => startEdit(row)}>Editar demo<span className={s.srOnly}>: {row.title}</span></button></td></tr>)}</tbody></table>{!visible.length && <p className={s.empty}>No hay registros para estos filtros. Cambiá la búsqueda o el estado.</p>}</div>
     <p className={s.annotation}>{config.note}</p>
-    <div className={s.linkRow}>{config.id === "planificacion" ? <><Link href="/v2/operaciones">Ver ejecución <ArrowRight size={16}/></Link><Link href="/v2/finanzas#forecast">Revisar Forecast <ArrowRight size={16}/></Link></> : <><Link href="/v2/operaciones#clientes">Clientes en Operaciones <ArrowRight size={16}/></Link><Link href="/v2/usuarios">Usuarios y permisos <ArrowRight size={16}/></Link></>}</div>
+    <div className={s.linkRow}>{config.id === "planificacion" ? <><Link href="/v2/clientes">Ver ejecución <ArrowRight size={16}/></Link><Link href="/v2/finanzas#forecast">Revisar Forecast <ArrowRight size={16}/></Link></> : <><Link href="/v2/clientes">Clientes en Operaciones <ArrowRight size={16}/></Link><Link href="/v2/usuarios">Usuarios y permisos <ArrowRight size={16}/></Link></>}</div>
   </div>;
 }
 
