@@ -19,6 +19,28 @@ export type PresentationSlideManifest = {
   removeInstructionLayers: boolean;
   removeObjectKeys: string[];
   warnings: string[];
+  /** Offsets (EMU) applied to template objects, e.g. compacting the services index. */
+  moves?: Record<string, { dx?: number; dy?: number }>;
+  /** Fields and images of this slide that have no data and were left out. */
+  pending?: PresentationPendingItem[];
+};
+export type PresentationPendingItem = {
+  objectKey: string;
+  label: string;
+  module: "discovery" | "benchmark" | "marketing-plan" | "template";
+  href: string;
+  kind: "field" | "image";
+};
+/** Generated PPTX stored with a history record (bytes live in IndexedDB). */
+export type PresentationFileInfo = {
+  fileName: string;
+  sha256: string;
+  size: number;
+  slideCount: number;
+  pendingCount: number;
+  storage: "indexeddb";
+  storageKey: string;
+  templateSha256: string;
 };
 export type PresentationSnapshot = {
   discovery: KnowledgeState["discovery"];
@@ -81,6 +103,7 @@ export type PresentationExport = {
   status: "preview" | "queued" | "generating" | "ready" | "failed";
   manifest: PresentationManifest;
   fileName?: string;
+  file?: PresentationFileInfo;
   downloadUrl?: string;
   googleFileId?: string;
   googleSlidesUrl?: string;
