@@ -13,7 +13,7 @@ Se amplía el estado `cd91664` en la rama exclusiva `feat/avans-os-ajustes-reuni
 - Rutas independientes de impresión A4 en blanco y completada, con logo extraído del master, portada, fecha, contacto, preguntas, líneas, checkboxes, tablas, validación y paginación. La versión vacía nunca lee las respuestas. La completada solo muestra referencias marcadas públicas y exige administrador/PM asignado en la preview.
 - Preparación de Discovery, Benchmark y Plan: completitud, validación, fuentes, responsable, actualización, faltantes y cantidad de slides. Manifest de contenido, modo borrador con marca visible y bloqueo de versión para cliente incompleta; advertencias no críticas requieren confirmación.
 - Master original conservado sin alteración, catálogo de sus 56 páginas y mapeo tipado de contenido/repeticiones/condiciones. Historial inmutable en Documentos → Presentaciones generadas. Una modificación posterior marca los snapshots anteriores como desactualizados.
-- Adapters de Drive/Slides, compilador de operaciones sobre objetos nativos y pipeline server-side preparados. PPTX muestra un bloqueo concreto y Slides permanece deshabilitado. No se generó ni se presentó un archivo o enlace ficticio.
+- Adapters de Drive/Slides, compilador de operaciones sobre objetos nativos y pipeline server-side preparados. **Actualización 2026-11:** el bloqueo de PPTX quedó reemplazado por el generador real sobre el master (ver `docs/PPTX_GENERATION.md`); Slides permanece deshabilitado. No se generó ni se presentó un archivo o enlace ficticio.
 
 ## Persistencia y límites
 

@@ -1,6 +1,6 @@
 # Módulos, reportes y tareas (etapas 3, 4 y 5)
 
-Rama: `feat/avans-os-modulos-reportes-tareas`, creada desde `feat/avans-os-ajustes-reunion-2026-11-03` (`d9e44d0`). Sin cambios en `main`, sin push, sin migraciones de Supabase.
+Desarrollado en una rama de trabajo desde `feat/avans-os-ajustes-reunion-2026-11-03` (`d9e44d0`) e integrado en esa rama. Sin cambios en `main` ni migraciones de Supabase.
 
 ## Qué es real y qué no
 

@@ -40,3 +40,28 @@ Los módulos operativos siguen siendo herramientas (filtros, tableros, acciones)
 
 - `tests/discovery-browser.spec.ts` y `tests/knowledge-browser.spec.ts` migrados al documento continuo y al gestor de módulos, sin quitar verificaciones.
 - `tests/strategic-documents-browser.spec.ts` (nuevo): agregar módulo con alcance y confirmación, persistencia tras recargar, navegación y Plan, desactivación conservando datos, aislamiento ACA/EPSA, permisos PM/operativo, Discovery que empieza por el cuestionario y sin porcentajes, respuestas validadas aplicadas con auditoría, e índices sticky de Benchmark y Plan.
+
+## Etapa 2 — Presentación PPT real
+
+Detalle en `docs/PPTX_GENERATION.md`. «Generar presentación» está en la cabecera de Discovery, Benchmark y Plan (y en Documentos): construye un `.pptx` editable a partir del master oficial, con vista previa renderizada del archivo generado (navegación por slide, miniaturas, documento completo, descarga, datos pendientes, regenerar). El borrador interno lleva la marca «BORRADOR INTERNO — NO ENVIAR AL CLIENTE»; la versión final se bloquea mientras falten datos críticos. Google Slides queda visible pero deshabilitado: Google Workspace no está conectado y no se generan enlaces ficticios. Las versiones se guardan en este navegador (IndexedDB) y se listan en Documentos → Presentaciones generadas.
+
+## Etapas 3, 4 y 5 — Reportes, tareas y módulos de servicio
+
+Detalle en `docs/MODULES_REPORTS_TASKS.md`.
+
+- **Reportes** (`app/v2/os/reports/`): semanal operativo (filtrable por módulo), mensual de resultados, Publicidad digital y Contenidos. KPIs, gráficos SVG accesibles con tabla alternativa, comparativas y fuentes. Las métricas son de demostración y lo dicen en pantalla.
+- **Tareas**: un único store (`workspace`) con `serviceId` por tarea (migración compatible al hidratar: las tareas guardadas sin módulo lo reciben, nada se borra). Kanban y lista dentro de cada módulo; la pestaña Tareas del cliente es la vista transversal con resumen por módulo, responsables, bloqueos, filtros y archivo. Regla de archivo a 30 días sin cambios.
+- **Publicidad digital**: sin «Flujo del servicio»; secciones Resumen, Campañas (alta y detalle), Tareas, Producción creativa, Optimización, Resultados, Entregables y aprobaciones, Recomendaciones, Historial. Meta, Google y LinkedIn Ads figuran «No conectada».
+- **Contenidos, Estrategia, Desarrollo web, Audiovisuales**: espacios propios (calendario editorial, decisiones y riesgos, sitemap/QA/releases, producciones/rodajes/versiones). CRM, IA y automatizaciones, Diseño de marca, Soluciones gráficas y Mercado Libre usan solo las etapas ya definidas.
+
+## Etapa 6 — QA (ejecutada en esta rama)
+
+`npm ci`, `npm run lint` (0 errores, 4 advertencias preexistentes), `npm run typecheck` y `npm run build` (269 páginas) sin errores. Suite Playwright completa: 100 pruebas aprobadas (dominio + navegador). El `.pptx` borrador de EPSA generado en el navegador se abrió con python-pptx (52 slides) y se convirtió a PDF con LibreOffice para revisión visual. Capturas revisadas a 1440 y 390 px sin desborde horizontal.
+
+## Pendientes
+
+- Persistencia multiusuario y permisos de servidor: hoy todo es local al navegador y los roles de la preview son visuales, no seguridad.
+- Integraciones: Meta/Google/LinkedIn Ads, redes, Google Workspace (Drive/Slides), proveedor de IA y monitoreo automático de Benchmark.
+- Procesos detallados de CRM, IA, Diseño de marca, Soluciones gráficas y Mercado Libre (falta el documento con los servicios documentados).
+- Arrastrar y soltar en Kanban, subida real de archivos y envío de reportes al cliente.
+- EPSA conserva la tarea T-145 de Desarrollo web, módulo no activo: se muestra como «Módulo inactivo» para reasignar.
