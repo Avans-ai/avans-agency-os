@@ -7,10 +7,11 @@ import { DocumentsView } from "../knowledge/documents-view";
 import { MarketingDiscoveryView } from "./marketing-discovery";
 import { useState } from "react";
 import type { ClientBenchmark } from "../../benchmark-data";
-import { directorMeta, scopeForClient } from "../director-data";
+import { scopeForClient } from "../director-data";
 import { serviceLabel, type OsClient } from "../os-data";
+import { ClientReports } from "../reports/client-reports";
 import { serviceHref } from "../service-workspace-data";
-import { Badge, buttonClass, OSEmptyState } from "../ui";
+import { Badge } from "../ui";
 import s from "../os.module.css";
 import sc from "../screens.module.css";
 import d from "./director-update.module.css";
@@ -21,12 +22,6 @@ export type ClientManagementView =
 function complianceTone(status: string) {
   if (status === "Cumplido") return "cool" as const;
   if (status === "Atención") return "peach" as const;
-  return "stone" as const;
-}
-
-function reportTone(status: string) {
-  if (status === "Listo") return "cool" as const;
-  if (status === "En preparación") return "peach" as const;
   return "stone" as const;
 }
 
@@ -156,54 +151,6 @@ function ClientSheet({ client }: { client: OsClient }) {
           <MarketingDiscoveryView key={client.slug} client={client} />
         )}
       </div>
-    </div>
-  );
-}
-
-function ClientReports({ client }: { client: OsClient }) {
-  const meta = directorMeta(client.slug);
-  return (
-    <div className={sc.stack}>
-      <div className={s.pageHead}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 500 }}>Reportes</h2>
-          <p>
-            Pulsos semanales, devoluciones mensuales e insights quincenales
-            generados desde la operación.
-          </p>
-        </div>
-      </div>
-      {meta?.reports.length ? (
-        <section className={d.reportGrid} aria-label="Reportes de la cuenta">
-          {meta.reports.map((report) => (
-            <article className={d.reportCard} key={report.id}>
-              <div className={d.scopeHead}>
-                <strong>{report.label}</strong>
-                <Badge tone={reportTone(report.state)}>{report.state}</Badge>
-              </div>
-              <span className={s.cellSub}>
-                {report.type} · {report.period}
-              </span>
-              <button
-                type="button"
-                className={buttonClass("secondary", true)}
-                disabled={report.state !== "Listo"}
-              >
-                {report.state === "Listo"
-                  ? "Abrir reporte"
-                  : "Todavía no disponible"}
-              </button>
-            </article>
-          ))}
-        </section>
-      ) : (
-        <OSEmptyState icon="datos" title="Sin reportes configurados" />
-      )}
-      <p className={s.demoNote}>
-        La generación automática necesita datos persistidos, una plantilla
-        aprobada y evidencia de cada fuente. En esta etapa se representa la
-        cadencia y el estado.
-      </p>
     </div>
   );
 }
