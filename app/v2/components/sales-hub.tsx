@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BriefcaseBusiness, CircleAlert, Search, Workflow } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CircleAlert, Search } from "lucide-react";
 import { benchmarkSignals } from "../benchmark-data";
 import { handoffSteps, salesFollowUps, salesOpportunities, salesStageLabel, salesStages, type SalesOpportunity, type SalesStageKey } from "../sales-data";
 import styles from "../sales-hub.module.css";

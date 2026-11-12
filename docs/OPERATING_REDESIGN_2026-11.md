@@ -1,0 +1,98 @@
+# Avans OS — Rediseño operativo (Discovery, Benchmark, Plan, módulos de servicio)
+
+Rama exclusiva: `feat/avans-os-ajustes-reunion-2026-11-03`. Sin cambios en `main`, sin merge, sin producción, sin migraciones de Supabase.
+Plantilla oficial: `assets/templates/marketing-discovery-v1.pptx` (SHA-256 `7dfe3336…d11c`), idéntica al `Marketing Discovery(1).pptx` recibido.
+
+## Etapa 1 — Arquitectura y navegación
+
+### Agregar módulo de servicio
+
+- Acción **«+ Agregar módulo de servicio»** en el inicio del cliente y **«Gestionar módulos»** en el Plan. Visible para Administrador y para el PM asignado al cliente (`canManageModules`); el perfil operativo no la ve.
+- Catálogo de los diez servicios de Avans con nombre, descripción, responsable o líder, estado de activación, alcance contratado, fecha de inicio, relación con otros módulos, secciones del Plan que habilita e historial.
+- Selección múltiple y configuración por módulo: **Contratado** o **Demostración**. Un módulo contratado exige alcance escrito; cualquier cambio contractual (activar, desactivar, tipo, alcance o fecha de inicio de un módulo contratado) exige confirmar que fue acordado con el cliente.
+- Al guardar: se actualizan los módulos activos (`servicesOf`), aparecen en la navegación diaria del cliente, se habilitan sus capítulos del Plan y su espacio operativo (tareas, entregables, archivos, recomendaciones, aprobaciones). Los demás módulos no se tocan.
+- Desactivar oculta el módulo y conserva datos, decisiones del Plan e historial; reactivarlo los recupera.
+- Modelo: `app/v2/os/service-modules.ts`. Persistencia local de la preview: `avans-os:preview:v1:client:<slug>:service-modules` (clave nueva, sin migrar ni sobrescribir claves existentes). Los servicios activados antes de este modelo se completan como «Demostración» sin perder su estado. No hay sincronización entre usuarios ni permisos de servidor.
+
+### Documentos estratégicos continuos
+
+Componente común `app/v2/os/knowledge/document-shell.tsx`: una página vertical con índice sticky compacto, scroll suave (respeta *reduced motion*), sección activa (`aria-current="location"`), anclas compartibles (`#seccion`) y foco en el título al saltar. El índice se ubica debajo de la altura real de la cabecera (`--os-header-h`, medida con `ResizeObserver`).
+
+Los módulos operativos siguen siendo herramientas (filtros, tableros, acciones); los documentos estratégicos son lectura vertical continua.
+
+**Discovery** (`Ficha del cliente → Discovery del negocio`): `01 Cuestionario inicial` primero, luego `02 Quiénes somos`, `03 Datos relevantes`, `04 Unidades de negocio`, `05 Productos y servicios`, `06 Cómo se vende hoy`, `07 Matriz de targeting`, `08 ICP B2B`, `09 ICP B2C` y Fuentes y trazabilidad (estructura de las páginas 5–12). Cada sección tiene «Editar» o «+ Agregar» en contexto; se conservan duplicar, reordenar, eliminar con confirmación, relaciones, matriz, aplicabilidad de ICP, fuentes, evidencia, validación, conflictos entre pestañas e historial.
+
+- El cuestionario queda compacto: carga de documentos, texto pegado, fuentes, análisis y sugerencias, revisión, compartir, copiar e impresión vacía/completada visibles; las preguntas se despliegan bajo «Responder preguntas · N de M respondidas».
+- **«Aplicar respuestas validadas al Discovery»**: las respuestas marcadas «Validada con el cliente» generan y aprueban sus propuestas en un paso, con evidencia, versión y auditoría. Las demás siguen por «Enviar respuestas a revisión». Si el valor actual cambió, la propuesta queda pendiente para revisión manual.
+- Se eliminó la grilla de porcentajes y los porcentajes repetidos (incluido el progreso del cuestionario, ahora en cantidad de respuestas). Las reglas de completitud del modelo no cambiaron; se muestran como estados contextuales (Validado, Pendiente de validar, Falta información, Requiere revisión, No aplica) y en un resumen compacto «Pendientes antes de exportar».
+- Se retiró el drawer «Vista previa del contenido de presentación».
+
+**Benchmark** (páginas 13–25): marcas seleccionadas → análisis de la marca del cliente → contenidos, paid media, web y diseño propios → un bloque completo por competidor (análisis individual, contenidos, paid media, web, diseño) → conclusiones generales (tomar / evitar / diferenciar) → monitoreo y cambios entre snapshots. Cada bloque admite texto, enlaces, métricas, capturas o referencias, fuentes, evidencia y conclusiones. El monitoreo automático figura **sin proveedor conectado**: no se muestran escaneos simulados; el circuito previsto (fuente → comparar → detectar cambios → proponer → revisar → actualizar tras validar) queda descripto y los snapshots manuales funcionan.
+
+**Plan de Marketing** (páginas 26–53): un capítulo por módulo contratado con el emblema del sistema Avans, en el orden de la plantilla (Estrategia, Diseño de marca, Publicidad digital, Contenidos, Audiovisuales, Desarrollo web); los bloques de cada servicio vienen del modelo existente. Los módulos no contratados no aparecen; CRM, IA y automatizaciones, Soluciones gráficas y Mercado Libre muestran «Plantilla estratégica pendiente de definición». No se agrega información inventada: los bloques vacíos lo dicen y cada decisión conserva sus fundamentos de Discovery y Benchmark.
+
+### Ajustes visuales
+
+- Estilos del módulo de conocimiento alineados con tokens Avans (sin esquinas redondeadas ni colores fuera de paleta).
+- Corrección de un desborde horizontal en móvil causado por texto solo para lectores de pantalla dentro de tablas con scroll.
+
+### Pruebas de la etapa
+
+- `tests/discovery-browser.spec.ts` y `tests/knowledge-browser.spec.ts` migrados al documento continuo y al gestor de módulos, sin quitar verificaciones.
+- `tests/strategic-documents-browser.spec.ts` (nuevo): agregar módulo con alcance y confirmación, persistencia tras recargar, navegación y Plan, desactivación conservando datos, aislamiento ACA/EPSA, permisos PM/operativo, Discovery que empieza por el cuestionario y sin porcentajes, respuestas validadas aplicadas con auditoría, e índices sticky de Benchmark y Plan.
+
+## Etapa 2 — Presentación PPT real
+
+Detalle en `docs/PPTX_GENERATION.md`. «Generar presentación» está en la cabecera de Discovery, Benchmark y Plan (y en Documentos): construye un `.pptx` editable a partir del master oficial, con vista previa renderizada del archivo generado (navegación por slide, miniaturas, documento completo, descarga, datos pendientes, regenerar). El borrador interno lleva la marca «BORRADOR INTERNO — NO ENVIAR AL CLIENTE»; la versión final se bloquea mientras falten datos críticos. Google Slides queda visible pero deshabilitado: Google Workspace no está conectado y no se generan enlaces ficticios. Las versiones se guardan en este navegador (IndexedDB) y se listan en Documentos → Presentaciones generadas.
+
+## Etapas 3, 4 y 5 — Reportes, tareas y módulos de servicio
+
+Detalle en `docs/MODULES_REPORTS_TASKS.md`.
+
+- **Reportes** (`app/v2/os/reports/`): semanal operativo (filtrable por módulo), mensual de resultados, Publicidad digital y Contenidos. KPIs, gráficos SVG accesibles con tabla alternativa, comparativas y fuentes. Las métricas son de demostración y lo dicen en pantalla.
+- **Tareas**: un único store (`workspace`) con `serviceId` por tarea (migración compatible al hidratar: las tareas guardadas sin módulo lo reciben, nada se borra). Kanban y lista dentro de cada módulo; la pestaña Tareas del cliente es la vista transversal con resumen por módulo, responsables, bloqueos, filtros y archivo. Regla de archivo a 30 días sin cambios.
+- **Publicidad digital**: sin «Flujo del servicio»; secciones Resumen, Campañas (alta y detalle), Tareas, Producción creativa, Optimización, Resultados, Entregables y aprobaciones, Recomendaciones, Historial. Meta, Google y LinkedIn Ads figuran «No conectada».
+- **Contenidos, Estrategia, Desarrollo web, Audiovisuales**: espacios propios (calendario editorial, decisiones y riesgos, sitemap/QA/releases, producciones/rodajes/versiones). CRM, IA y automatizaciones, Diseño de marca, Soluciones gráficas y Mercado Libre usan solo las etapas ya definidas.
+
+## Etapa 6 — QA (ejecutada en esta rama)
+
+`npm ci`, `npm run lint` (0 errores, 4 advertencias preexistentes), `npm run typecheck` y `npm run build` (269 páginas) sin errores. Suite Playwright completa: 100 pruebas aprobadas (dominio + navegador). El `.pptx` borrador de EPSA generado en el navegador se abrió con python-pptx (52 slides) y se convirtió a PDF con LibreOffice para revisión visual. Capturas revisadas a 1440 y 390 px sin desborde horizontal.
+
+## Pendientes
+
+- Persistencia multiusuario y permisos de servidor: hoy todo es local al navegador y los roles de la preview son visuales, no seguridad.
+- Integraciones: Meta/Google/LinkedIn Ads, redes, Google Workspace (Drive/Slides), proveedor de IA y monitoreo automático de Benchmark.
+- Procesos detallados de CRM, IA, Diseño de marca, Soluciones gráficas y Mercado Libre (falta el documento con los servicios documentados).
+- Arrastrar y soltar en Kanban, subida real de archivos y envío de reportes al cliente.
+- EPSA conserva la tarea T-145 de Desarrollo web, módulo no activo: se muestra como «Módulo inactivo» para reasignar.
+
+## Iteración 2 — Operaciones unificada en Clientes
+
+- **Una sola vista.** «Operaciones → Vista general» (lista transversal de proyectos) y «Operaciones → Clientes» se unificaron en `/v2/clientes`. En la barra lateral, «Operaciones» abre directamente Clientes y su único subítem es «Clientes»; ya no hay «Vista general» para esta área (Ventas, Finanzas, RRHH y Gerencia conservan la suya). El menú móvil sigue la misma regla. La marca de área activa se mantiene en `/v2/clientes`, en la ficha de cada cliente y en sus módulos.
+- **Redirección.** `/v2/operaciones` responde con una redirección de servidor (307) a `/v2/clientes`, conservando la query string (`?tab=all`, etc.). Los enlaces internos y migas de pan que apuntaban a `/v2/operaciones` ahora apuntan a `/v2/clientes`. Proyectos (`/v2/proyectos/...`), tareas, `/v2/clientes/<cliente>/...` y `/v2/mis-tareas` no cambiaron. `OperationsOverview` se eliminó porque no tenía otros usos.
+- **Datos de la operación por cliente.** `app/v2/os/client-operations.ts` deriva, con el store vivo de tareas (incluye las creadas en este navegador), los proyectos activos con avance, vencidas, bloqueos, tareas en aprobación, próxima entrega (próxima tarea abierta no vencida) y alertas relevantes (`clientAttention`).
+- **Tabla de clientes.** Se mantienen los cuatro segmentos (Tus clientes / Activos / Inactivos / Todos), lista y grilla, búsqueda (ahora también por nombre de proyecto), filtros de estado y módulo, orden, equipo, módulos contratados, semáforo, próximo hito y facturación/margen solo para el rol autorizado. Se agregan:
+  - columna compacta **Operación** («2 proyectos activos» + marcas de vencidas y bloqueos, con forma además de color);
+  - **fila desplegable** (botón con `aria-expanded`) con los proyectos activos (enlace al proyecto, responsable, estado, avance, próximo hito y alerta), la próxima entrega, las alertas y accesos a la ficha del cliente y a sus Tareas (`/v2/clientes/<slug>/tareas`);
+  - filtro **«Requieren atención»** (vencidas, bloqueos o semáforo en riesgo) y orden por urgencia;
+  - indicadores equivalentes en las tarjetas de la grilla.
+- Para no sobrecargar la tabla, «Módulos de servicio» pasó debajo del nombre del cliente, «Cliente desde» se muestra en el detalle desplegable y Facturación y Margen comparten columna. Debajo de 1024 px la tabla se reemplaza por una lista compacta con el mismo detalle desplegable.
+- Pruebas: `tests/operations-clients-browser.spec.ts`.
+
+## Iteración 2 — Cuestionario inicial separado del Discovery
+
+- El **Cuestionario inicial** es una herramienta de relevamiento con vista propia: `/v2/clientes/<slug>?view=cuestionario` (ruta corta `/v2/clientes/<slug>/cuestionario`). Acceso destacado en la cabecera de la Ficha y del Discovery. Conserva carga de archivos y fuentes, texto pegado, preguntas, respuestas manuales, sugerencias extraídas, evidencia, aprobación, impresión vacía y completada, y estado de procesamiento. «Ver Discovery generado» lleva al documento.
+- El **Discovery del negocio** es el documento continuo y empieza en `01 Quiénes somos` → `02 Datos relevantes` → `03 Unidades de negocio` → `04 Productos y servicios` → `05 Proceso comercial` → `06 Segmentación y targeting` → `07 ICP B2B` → `08 ICP B2C` → `09 Fuentes y validaciones`.
+- Mismo modelo de conocimiento (`client:<slug>:knowledge:v1`): Cuestionario → respuestas validadas → Discovery. Aplicar dos veces no duplica propuestas ni valores; lo validado no se sobrescribe sin revisión.
+- Compatibilidad: `#discovery-cuestionario`, `/discovery/questionnaire` y `/cuestionario` llevan al cuestionario; `/discovery` lleva al documento. Las pestañas de la Ficha quedan en la URL (`?ficha=alcance|discovery`).
+
+## Iteración 2 — Asistente IA contextual en los módulos
+
+Detalle técnico en `docs/AI_ASSISTANT.md`.
+
+- Al crear trabajo en **Publicidad digital (campaña), Contenidos (pieza, también desde el calendario), Diseño de marca (pieza de marca), Audiovisuales (producción), Desarrollo web (proyecto) y Estrategia (iniciativa)** el formulario se abre en dos columnas: configuración y «Asistente IA · Ideas para …». En mobile el asistente es una sección plegable arriba del formulario.
+- Cada módulo tiene un perfil especialista (qué fuentes necesita y en qué orden, qué propone, qué campos puede completar, límites). El resto de los módulos no tiene asistente.
+- Acciones: generar ideas, regenerar, ver fundamento, ver fuentes, aplicar sugerencia, aplicar campos seleccionados, descartar. Si un campo ya fue editado a mano se pide confirmación (reemplazar o solo completar vacíos). El asistente nunca completa estado, responsable ni fechas comprometidas, y nunca crea, activa ni publica nada.
+- Recomendaciones vigentes del módulo (manuales, demo y hallazgos de Benchmark que lo impactan) aparecen como punto de partida, rotuladas por origen; usarlas no las marca como ejecutadas. Las ideas parecidas a trabajo existente muestran «Esta idea es similar a una iniciativa existente» con enlace (se abre en otra pestaña para no perder el borrador).
+- **Sin proveedor configurado** (estado actual de esta preview): «Asistente IA pendiente de conexión»; no se muestran ideas de IA simuladas.
+- Trazabilidad: `avans-os:preview:v1:client:<slug>:assistant:<serviceId>` guarda cada sugerencia con cliente, módulo, acción, usuario, fecha, origen, proveedor y modelo, estado, campos aplicados, cambios y el registro creado; el registro guarda en su historial qué sugerencias usó. Local a este navegador.

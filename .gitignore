@@ -9,3 +9,15 @@ yarn-error.log*
 pnpm-debug.log*
 
 tsconfig.tsbuildinfo
+
+test-results/
+playwright-report/
+
+# Supabase CLI local cache (no schema execution)
+supabase/.temp/
+
+# Generated from the pinned pdfjs-dist dependency
+/public/vendor/pdf.worker.min.mjs
+
+# Generated from assets/templates by scripts/copy-presentation-template.mjs
+/public/templates/

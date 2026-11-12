@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GoogleWorkspaceCard } from "./google-workspace-card";
 import { ArrowRight, Cable, CheckCircle2, CircleAlert, Database, FileUp, Network, RefreshCcw, ShieldCheck, Webhook } from "lucide-react";
 import styles from "../integration-automation-hub.module.css";
 
@@ -24,6 +25,7 @@ export function IntegrationsHub(){
   <section className={styles.hero}><div><span className={styles.kickerLight}>PLATAFORMA · CONECTIVIDAD</span><h1>Integrarnos antes que reemplazar.</h1><p>Avans OS funciona como capa operativa sobre las herramientas que ya existen. Cada conexión debe declarar origen, permisos, frecuencia, responsable, salud y procedimiento de revocación.</p></div><aside><span>CRITERIO DE ARQUITECTURA</span><strong>No todos los sistemas necesitan ser reemplazados.</strong><p>Cuando un sistema ya resuelve bien una función, Avans OS debe conectarlo, contextualizarlo y usar sus datos sin duplicar innecesariamente la operación.</p></aside></section>
   <div className={styles.scope}><div><span>DESCUBRIR</span><strong>Qué sistema es fuente de verdad</strong></div><div><span>CONECTAR</span><strong>API, webhook o canal disponible</strong></div><div><span>NORMALIZAR</span><strong>Convertir datos al modelo Avans</strong></div><div><span>OBSERVAR</span><strong>Salud, permisos y errores</strong></div></div>
 
+  <GoogleWorkspaceCard />
   <section className={styles.metrics}><a href="#catalogo"><span>Fuentes modeladas</span><strong>6</strong><small>Demo arquitectónica</small></a><a href="#rutas"><span>Rutas de integración</span><strong>5</strong><small>Orden de preferencia</small></a><a href="#gobierno"><span>Secretos cliente</span><strong>Server-side</strong><small>Nunca en navegador</small></a><a href="#salud"><span>Health check</span><strong>Por conexión</strong><small>Auth + latencia + eventos</small></a></section>
 
   <section className={styles.block} id="catalogo"><header><div><span className={styles.kicker}>CATÁLOGO DE CONEXIONES</span><h2>Una ficha técnica por sistema integrado</h2></div><p>Cada integración tiene propietario, método, alcance, ambiente, permisos y estado. El dato no aparece como disponible si la conexión todavía no existe.</p></header>

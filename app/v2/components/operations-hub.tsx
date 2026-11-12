@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, ArrowRight, CircleAlert, Layers3, UsersRound } from "lucide-react";
+import { ArrowRight, CircleAlert, Layers3, UsersRound } from "lucide-react";
 import {
   operationsCapabilities,
   operationsCapacity,

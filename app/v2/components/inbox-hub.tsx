@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CircleAlert, CheckCircle2, Clock3, Filter, ShieldCheck, UserCheck } from "lucide-react";
+import { ArrowRight, CircleAlert, Clock3, Filter, ShieldCheck, UserCheck } from "lucide-react";
 import { attentionItems } from "../data";
 import styles from "../command-inbox-hub.module.css";
 
@@ -38,6 +38,6 @@ export function InboxHub(){
    <article><span>05</span><h3>Aprender</h3><p>El resultado puede sugerir ajustes de regla o contexto.</p></article>
   </div></section>
 
-  <section className={styles.darkBand}><div><span className={styles.kickerLight}>BANDEJA ≠ TAREAS</span><h2>Las tareas viven en la operación. Las excepciones viven acá.</h2><p>Esto evita convertir el Command Center en otro gestor genérico y mantiene el foco en lo que realmente requiere intervención.</p></div><div className={styles.darkSteps}><Link href="/v2/operaciones"><strong>Operaciones</strong><ArrowRight size={14}/></Link><Link href="/v2/gerencia"><strong>Gerencia</strong><ArrowRight size={14}/></Link><Link href="/v2/auditoria"><strong>Auditoría</strong><ArrowRight size={14}/></Link></div></section>
+  <section className={styles.darkBand}><div><span className={styles.kickerLight}>BANDEJA ≠ TAREAS</span><h2>Las tareas viven en la operación. Las excepciones viven acá.</h2><p>Esto evita convertir el Command Center en otro gestor genérico y mantiene el foco en lo que realmente requiere intervención.</p></div><div className={styles.darkSteps}><Link href="/v2/clientes"><strong>Operaciones</strong><ArrowRight size={14}/></Link><Link href="/v2/gerencia"><strong>Gerencia</strong><ArrowRight size={14}/></Link><Link href="/v2/auditoria"><strong>Auditoría</strong><ArrowRight size={14}/></Link></div></section>
  </div>
 }

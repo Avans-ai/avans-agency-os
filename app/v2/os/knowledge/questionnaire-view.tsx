@@ -1,0 +1,611 @@
+"use client";
+import { useState } from "react";
+import { newId } from "./types";
+import { PresentationView } from "./presentation/presentation-view";
+import { IntakeView } from "./intake/intake-view";
+import type { OsClient } from "../os-data";
+import { useOsStore } from "../os-store";
+import { buttonClass } from "../ui";
+import { recordsOf } from "../discovery/model";
+import type { Field } from "../discovery/schema";
+import {
+  questionnaireTemplate,
+  questionnaireProgress,
+  questionnaireText,
+  type QuestionnaireResponse,
+  type AnswerValue,
+} from "./questionnaire";
+import { applyValidatedAnswers, questionnaireToProposals } from "./proposals";
+import { useKnowledge } from "./use-knowledge";
+import m from "./knowledge.module.css";
+type Row = Record<string, string | number | boolean | null | string[]>;
+function AnswerField({
+  field,
+  value,
+  onChange,
+  disabled,
+  options,
+}: {
+  field: Field;
+  value: Row[string] | undefined;
+  onChange: (v: Row[string]) => void;
+  disabled: boolean;
+  options: { id: string; label: string }[];
+}) {
+  return (
+    <label className={m.field}>
+      <span>{field.label}</span>
+      {field.kind === "boolean" ? (
+        <select
+          value={value === undefined ? "" : String(value)}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value === "true")}
+        >
+          <option value="">Sin responder</option>
+          <option value="true">Sí</option>
+          <option value="false">No</option>
+        </select>
+      ) : field.kind === "select" || field.kind === "relation" ? (
+        <select
+          disabled={disabled}
+          value={String(value ?? "")}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">Seleccionar</option>
+          {field.kind === "select"
+            ? field.options?.map((o) => <option key={o}>{o}</option>)
+            : options.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+        </select>
+      ) : field.kind === "relations" ? (
+        <select
+          multiple
+          disabled={disabled}
+          value={Array.isArray(value) ? value : []}
+          onChange={(e) =>
+            onChange(Array.from(e.target.selectedOptions, (o) => o.value))
+          }
+        >
+          {options.map((o) => (
+            <option value={o.id} key={o.id}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      ) : field.kind === "number" ? (
+        <input
+          type="number"
+          min="0"
+          max="100"
+          step="any"
+          disabled={disabled}
+          value={typeof value === "number" ? value : ""}
+          onChange={(e) =>
+            onChange(e.target.value === "" ? null : Number(e.target.value))
+          }
+        />
+      ) : (
+        <textarea
+          disabled={disabled}
+          value={String(value ?? "")}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+    </label>
+  );
+}
+export function QuestionnaireView({
+  client,
+  compact = false,
+  presentationPrep = false,
+  embedded = false,
+}: {
+  client: OsClient;
+  /** Tools visible, questions collapsed under «Responder preguntas». */
+  compact?: boolean;
+  /** Legacy presentation readiness block (the PPTX studio replaces it). */
+  presentationPrep?: boolean;
+  /** Inside a page that already shows its own title. */
+  embedded?: boolean;
+}) {
+  const { k, d, editable, mutate, latest } = useKnowledge(client);
+  const { notify } = useOsStore();
+  const [responses, setResponses] = useState(k.questionnaire.responses);
+  const [baseResponses, setBaseResponses] = useState(k.questionnaire.responses);
+  const [active, setActive] = useState(questionnaireTemplate.sections[0].id);
+  const [share, setShare] = useState(false);
+  const [filter, setFilter] = useState("all");
+  const instance = { ...k.questionnaire, responses };
+  const progress = questionnaireProgress(instance);
+  function change(id: string, patch: Partial<QuestionnaireResponse>) {
+    setResponses((current) => ({
+      ...current,
+      [id]: {
+        ...(current[id] ?? {
+          questionId: id,
+          value: "",
+          status: "draft",
+          sourceReference: "",
+          permission: "pending",
+          clarification: "",
+          updatedAt: "",
+          updatedBy: "",
+        }),
+        ...patch,
+        ...("value" in patch ? { origin: "manual" as const } : {}),
+      },
+    }));
+  }
+  function refreshResponses() {
+    const saved = latest();
+    setResponses(saved.questionnaire.responses);
+    setBaseResponses(saved.questionnaire.responses);
+  }
+  function save() {
+    if (JSON.stringify(responses) === JSON.stringify(baseResponses))
+      return true;
+    const ok = mutate((state, ctx) => {
+      if (
+        JSON.stringify(state.questionnaire.responses) !==
+        JSON.stringify(baseResponses)
+      )
+        throw new Error(
+          "Las respuestas cambiaron. Recargá la vista antes de guardar para conservar ambos cambios.",
+        );
+      return {
+        ...state,
+        questionnaire: {
+          ...state.questionnaire,
+          responses: Object.fromEntries(
+            Object.entries(responses).map(([id, r]) => [
+              id,
+              JSON.stringify(r) === JSON.stringify(baseResponses[id])
+                ? r
+                : { ...r, updatedAt: ctx.at, updatedBy: ctx.actor },
+            ]),
+          ),
+        },
+      };
+    });
+    if (ok) refreshResponses();
+    return ok;
+  }
+  function openSection(id: string) {
+    const node = document.getElementById(id);
+    if (node instanceof HTMLDetailsElement) node.open = true;
+    node?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function print(mode: "blank" | "filled") {
+    if (mode === "filled" && !save()) return;
+    window.open(
+      `/v2/clientes/${client.slug}/discovery/questionnaire/print?mode=${mode}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }
+  const sections = share
+    ? questionnaireTemplate.sections
+    : questionnaireTemplate.sections.filter((s) => s.id === active);
+  return (
+    <div className={`${m.root} ${share ? `${m.share} ${m.printable}` : ""}`}>
+      <div className={m.head}>
+        {(!compact && !embedded) || share ? (
+          <div>
+            <h2>Cuestionario inicial · {client.name}</h2>
+            <p>
+              Una conversación para entender tu negocio, tus clientes y los
+              materiales disponibles.
+            </p>
+          </div>
+        ) : null}
+        <div className={`${m.actions} ${m.noPrint}`}>
+          <button
+            className={buttonClass("secondary", true)}
+            onClick={() => setShare(!share)}
+          >
+            {share ? "Volver a vista interna" : "Para compartir con el cliente"}
+          </button>
+          <button
+            className={buttonClass("secondary", true)}
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(questionnaireText());
+                notify("Preguntas copiadas");
+              } catch {
+                notify(
+                  "El navegador no permitió copiar las preguntas",
+                  "error",
+                );
+              }
+            }}
+          >
+            Copiar preguntas
+          </button>
+          <button
+            className={buttonClass("secondary", true)}
+            onClick={() => print("blank")}
+          >
+            Imprimir cuestionario vacío
+          </button>
+          <button
+            className={buttonClass("secondary", true)}
+            onClick={() => print("filled")}
+            disabled={!editable}
+          >
+            Imprimir cuestionario completado
+          </button>
+          <button
+            className={buttonClass("primary", true)}
+            onClick={() => openSection("company-intake")}
+          >
+            Cargar información
+          </button>
+          <button
+            className={buttonClass("secondary", true)}
+            onClick={() => openSection("answer-suggestions")}
+          >
+            Revisar sugerencias
+          </button>
+        </div>
+      </div>
+      <div>
+        <strong>
+          {progress.answered} de {progress.total} preguntas respondidas
+        </strong>
+        <progress
+          aria-label={`${progress.answered} de ${progress.total} preguntas respondidas`}
+          className={m.progress}
+          max={progress.total || 1}
+          value={progress.answered}
+        />
+      </div>
+      <p className={m.muted}>
+        Esta vista permanece dentro de la sesión de Avans OS. No genera un
+        enlace público ni envía mensajes.
+      </p>
+      {!share && editable ? (
+        <IntakeView
+          client={client}
+          beforeReview={save}
+          onResponsesChanged={refreshResponses}
+        />
+      ) : null}
+      <details
+        className={m.questions}
+        open={!compact || share ? true : undefined}
+      >
+        <summary>
+          Responder preguntas · {progress.answered} de {progress.total}{" "}
+          respondidas
+        </summary>
+      <div className={share ? m.root : m.twoCol}>
+        {!share ? (
+          <nav className={m.side} aria-label="Bloques del cuestionario">
+            {progress.sections.map((s) => (
+              <button
+                key={s.id}
+                aria-current={active === s.id ? "page" : undefined}
+                onClick={() => setActive(s.id)}
+              >
+                {s.label}
+                {s.clarification ? ` · ${s.clarification} aclaraciones` : ""}
+              </button>
+            ))}
+            <label className={m.field}>
+              Mostrar
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option value="all">Todas las preguntas</option>
+                <option value="pending">Preguntas pendientes</option>
+                <option value="clarify">Requieren aclaración</option>
+              </select>
+            </label>
+          </nav>
+        ) : null}
+        <div className={m.root}>
+          {sections.map((section) => (
+            <section className={m.card} key={section.id}>
+              <h3>{section.label}</h3>
+              {section.questions
+                .filter(
+                  (q) =>
+                    filter === "all" ||
+                    share ||
+                    (filter === "pending" &&
+                      (!responses[q.id] ||
+                        responses[q.id].status === "unanswered" ||
+                        responses[q.id].status === "draft")) ||
+                    (filter === "clarify" && !!responses[q.id]?.clarification),
+                )
+                .map((q) => {
+                  const response = responses[q.id];
+                  const rows =
+                    q.responseType === "repeatable" &&
+                    Array.isArray(response?.value)
+                      ? (response.value as Row[])
+                      : [];
+                  return (
+                    <div key={q.id} className={m.card}>
+                      <h4>{q.label}</h4>
+                      {response ? (
+                        <p className={m.muted}>
+                          {response.status === "validated"
+                            ? "Respuesta validada"
+                            : response.origin === "source"
+                              ? "Respuesta desde fuente aprobada"
+                              : "Respuesta manual"}
+                          {response.demo ? " · DEMO" : ""}
+                          {response.sourceReference
+                            ? ` · ${response.sourceReference}`
+                            : ""}
+                          {response.updatedAt
+                            ? ` · ${new Date(response.updatedAt).toLocaleDateString("es-AR", { timeZone: "America/Buenos_Aires" })}`
+                            : ""}
+                        </p>
+                      ) : (
+                        <p className={m.muted}>
+                          Sin respuesta ni evidencia confirmada
+                        </p>
+                      )}
+                      <p className={m.muted}>{q.helpText}</p>
+                      {q.responseType === "repeatable" ? (
+                        <>
+                          {rows.map((row, i) => (
+                            <fieldset key={i}>
+                              <legend>Respuesta {i + 1}</legend>
+                              {q.fields?.map((f) => (
+                                <AnswerField
+                                  key={f.key}
+                                  field={f}
+                                  value={row[f.key]}
+                                  onChange={(v) =>
+                                    change(q.id, {
+                                      value: rows.map((r, j) =>
+                                        j === i ? { ...r, [f.key]: v } : r,
+                                      ),
+                                      status: "draft",
+                                    })
+                                  }
+                                  disabled={!editable}
+                                  options={
+                                    f.collection
+                                      ? recordsOf(d, f.collection).map((r) => ({
+                                          id: r.id,
+                                          label: r.name || r.id,
+                                        }))
+                                      : []
+                                  }
+                                />
+                              ))}
+                              <label className={m.field}>
+                                Fuente de este dato
+                                <input
+                                  disabled={!editable}
+                                  value={String(row._source ?? "")}
+                                  onChange={(e) =>
+                                    change(q.id, {
+                                      value: rows.map((r, j) =>
+                                        i === j
+                                          ? { ...r, _source: e.target.value }
+                                          : r,
+                                      ),
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className={m.field}>
+                                Autorización de uso de este dato
+                                <select
+                                  disabled={!editable}
+                                  value={String(row._permission ?? "pending")}
+                                  onChange={(e) =>
+                                    change(q.id, {
+                                      value: rows.map((r, j) =>
+                                        i === j
+                                          ? {
+                                              ...r,
+                                              _permission: e.target.value,
+                                            }
+                                          : r,
+                                      ),
+                                    })
+                                  }
+                                >
+                                  <option value="pending">Por confirmar</option>
+                                  <option value="public">
+                                    Puede comunicarse públicamente
+                                  </option>
+                                  <option value="confidential">
+                                    Confidencial
+                                  </option>
+                                </select>
+                              </label>
+                              <button
+                                disabled={!editable}
+                                className={buttonClass("ghost", true)}
+                                onClick={() =>
+                                  change(q.id, {
+                                    value: rows.filter((_, j) => j !== i),
+                                  })
+                                }
+                              >
+                                Quitar respuesta {i + 1}
+                              </button>
+                            </fieldset>
+                          ))}
+                          <button
+                            disabled={!editable}
+                            className={buttonClass("secondary", true)}
+                            onClick={() =>
+                              change(q.id, {
+                                value: [
+                                  ...rows,
+                                  { _id: newId() },
+                                ] as AnswerValue,
+                              })
+                            }
+                          >
+                            Agregar respuesta
+                          </button>
+                        </>
+                      ) : (
+                        <label className={m.field}>
+                          <span className={m.srOnly}>{q.label}</span>
+                          <textarea
+                            aria-label={q.label}
+                            disabled={!editable}
+                            value={String(response?.value ?? "")}
+                            onChange={(e) =>
+                              change(q.id, {
+                                value: e.target.value,
+                                status: "draft",
+                              })
+                            }
+                          />
+                        </label>
+                      )}
+                      {!share ? (
+                        <>
+                          <label className={m.field}>
+                            Estado de respuesta
+                            <select
+                              disabled={!editable}
+                              value={response?.status ?? "unanswered"}
+                              onChange={(e) =>
+                                change(q.id, {
+                                  status: e.target
+                                    .value as QuestionnaireResponse["status"],
+                                })
+                              }
+                            >
+                              <option value="unanswered">Sin responder</option>
+                              <option value="draft">Borrador</option>
+                              <option value="answered">Respondida</option>
+                              <option value="validated">
+                                Validada con el cliente
+                              </option>
+                            </select>
+                          </label>
+                          <label className={m.field}>
+                            Fuente o referencia
+                            <input
+                              disabled={!editable}
+                              value={response?.sourceReference ?? ""}
+                              onChange={(e) =>
+                                change(q.id, {
+                                  sourceReference: e.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                          <label className={m.field}>
+                            Permiso de publicación
+                            <select
+                              disabled={!editable}
+                              value={response?.permission ?? "pending"}
+                              onChange={(e) =>
+                                change(q.id, {
+                                  permission: e.target
+                                    .value as QuestionnaireResponse["permission"],
+                                })
+                              }
+                            >
+                              <option value="pending">Por confirmar</option>
+                              <option value="public">Público</option>
+                              <option value="confidential">Confidencial</option>
+                            </select>
+                          </label>
+                        </>
+                      ) : null}
+                      <label className={m.field}>
+                        Necesitamos aclarar
+                        <input
+                          disabled={!editable}
+                          value={response?.clarification ?? ""}
+                          onChange={(e) =>
+                            change(q.id, { clarification: e.target.value })
+                          }
+                        />
+                      </label>
+                    </div>
+                  );
+                })}
+            </section>
+          ))}
+        </div>
+      </div>
+      </details>
+      <div className={`${m.actions} ${m.noPrint}`}>
+        <button
+          disabled={!editable}
+          className={buttonClass("secondary")}
+          onClick={() => {
+            save();
+          }}
+        >
+          Guardar borrador
+        </button>
+        <button
+          disabled={!editable}
+          className={buttonClass(compact ? "dark" : "primary")}
+          onClick={() => {
+            save();
+          }}
+        >
+          Guardar respuestas
+        </button>
+        {!share ? (
+          <button
+            disabled={!editable}
+            className={buttonClass("secondary")}
+            onClick={() => {
+              if (save() && mutate((s, c) => questionnaireToProposals(s, c))) {
+                refreshResponses();
+                notify(
+                  "Propuestas disponibles en Documentos → Cambios para aprobar",
+                );
+              }
+            }}
+          >
+            Enviar respuestas a revisión
+          </button>
+        ) : null}
+        {!share ? (
+          <button
+            disabled={!editable}
+            className={buttonClass("dark")}
+            onClick={() => {
+              if (!save()) return;
+              let result = { applied: 0, pending: 0 };
+              if (
+                mutate((st, c) => {
+                  const out = applyValidatedAnswers(st, c);
+                  result = out.result;
+                  return out.state;
+                })
+              ) {
+                refreshResponses();
+                notify(
+                  result.applied
+                    ? `${result.applied} cambio(s) aplicados al Discovery desde respuestas validadas${result.pending ? ` · ${result.pending} quedan en revisión por conflicto` : ""}`
+                    : "No hay respuestas validadas nuevas para aplicar. Marcá la respuesta como «Validada» primero.",
+                  result.applied ? "success" : "default",
+                );
+              }
+            }}
+          >
+            Aplicar respuestas validadas al Discovery
+          </button>
+        ) : null}
+      </div>
+      {!share && editable && !compact && presentationPrep ? (
+        <PresentationView client={client} beforeGenerate={save} />
+      ) : null}
+    </div>
+  );
+}
