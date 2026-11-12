@@ -34,17 +34,26 @@ function SidebarArea({ area, active, root, approvals, onNavigate }: { area: OsNa
   const isActiveArea = root === area.slug;
   const [open, setOpen] = useState(isActiveArea || area.slug === "operaciones");
   const listId = useId();
+  // Áreas sin «Vista general» (Operaciones): el encabezado navega directo a su vista y la lista queda abierta.
+  const direct = area.overview === false;
   return (
     <div className={cx(s.group, isActiveArea && s.groupActive)}>
-      <button type="button" className={s.groupBtn} aria-expanded={open} aria-controls={listId} onClick={() => setOpen(value => !value)} title={area.label}>
-        <AvansIcon name={area.icon} size={20} />
-        <span className={s.groupLabel}>{area.label}</span>
-        {area.restricted ? <span className={s.lockIcon}><Glyph name="lock" size={14} label="Acceso según rol" /></span> : null}
-        <span className={cx(s.chev, open && s.chevOpen)}><Glyph name="chevron-right" size={14} /></span>
-      </button>
-      {open ? (
+      {direct ? (
+        <Link href={area.href} className={s.groupBtn} title={area.label} onClick={onNavigate}>
+          <AvansIcon name={area.icon} size={20} />
+          <span className={s.groupLabel}>{area.label}</span>
+        </Link>
+      ) : (
+        <button type="button" className={s.groupBtn} aria-expanded={open} aria-controls={listId} onClick={() => setOpen(value => !value)} title={area.label}>
+          <AvansIcon name={area.icon} size={20} />
+          <span className={s.groupLabel}>{area.label}</span>
+          {area.restricted ? <span className={s.lockIcon}><Glyph name="lock" size={14} label="Acceso según rol" /></span> : null}
+          <span className={cx(s.chev, open && s.chevOpen)}><Glyph name="chevron-right" size={14} /></span>
+        </button>
+      )}
+      {open || direct ? (
         <ul className={s.subList} id={listId}>
-          <li><Link href={area.href} className={cx(s.subLink, active === area.slug && s.subActive)} aria-current={active === area.slug ? "page" : undefined} onClick={onNavigate}><span className={s.subLabel}>Vista general</span></Link></li>
+          {direct ? null : <li><Link href={area.href} className={cx(s.subLink, active === area.slug && s.subActive)} aria-current={active === area.slug ? "page" : undefined} onClick={onNavigate}><span className={s.subLabel}>Vista general</span></Link></li>}
           {area.items.map(item => {
             const current = item.slug !== undefined && item.slug !== area.slug && item.slug === active;
             const badge = item.badge === "approvals" && approvals > 0 ? approvals : null;
@@ -210,7 +219,7 @@ function MobileSheet({ onClose, active }: { onClose: () => void; active: string 
           <details key={area.slug}>
             <summary><AvansIcon name={area.icon} size={20} /><span>{area.label}</span>{area.restricted ? <Glyph name="lock" size={14} label="Acceso según rol" /> : null}<span className={s.chev} style={{ flex: "none" }}><Glyph name="chevron-right" size={14} /></span></summary>
             <ul>
-              <li><Link href={area.href} onClick={onClose}>Vista general</Link></li>
+              {area.overview === false ? null : <li><Link href={area.href} onClick={onClose}>Vista general</Link></li>}
               {area.items.map(item => <li key={item.href}><Link href={item.href} onClick={onClose} aria-current={item.slug === active ? "page" : undefined}>{item.label}</Link></li>)}
             </ul>
           </details>

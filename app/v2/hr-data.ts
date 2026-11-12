@@ -84,7 +84,7 @@ export const hrSources: HrSource[] = [
     detail: "Relación entre personas, clientes, proyectos, tareas y responsables.",
     method: "Operaciones + Cliente 360°",
     freshness: "Continua",
-    href: "/v2/operaciones",
+    href: "/v2/clientes",
   },
   {
     title: "Calendarios y ausencias",
@@ -100,7 +100,7 @@ export const hrSources: HrSource[] = [
     detail: "Tiempo o unidad de esfuerzo validada por cliente, proyecto y entregable.",
     method: "A definir: horas, bloques o unidades de trabajo",
     freshness: "Pendiente de decisión",
-    href: "/v2/operaciones",
+    href: "/v2/clientes",
   },
   {
     title: "Bandas de costo interno",

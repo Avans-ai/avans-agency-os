@@ -11,15 +11,18 @@ export type OsNavArea = {
   href: string;
   /** Lock = visibility depends on role (Finanzas y Gerencia). */
   restricted?: boolean;
+  /** `false` = el área no tiene «Vista general»: su encabezado abre `href` directamente. */
+  overview?: boolean;
   items: OsNavLeaf[];
 };
 
 /**
- * Actualización del director: Operaciones reúne todos los proyectos y Clientes
- * organiza la ejecución diaria dentro de cada cuenta y módulo de servicio.
+ * Iteración 2: Operaciones se unificó con Clientes. El encabezado del área abre
+ * directamente la cartera (`/v2/clientes`), que muestra los proyectos, entregas,
+ * vencidas y bloqueos de cada cuenta. `/v2/operaciones` redirige ahí.
  */
 export const osAreas: OsNavArea[] = [
-  { slug: "operaciones", label: "Operaciones", icon: "flujo", href: "/v2/operaciones", items: [
+  { slug: "operaciones", label: "Operaciones", icon: "flujo", href: "/v2/clientes", overview: false, items: [
     { label: "Clientes", href: "/v2/clientes", slug: "clientes" },
   ] },
   { slug: "ventas", label: "Ventas", icon: "embudo", href: "/v2/ventas", items: [

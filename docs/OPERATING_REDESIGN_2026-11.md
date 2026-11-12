@@ -65,3 +65,16 @@ Detalle en `docs/MODULES_REPORTS_TASKS.md`.
 - Procesos detallados de CRM, IA, Diseño de marca, Soluciones gráficas y Mercado Libre (falta el documento con los servicios documentados).
 - Arrastrar y soltar en Kanban, subida real de archivos y envío de reportes al cliente.
 - EPSA conserva la tarea T-145 de Desarrollo web, módulo no activo: se muestra como «Módulo inactivo» para reasignar.
+
+## Iteración 2 — Operaciones unificada en Clientes
+
+- **Una sola vista.** «Operaciones → Vista general» (lista transversal de proyectos) y «Operaciones → Clientes» se unificaron en `/v2/clientes`. En la barra lateral, «Operaciones» abre directamente Clientes y su único subítem es «Clientes»; ya no hay «Vista general» para esta área (Ventas, Finanzas, RRHH y Gerencia conservan la suya). El menú móvil sigue la misma regla. La marca de área activa se mantiene en `/v2/clientes`, en la ficha de cada cliente y en sus módulos.
+- **Redirección.** `/v2/operaciones` responde con una redirección de servidor (307) a `/v2/clientes`, conservando la query string (`?tab=all`, etc.). Los enlaces internos y migas de pan que apuntaban a `/v2/operaciones` ahora apuntan a `/v2/clientes`. Proyectos (`/v2/proyectos/...`), tareas, `/v2/clientes/<cliente>/...` y `/v2/mis-tareas` no cambiaron. `OperationsOverview` se eliminó porque no tenía otros usos.
+- **Datos de la operación por cliente.** `app/v2/os/client-operations.ts` deriva, con el store vivo de tareas (incluye las creadas en este navegador), los proyectos activos con avance, vencidas, bloqueos, tareas en aprobación, próxima entrega (próxima tarea abierta no vencida) y alertas relevantes (`clientAttention`).
+- **Tabla de clientes.** Se mantienen los cuatro segmentos (Tus clientes / Activos / Inactivos / Todos), lista y grilla, búsqueda (ahora también por nombre de proyecto), filtros de estado y módulo, orden, equipo, módulos contratados, semáforo, próximo hito y facturación/margen solo para el rol autorizado. Se agregan:
+  - columna compacta **Operación** («2 proyectos activos» + marcas de vencidas y bloqueos, con forma además de color);
+  - **fila desplegable** (botón con `aria-expanded`) con los proyectos activos (enlace al proyecto, responsable, estado, avance, próximo hito y alerta), la próxima entrega, las alertas y accesos a la ficha del cliente y a sus Tareas (`/v2/clientes/<slug>/tareas`);
+  - filtro **«Requieren atención»** (vencidas, bloqueos o semáforo en riesgo) y orden por urgencia;
+  - indicadores equivalentes en las tarjetas de la grilla.
+- Para no sobrecargar la tabla, «Módulos de servicio» pasó debajo del nombre del cliente, «Cliente desde» se muestra en el detalle desplegable y Facturación y Margen comparten columna. Debajo de 1024 px la tabla se reemplaza por una lista compacta con el mismo detalle desplegable.
+- Pruebas: `tests/operations-clients-browser.spec.ts`.
