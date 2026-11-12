@@ -62,11 +62,7 @@ test("questionnaire to proposal to approved Discovery, dependencies, persistence
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await open(page, "ficha");
-  await page.getByRole("tab", { name: "Discovery del negocio" }).click();
-  await page
-    .locator("summary", { hasText: /^Responder preguntas/ })
-    .click();
+  await open(page, "cuestionario");
   await page
     .getByLabel("¿Qué cobertura tiene?", { exact: true })
     .fill("Cobertura QA Argentina y Uruguay");

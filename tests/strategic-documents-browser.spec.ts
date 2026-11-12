@@ -64,15 +64,24 @@ test("operative role cannot manage modules; assigned PM can", async ({ page }) =
   await expect(page.getByRole("button", { name: "+ Agregar módulo de servicio" })).toBeVisible();
 });
 
-test("Discovery starts with the questionnaire, shows no coverage percentages and applies validated answers directly", async ({ page }) => {
+test("Cuestionario inicial is a separate tool; validated answers build the continuous Discovery without duplicates", async ({ page }) => {
   await page.goto("/v2/clientes/epsa?view=ficha");
   await page.getByRole("tab", { name: "Discovery del negocio" }).click();
+  await expect(page).toHaveURL(/ficha=discovery/);
   const index = page.getByRole("navigation", { name: "Índice de Discovery del negocio" });
-  await expect(index.getByRole("link")).toHaveText(["Cuestionario", "Empresa", "Datos", "Unidades", "Productos", "Comercial", "Targeting", "ICP B2B", "ICP B2C", "Fuentes"]);
-  const first = page.locator("[id^=discovery-]").first();
-  await expect(first).toHaveAttribute("id", "discovery-cuestionario");
+  await expect(index.getByRole("link")).toHaveText(["Empresa", "Datos", "Unidades", "Productos", "Proceso comercial", "Segmentación", "ICP B2B", "ICP B2C", "Fuentes"]);
+  await expect(page.locator("[id^=discovery-]").first()).toHaveAttribute("id", "discovery-empresa");
+  await expect(page.locator("#discovery-cuestionario")).toHaveCount(0);
+  await expect(page.locator("summary", { hasText: /^Responder preguntas/ })).toHaveCount(0);
   await expect(page.locator("#discovery-empresa, #discovery-datos, #discovery-targeting").getByText(/\d+\s?%/)).toHaveCount(0);
-  await page.locator("summary", { hasText: /^Responder preguntas/ }).click();
+
+  // Independent questionnaire with its tools.
+  await page.getByRole("link", { name: "Cuestionario inicial" }).first().click();
+  await expect(page).toHaveURL(/view=cuestionario/);
+  await expect(page.getByRole("heading", { name: "Cuestionario inicial", exact: true })).toBeVisible();
+  for (const name of ["Cargar información", "Revisar sugerencias", "Imprimir cuestionario vacío", "Imprimir cuestionario completado"])
+    await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Discovery del negocio" })).toHaveCount(0);
   const q = page.getByRole("heading", { name: "¿Qué cobertura tiene?", exact: true }).locator("..");
   await page.getByLabel("¿Qué cobertura tiene?", { exact: true }).fill("Cobertura validada QA");
   await q.getByLabel("Estado de respuesta").selectOption("validated");
@@ -80,11 +89,25 @@ test("Discovery starts with the questionnaire, shows no coverage percentages and
   await q.getByLabel("Permiso de publicación").selectOption("public");
   await page.getByRole("button", { name: "Aplicar respuestas validadas al Discovery" }).click();
   await expect.poll(async () => (await knowledge(page))?.discovery.companyProfile.coverage).toBe("Cobertura validada QA");
+  // Applying again does not duplicate proposals or values.
+  await page.getByRole("button", { name: "Aplicar respuestas validadas al Discovery" }).click();
+  await expect(page.getByText(/No hay respuestas validadas nuevas/)).toBeVisible();
   const state = await knowledge(page);
-  expect(state.proposals.some((p: { status: string; originQuestionId?: string }) => p.status === "applied" && p.originQuestionId)).toBe(true);
-  expect(state.audit.some((a: { action: string }) => a.action.startsWith("Respuestas validadas aplicadas al Discovery"))).toBe(true);
-  await index.getByRole("link", { name: "Empresa", exact: true }).click();
+  const applied = state.proposals.filter((p: { status: string; originQuestionId?: string }) => p.status === "applied" && p.originQuestionId === "companyProfile.coverage");
+  expect(applied).toHaveLength(1);
+  expect(state.audit.filter((a: { action: string }) => a.action.startsWith("Respuestas validadas aplicadas al Discovery"))).toHaveLength(1);
+
+  await page.getByRole("link", { name: "Ver Discovery generado" }).click();
+  await expect(page.getByRole("heading", { name: "Discovery del negocio", exact: true })).toBeVisible();
   await expect(page.locator("#discovery-empresa")).toContainText("Cobertura validada QA");
+
+  // Earlier links keep working.
+  await page.goto("/v2/clientes/epsa/cuestionario");
+  await expect(page).toHaveURL(/view=cuestionario/);
+  await page.goto("/v2/clientes/epsa?view=ficha#discovery-cuestionario");
+  await expect(page).toHaveURL(/view=cuestionario/);
+  await page.goto("/v2/clientes/epsa/discovery");
+  await expect(page.getByRole("heading", { name: "Discovery del negocio", exact: true })).toBeVisible();
 });
 
 for (const [view, label, first] of [

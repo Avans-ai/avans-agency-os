@@ -12,12 +12,11 @@ const INDEX: Record<string, { link: string; heading: string }> = {
   "Datos relevantes": { link: "Datos", heading: "Datos relevantes" },
   "Unidades de negocio": { link: "Unidades", heading: "Unidades de negocio" },
   "Productos y servicios": { link: "Productos", heading: "Productos y servicios" },
-  "Proceso comercial": { link: "Comercial", heading: "Cómo se vende hoy" },
-  Segmentación: { link: "Targeting", heading: "Matriz de targeting" },
+  "Proceso comercial": { link: "Proceso comercial", heading: "Proceso comercial" },
+  Segmentación: { link: "Segmentación", heading: "Segmentación y targeting" },
   "ICP B2B": { link: "ICP B2B", heading: "ICP B2B" },
   "ICP B2C": { link: "ICP B2C", heading: "ICP B2C" },
-  Fuentes: { link: "Fuentes", heading: "Fuentes y trazabilidad" },
-  Cuestionario: { link: "Cuestionario", heading: "Cuestionario inicial" },
+  Fuentes: { link: "Fuentes", heading: "Fuentes y validaciones" },
 };
 /** Continuous document: the sticky index scrolls to the section and marks it as current. */
 async function section(page: Page, label: string) {
@@ -88,7 +87,7 @@ test("complete PM journey: eight sections, CRUD, relationships, quadrants, ICP, 
   }
   await expect(
     page.getByRole("navigation", { name: "Índice de Discovery del negocio" }).getByRole("link").first(),
-  ).toHaveText("Cuestionario");
+  ).toHaveText("Empresa");
   await expect(page.getByText(/cobertura general/i)).toHaveCount(0);
   await section(page, "Datos relevantes");
   await add(page, "Agregar dato relevante", "Dato de QA persistente");
@@ -220,11 +219,14 @@ test("complete PM journey: eight sections, CRUD, relationships, quadrants, ICP, 
   await page
     .getByRole("button", { name: "Subir Seguimiento QA", exact: true })
     .click();
-  await page
-    .locator("summary", { hasText: /^Pendientes antes de exportar/ })
-    .click();
+  const pendingSummary = page.locator("summary", {
+    hasText: /^Pendientes antes de exportar/,
+  });
+  await pendingSummary.click();
   await expect(
-    page.getByRole("link", { name: "Cómo se vende hoy", exact: true }),
+    pendingSummary
+      .locator("..")
+      .getByRole("link", { name: "Proceso comercial", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", {

@@ -16,11 +16,10 @@ async function state(page: Page, slug = "epsa") {
 async function openQuestions(page: Page) {
   const summary = page.locator("summary", { hasText: /^Responder preguntas/ });
   const parent = summary.locator("..");
-  if (!(await parent.getAttribute("open"))) await summary.click();
+  if (!(await parent.evaluate((node) => (node as HTMLDetailsElement).open))) await summary.click();
 }
 async function open(page: Page) {
-  await page.goto("/v2/clientes/epsa?view=ficha");
-  await page.getByRole("tab", { name: "Discovery del negocio" }).click();
+  await page.goto("/v2/clientes/epsa?view=cuestionario");
   await expect(
     page.getByRole("heading", { name: "Cuestionario inicial", exact: true }),
   ).toBeVisible();
@@ -133,7 +132,6 @@ test("source intake extracts PDF, DOCX, PPTX and pasted text; duplicate, empty, 
     )
     .toBe(true);
   await page.reload();
-  await page.getByRole("tab", { name: "Discovery del negocio" }).click();
   await openQuestions(page);
   expect(
     (await state(page)).sources.find(
@@ -208,7 +206,6 @@ test("suggestions expose evidence and conflicts; edit, approve, reject and ask-c
     .locator("..");
   await activity.getByRole("button", { name: "Preguntar al cliente" }).click();
   await page.reload();
-  await page.getByRole("tab", { name: "Discovery del negocio" }).click();
   await openQuestions(page);
   await expect(
     page.getByLabel("¿Qué cobertura tiene?", { exact: true }),
@@ -297,6 +294,7 @@ test("presentation readiness, generated PPTX versions, documents history, blocke
   request,
 }) => {
   await open(page);
+  await page.getByRole("link", { name: "Ver Discovery generado" }).click();
   const header = page.getByRole("region", { name: "Discovery del negocio" });
   for (const version of [1, 2]) {
     await header

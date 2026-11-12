@@ -100,10 +100,13 @@ function AnswerField({
 export function QuestionnaireView({
   client,
   compact = false,
+  presentationPrep = false,
 }: {
   client: OsClient;
-  /** Inside the continuous Discovery: tools visible, questions collapsed. */
+  /** Tools visible, questions collapsed under «Responder preguntas». */
   compact?: boolean;
+  /** Legacy presentation readiness block (the PPTX studio replaces it). */
+  presentationPrep?: boolean;
 }) {
   const { k, d, editable, mutate, latest } = useKnowledge(client);
   const { notify } = useOsStore();
@@ -597,7 +600,7 @@ export function QuestionnaireView({
           </button>
         ) : null}
       </div>
-      {!share && editable && !compact ? (
+      {!share && editable && !compact && presentationPrep ? (
         <PresentationView client={client} beforeGenerate={save} />
       ) : null}
     </div>

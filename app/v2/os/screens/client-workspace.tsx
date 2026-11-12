@@ -34,6 +34,7 @@ const MANAGEMENT_VIEWS: { id: ClientManagementView; label: string; description: 
 ];
 
 function requestedView(value: string | null): ClientManagementView | "inicio" {
+  if (value === "cuestionario") return "cuestionario";
   return MANAGEMENT_VIEWS.some((item) => item.id === value) ? value as ClientManagementView : "inicio";
 }
 
@@ -108,7 +109,7 @@ export function ClientWorkspace({ client, benchmark }: { client: OsClient; depth
           <p className={d.managementLabel}>Gestión y estrategia</p>
           <nav className={d.managementActions} aria-label={`Gestión de ${client.name}`}>
             {MANAGEMENT_VIEWS.map((item) => (
-              <Link key={item.id} href={`/v2/clientes/${client.slug}?view=${item.id}`} className={d.managementAction} data-active={view === item.id} aria-current={view === item.id ? "page" : undefined}>
+              <Link key={item.id} href={`/v2/clientes/${client.slug}?view=${item.id}`} className={d.managementAction} data-active={view === item.id || (item.id === "ficha" && view === "cuestionario")} aria-current={view === item.id ? "page" : undefined}>
                 <strong>{item.label}</strong><span>{item.description}</span>
               </Link>
             ))}

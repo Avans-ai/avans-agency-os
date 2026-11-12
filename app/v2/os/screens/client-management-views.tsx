@@ -7,19 +7,31 @@ import { DocumentsView } from "../knowledge/documents-view";
 import { MarketingDiscoveryView } from "./marketing-discovery";
 import { AddServiceModuleButton } from "./service-modules-dialog";
 import { GeneratePresentationButton } from "../knowledge/presentation/presentation-studio";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { QuestionnaireView } from "../knowledge/questionnaire-view";
+import { useOsStore } from "../os-store";
+import { canManageClient } from "../director-data";
 import type { ClientBenchmark } from "../../benchmark-data";
 import { scopeForClient } from "../director-data";
 import { serviceLabel, type OsClient } from "../os-data";
 import { ClientReports } from "../reports/client-reports";
 import { serviceHref } from "../service-workspace-data";
-import { Badge } from "../ui";
+import { Badge, LinkButton } from "../ui";
 import s from "../os.module.css";
 import sc from "../screens.module.css";
 import d from "./director-update.module.css";
 
 export type ClientManagementView =
-  "ficha" | "benchmark" | "plan" | "reportes" | "documentos";
+  "ficha" | "cuestionario" | "benchmark" | "plan" | "reportes" | "documentos";
+
+/** Shareable URLs of the client sheet: scope, Discovery and the questionnaire. */
+export function questionnaireHref(slug: string) {
+  return `/v2/clientes/${slug}?view=cuestionario`;
+}
+export function discoveryHref(slug: string, anchor?: string) {
+  return `/v2/clientes/${slug}?view=ficha&ficha=discovery${anchor ? `#${anchor}` : ""}`;
+}
 
 function complianceTone(status: string) {
   if (status === "Cumplido") return "cool" as const;
@@ -36,6 +48,7 @@ export function ClientManagementContent({
   benchmark?: ClientBenchmark;
 }) {
   if (view === "ficha") return <ClientSheet client={client} />;
+  if (view === "cuestionario") return <ClientQuestionnaire client={client} />;
   if (view === "benchmark")
     return (
       <BenchmarkView
@@ -64,8 +77,22 @@ export function ClientManagementContent({
 }
 
 function ClientSheet({ client }: { client: OsClient }) {
-  const [tab, setTab] = useState<"scope" | "business">("scope");
+  const params = useSearchParams();
+  const router = useRouter();
+  const [tab, setTabState] = useState<"scope" | "business">(
+    params.get("ficha") === "discovery" ? "business" : "scope",
+  );
   const scope = scopeForClient(client);
+  function setTab(next: "scope" | "business") {
+    setTabState(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("ficha", next === "business" ? "discovery" : "alcance");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+  // Earlier links pointed to the questionnaire as the first Discovery chapter.
+  useEffect(() => {
+    if (window.location.hash === "#discovery-cuestionario") router.replace(questionnaireHref(client.slug));
+  }, [client.slug, router]);
 
   return (
     <div className={sc.stack}>
@@ -78,6 +105,11 @@ function ClientSheet({ client }: { client: OsClient }) {
             Alcance contratado e información estructurada del negocio según el
             modelo de Discovery.
           </p>
+        </div>
+        <div className={s.actions}>
+          <LinkButton href={questionnaireHref(client.slug)} variant="primary" icon="registro">
+            Cuestionario inicial
+          </LinkButton>
         </div>
       </div>
       <div
@@ -173,10 +205,55 @@ function ClientSheet({ client }: { client: OsClient }) {
           <MarketingDiscoveryView
             key={client.slug}
             client={client}
-            headerActions={<GeneratePresentationButton client={client} small />}
+            headerActions={
+              <>
+                <LinkButton href={questionnaireHref(client.slug)} small>
+                  Cuestionario inicial
+                </LinkButton>
+                <GeneratePresentationButton client={client} small />
+              </>
+            }
           />
         )}
       </div>
+    </div>
+  );
+}
+
+/** Information gathering tool. Its validated answers build the Discovery;
+ * both share one knowledge model, so nothing is duplicated. */
+function ClientQuestionnaire({ client }: { client: OsClient }) {
+  const { role } = useOsStore();
+  const editable = canManageClient(role, client.slug);
+  return (
+    <div className={sc.stack}>
+      <div className={s.pageHead}>
+        <div>
+          <span className={d.managementLabel}>Ficha del cliente · Relevamiento</span>
+          <h2 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 500 }}>
+            Cuestionario inicial
+          </h2>
+          <p>
+            Herramienta para recopilar información: cargá documentos, pegá
+            textos o sumá fuentes, revisá las sugerencias y validá las
+            respuestas. Cuestionario inicial → respuestas validadas →
+            Discovery estructurado.
+          </p>
+        </div>
+        <div className={s.actions}>
+          <LinkButton href={discoveryHref(client.slug)} variant="dark" small>
+            Ver Discovery generado
+          </LinkButton>
+        </div>
+      </div>
+      {editable ? (
+        <QuestionnaireView key={client.slug} client={client} />
+      ) : (
+        <p className={s.demoNote}>
+          El cuestionario está disponible para el administrador y el PM
+          asignado. Podés consultar el Discovery generado.
+        </p>
+      )}
     </div>
   );
 }

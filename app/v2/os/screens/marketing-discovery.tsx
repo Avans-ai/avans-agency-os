@@ -11,7 +11,6 @@ import {
   DocumentShell,
   type SectionState,
 } from "../knowledge/document-shell";
-import { QuestionnaireView } from "../knowledge/questionnaire-view";
 import { OSModal, OSSidePanel } from "../overlays";
 import { Badge, buttonClass } from "../ui";
 import { discoveryActor } from "../discovery/permissions";
@@ -485,8 +484,8 @@ const sectionTitle: Record<SectionKey, string> = {
   relevantFacts: "Datos relevantes",
   businessUnits: "Unidades de negocio",
   offerings: "Productos y servicios",
-  salesProcess: "Cómo se vende hoy",
-  targetSegments: "Matriz de targeting",
+  salesProcess: "Proceso comercial",
+  targetSegments: "Segmentación y targeting",
   b2bIcps: "ICP B2B",
   b2cIcps: "ICP B2C",
 };
@@ -782,7 +781,7 @@ export function MarketingDiscoveryView({
             {kind === "offerings" && unitFilter
               ? "Sin productos en esta unidad."
               : editable
-                ? "Todavía no hay registros. Usá «+ Agregar» o cargá fuentes en el cuestionario."
+                ? "Todavía no hay registros. Usá «+ Agregar» o cargá fuentes en el Cuestionario inicial."
                 : "Todavía no hay registros cargados."}
           </p>
         )}
@@ -881,13 +880,12 @@ export function MarketingDiscoveryView({
     );
   }
   const index = [
-    { id: "discovery-cuestionario", label: "Cuestionario" },
     { id: "discovery-empresa", label: "Empresa" },
     { id: "discovery-datos", label: "Datos" },
     { id: "discovery-unidades", label: "Unidades" },
     { id: "discovery-productos", label: "Productos" },
-    { id: "discovery-comercial", label: "Comercial" },
-    { id: "discovery-targeting", label: "Targeting" },
+    { id: "discovery-comercial", label: "Proceso comercial" },
+    { id: "discovery-targeting", label: "Segmentación" },
     { id: "discovery-icp-b2b", label: "ICP B2B" },
     { id: "discovery-icp-b2c", label: "ICP B2C" },
     { id: "discovery-fuentes", label: "Fuentes" },
@@ -904,9 +902,10 @@ export function MarketingDiscoveryView({
               <span className={m.eyebrow}>01 · Análisis del negocio</span>
               <h2>Discovery del negocio</h2>
               <p>
-                Qué hace, qué vende y a quién le vende {client.name}. Un único
-                documento: el cuestionario alimenta el análisis y el análisis
-                alimenta Benchmark y Plan.
+                Qué hace, qué vende y a quién le vende {client.name}. Documento
+                estratégico construido con las respuestas validadas del
+                Cuestionario inicial y con las fuentes del cliente; alimenta
+                Benchmark y Plan.
               </p>
             </div>
             <div className={m.docActions}>{headerActions}</div>
@@ -977,23 +976,8 @@ export function MarketingDiscoveryView({
       }
     >
       <DocumentSection
-        id="discovery-cuestionario"
-        number="01"
-        title="Cuestionario inicial"
-        hint="Relevamiento y carga inicial: cargá documentos, pegá textos o sumá fuentes; el análisis sugiere respuestas y vos las revisás. No hace falta responder a mano lo que ya está en las fuentes."
-      >
-        {editable ? (
-          <QuestionnaireView key={client.slug} client={client} compact />
-        ) : (
-          <p className={m.muted}>
-            El cuestionario está disponible para el administrador y el PM
-            asignado.
-          </p>
-        )}
-      </DocumentSection>
-      <DocumentSection
         id="discovery-empresa"
-        number="02"
+        number="01"
         title="Quiénes somos"
         hint={hint("companyProfile")}
         state={sectionState("companyProfile")}
@@ -1003,7 +987,7 @@ export function MarketingDiscoveryView({
       </DocumentSection>
       <DocumentSection
         id="discovery-datos"
-        number="03"
+        number="02"
         title="Datos relevantes"
         hint={hint("relevantFacts")}
         state={sectionState("relevantFacts")}
@@ -1013,7 +997,7 @@ export function MarketingDiscoveryView({
       </DocumentSection>
       <DocumentSection
         id="discovery-unidades"
-        number="04"
+        number="03"
         title="Unidades de negocio"
         hint={hint("businessUnits")}
         state={sectionState("businessUnits")}
@@ -1023,7 +1007,7 @@ export function MarketingDiscoveryView({
       </DocumentSection>
       <DocumentSection
         id="discovery-productos"
-        number="05"
+        number="04"
         title="Productos y servicios"
         hint={hint("offerings")}
         state={sectionState("offerings")}
@@ -1050,8 +1034,8 @@ export function MarketingDiscoveryView({
       </DocumentSection>
       <DocumentSection
         id="discovery-comercial"
-        number="06"
-        title="Cómo se vende hoy"
+        number="05"
+        title="Proceso comercial"
         hint={hint("salesProcess")}
         state={sectionState("salesProcess")}
         actions={
@@ -1067,8 +1051,8 @@ export function MarketingDiscoveryView({
       </DocumentSection>
       <DocumentSection
         id="discovery-targeting"
-        number="07"
-        title="Matriz de targeting"
+        number="06"
+        title="Segmentación y targeting"
         hint={hint("targetSegments")}
         state={sectionState("targetSegments")}
         actions={add("targetSegments")}
@@ -1080,11 +1064,12 @@ export function MarketingDiscoveryView({
         />
         {collection("targetSegments")}
       </DocumentSection>
-      {icpSection("b2bIcps", "08")}
-      {icpSection("b2cIcps", "09")}
+      {icpSection("b2bIcps", "07")}
+      {icpSection("b2cIcps", "08")}
       <DocumentSection
         id="discovery-fuentes"
-        title="Fuentes y trazabilidad"
+        number="09"
+        title="Fuentes y validaciones"
         hint="Cada fuente puede respaldar varios registros. Revisar una fuente vuelve a pedir validación de los registros vinculados."
         actions={add("sources")}
       >
