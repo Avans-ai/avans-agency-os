@@ -45,6 +45,7 @@ export const osAreas: OsNavArea[] = [
     { label: "Contractors", href: "/v2/rrhh#contractors" },
     { label: "Talento", href: "/v2/rrhh#talentos" },
     { label: "Disponibilidad", href: "/v2/rrhh#capacidad" },
+    { label: "Catálogo de proveedores", href: "/v2/proveedores", slug: "proveedores" },
   ] },
   { slug: "gerencia", label: "Gerencia", icon: "objetivo", href: "/v2/gerencia", restricted: true, items: [
     { label: "Planificación", href: "/v2/gerencia#planificacion" },
@@ -97,12 +98,14 @@ const structuralItems: V2NavItem[] = [
   { label: "Aprobaciones", slug: "aprobaciones", href: "/v2/aprobaciones" },
   { label: "Mis tareas", slug: "mis-tareas", href: "/v2/mis-tareas" },
   { label: "Benchmark", slug: "benchmark", href: "/v2/benchmark" },
+  { label: "Catálogo de proveedores", slug: "proveedores", href: "/v2/proveedores" },
 ];
 
 export const v2ParentBySlug: Record<string, string> = {
   clientes: "operaciones", proyectos: "operaciones", contenido: "operaciones", campanas: "operaciones",
   aprobaciones: "operaciones", reportes: "operaciones", procesos: "operaciones", reuniones: "operaciones",
   inbox: "operaciones", "mis-tareas": "operaciones", benchmark: "clientes",
+  proveedores: "rrhh",
   leads: "ventas", discovery: "ventas", oportunidades: "ventas", propuestas: "ventas",
   insights: "gerencia", aprendizajes: "gerencia",
   usuarios: "configuracion", integraciones: "configuracion", automatizaciones: "configuracion",
