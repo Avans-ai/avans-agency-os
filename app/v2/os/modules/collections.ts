@@ -11,6 +11,7 @@ import type { CollectionDef, FieldDef } from "./types";
 import { plans, axes, ideas, pieces } from "./content-collections";
 import { designLibraryCollection, designSystemCollection, enhanceDesignRequests } from "./design-collections";
 import { paidCollections, paidLearnings } from "./paid-collections";
+import { jornadasCollection } from "./av-collections";
 
 export const PEOPLE = people.map((person) => person.name);
 
@@ -448,7 +449,7 @@ export const moduleCollections: Record<ServiceId, CollectionDef[]> = {
   contenidos: [axes, ideas, pieces, plans, contentLearnings],
   estrategia: [priorities, meetings, decisions, risks],
   "desarrollo-web": [webProjects, sitemap, requirements, qa, releases, maintenance],
-  audiovisuales: [productions, scripts, shoots, cuts, deliveries],
+  audiovisuales: [jornadasCollection, productions, scripts, shoots, cuts, deliveries],
   crm: [genericWork("crm")],
   "ia-automatizaciones": [genericWork("ia-automatizaciones")],
   "diseno-marca": [enhanceDesignRequests(brandWork()), designSystemCollection, designLibraryCollection],

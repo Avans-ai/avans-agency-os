@@ -26,6 +26,7 @@ import { DeliverablesSection, HistorySection, RecommendationsSection } from "./m
 import { ModuleTaskBoard, useModuleTaskStats } from "./module-task-board";
 import { AudiovisualSummary, GenericSummary, QaSection, ReleasesSection, RisksSection, SitemapSection, StrategySummary, TrackingSection, WebSummary } from "./other-modules";
 import { AdsSection, CampaignsSection, MediaPlanSection, OptimizationSection, PaidHome, PaidResultsSection } from "./paid-media";
+import { AvArchiveSection, JornadasSection } from "./av-jornadas";
 import m from "./modules.module.css";
 
 type Section = { id: string; label: string };
@@ -95,14 +96,12 @@ export function moduleSections(serviceId: ServiceId): Section[] {
         ...COMMON_TAIL,
       ];
     case "audiovisuales":
+      // Procedimiento «Jornada audiovisual»; producciones, guiones, versiones y entregas quedan como archivo.
       return [
         { id: "resumen", label: "Resumen" },
-        { id: "producciones", label: "Producciones" },
-        { id: "guiones", label: "Guiones" },
-        { id: "rodajes", label: "Preproducción y rodajes" },
-        { id: "edicion", label: "Edición y versiones" },
-        { id: "entregas", label: "Entregas" },
+        { id: "jornadas", label: "Jornadas" },
         { id: "tareas", label: "Tareas" },
+        { id: "producciones", label: "Guiones y entregas" },
         ...COMMON_TAIL,
       ];
     default: {
@@ -160,11 +159,8 @@ function renderSection(section: string, ctx: Ctx): ReactNode {
       if (section === "publicaciones") return <ReleasesSection client={client} editable={editable} />;
       return <WebSummary client={client} go={go} />;
     case "audiovisuales":
-      if (section === "producciones") return collectionSection(ctx, "producciones");
-      if (section === "guiones") return collectionSection(ctx, "guiones");
-      if (section === "rodajes") return collectionSection(ctx, "rodajes");
-      if (section === "edicion") return collectionSection(ctx, "versiones");
-      if (section === "entregas") return collectionSection(ctx, "entregas");
+      if (section === "jornadas") return <JornadasSection client={client} editable={editable} selectedId={params.get("jornada")} go={go} />;
+      if (section === "producciones") return <AvArchiveSection client={client} editable={editable} />;
       return <AudiovisualSummary client={client} go={go} />;
     default:
       if (section === moduleCollections[serviceId][0].id) return collectionSection(ctx, section);
@@ -177,7 +173,7 @@ const WORK_ITEM_LABEL: Partial<Record<ServiceId, string>> = {
   contenidos: "Pieza",
   estrategia: "Prioridad",
   "desarrollo-web": "Proyecto web",
-  audiovisuales: "Producción",
+  audiovisuales: "Jornada",
 };
 
 export function ModuleWorkspace({ client, service }: { client: OsClient; service: ServiceWorkspaceConfig }) {
@@ -188,7 +184,7 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
   const serviceId = service.id;
   const { data: designData } = useModuleRecords(client.slug, "diseno-marca", ["trabajos"]);
   const activeServices = servicesOf(client.slug);
-  const supportDesign = serviceId === "diseno-marca" && !activeServices.includes("diseno-marca") && activeServices.includes("contenidos") && (designData.trabajos || []).some((record) => record.values.contenidoId);
+  const supportDesign = serviceId === "diseno-marca" && !activeServices.includes("diseno-marca") && ((activeServices.includes("contenidos") && (designData.trabajos || []).some((record) => record.values.contenidoId)) || (activeServices.includes("audiovisuales") && (designData.trabajos || []).some((record) => record.values.jornadaId)));
   const definition = serviceCatalog.find((item) => item.id === serviceId);
   const editable = canEditService(role, client.slug, serviceId);
   const sections = moduleSections(serviceId).filter((section) => !supportDesign || ["trabajos", "biblioteca", "tareas", "historial"].includes(section.id));

@@ -59,7 +59,7 @@ export function DesignRequestsSection({ client, editable, supportOnly = false }:
   const [editing, setEditing] = useState<ModuleRecord | null>(null);
   const [status, setStatus] = useState("Todos");
   const [origin, setOrigin] = useState("");
-  const records = (data.trabajos || []).filter((record) => !supportOnly || record.values.contenidoId);
+  const records = (data.trabajos || []).filter((record) => !supportOnly || record.values.contenidoId || record.values.jornadaId);
   const contentOf = (r: ModuleRecord) => content.data.piezas?.find((p) => p.id === r.values.contenidoId);
   const selected = records.find((r) => r.id === open);
   const profile = assistantProfile(SERVICE, "trabajos");
@@ -97,6 +97,7 @@ export function DesignRequestsSection({ client, editable, supportOnly = false }:
               <small>{originLabel(record.values.servicioOrigen)} · {designCategory(record.values.tipoPieza || "Otros")} · {record.values.canal || "Sin canal"} · {formatDate(record.values.fechaObjetivo)}</small>
               {record.values.contenidoId ? <Link className={m.rowLink} href={`${serviceHref(client.slug, "contenidos")}?seccion=piezas&registro=${encodeURIComponent(record.values.contenidoId)}`}>Abrir contenido de origen</Link> : null}
               {record.values.anuncioId ? <Link className={m.rowLink} href={`${serviceHref(client.slug, "publicidad-digital")}?seccion=anuncios&anuncio=${encodeURIComponent(record.values.anuncioId)}`}>Abrir anuncio de origen</Link> : null}
+              {record.values.jornadaId ? <Link className={m.rowLink} href={`${serviceHref(client.slug, "audiovisuales")}?seccion=jornadas&jornada=${encodeURIComponent(record.values.jornadaId)}`}>Abrir jornada de origen</Link> : null}
             </div>
             <Person name={record.values.responsable} />
             <span className={d.prio} data-prio={record.values.prioridad || "Media"}>{record.values.prioridad || "Media"}</span>

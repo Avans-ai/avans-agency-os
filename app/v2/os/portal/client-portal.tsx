@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { AvansWordmark } from "../brand";
 import { getProfileFile, putProfileFile, removeProfileFile } from "../knowledge/profile-files";
 import { useLocalStorageState } from "../local-persistence";
+import { AvPortalSection } from "../modules/av-portal";
 import { CONTENT_DEMO_LABEL } from "../modules/content-demo";
 import { contentThumbnail } from "../modules/content-design";
 import { getContentActions, type ContentAction } from "../modules/content-workflow";
@@ -191,6 +192,8 @@ function PortalWorkspace({ client, initialRecordId }: { client: OsClient; initia
       </>}
       {/* Publicidad digital: anuncios para aprobar (aislado por cliente, ver modules/paid-portal.tsx). */}
       <PortalAdsSection client={client} />
+      {/* Audiovisuales: jornadas de esta cuenta para aprobar (aislado por cliente). */}
+      <AvPortalSection client={client} />
     </main>
     <footer className={s.footer}>Avans · Marketing que funciona</footer>
     {active && selectedItem && selectedRecord && <ReviewPanel key={selectedRecord.id} client={client} record={selectedRecord} item={selectedItem} onClose={() => setSelected(null)} />}

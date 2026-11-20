@@ -275,7 +275,10 @@ test("contenidos, estrategia, web and audiovisual workspaces show their own obje
   await page.goto("/v2/clientes/grupo-portland/desarrollo-web?seccion=sitemap");
   await expect(page.getByRole("list", { name: "Sitemap" }).getByText("Unidad operativa")).toBeVisible();
   await page.goto("/v2/clientes/edinovo/audiovisuales");
-  await expect(page.getByRole("list", { name: "Producciones por etapa" })).toContainText("Serie educativa 2026");
+  // Audiovisuales sigue el procedimiento «Jornada audiovisual»; las producciones quedan en «Guiones y entregas».
+  await expect(page.getByRole("list", { name: "Jornadas por etapa", exact: true })).toContainText("Serie educativa · grabación del episodio 1");
+  await page.goto("/v2/clientes/edinovo/audiovisuales?seccion=producciones");
+  await expect(page.getByText("Serie educativa 2026 · cuatro episodios").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 

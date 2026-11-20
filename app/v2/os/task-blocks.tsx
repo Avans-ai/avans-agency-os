@@ -353,7 +353,7 @@ export function TaskSidePanel({
     >
       <h2 className={sc.panelTitle} ref={titleRef} tabIndex={-1}>{item.title}</h2>
 
-      {item.workflow ? <p><Link className={buttonClass("primary")} href={item.workflow.href}>Abrir {item.workflow.kind === "content" ? "contenido" : item.workflow.kind === "paid" ? "pedido de Publicidad digital" : "pedido de diseño"} vinculado</Link></p> : null}
+      {item.workflow ? <p><Link className={buttonClass("primary")} href={item.workflow.href}>Abrir {item.workflow.kind === "content" ? "contenido" : item.workflow.kind === "paid" ? "pedido de Publicidad digital" : item.workflow.kind === "jornada" ? "jornada" : "pedido de diseño"} vinculado</Link></p> : null}
       {archived ? <p className={s.demoNote} style={{ marginTop: -8 }}><Glyph name="archive" size={14} /> Archivada: completada hace más de {TASK_ARCHIVE_AFTER_DAYS} días.</p> : null}
       {readOnly ? <p className={s.demoNote} style={{ marginTop: -8 }}>Solo lectura: tu rol de vista previa no puede modificar este módulo.</p> : null}
 

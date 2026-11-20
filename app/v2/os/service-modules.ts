@@ -33,7 +33,7 @@ export const SERVICE_DESCRIPTIONS: Record<ServiceId, string> = {
   "diseno-marca": "Identidad visual, look & feel, sistema de diseño y piezas de marca con versiones y aprobaciones.",
   "publicidad-digital": "Plan de medios, campañas, inversión por canal, optimización y resultados de la pauta.",
   contenidos: "Ejes temáticos, calendario editorial, producción, aprobación, publicación y aprendizajes.",
-  audiovisuales: "Guiones, preproducción, rodajes, edición, versiones y entregas audiovisuales.",
+  audiovisuales: "Jornadas audiovisuales con proveedores: cupo, agenda, brief y guiones, rodaje, edición, subtítulos y aprobación del cliente.",
   "desarrollo-web": "Sitio y landings: alcance, sitemap, diseño, desarrollo, QA, publicación y mantenimiento.",
   crm: "Embudo comercial, integraciones, automatizaciones y pruebas de operación del CRM.",
   "ia-automatizaciones": "Automatizaciones con aprobaciones, trazabilidad, límites y evidencia de ejecución.",
