@@ -87,6 +87,7 @@ export function addDesignComment(record: ModuleRecord, text: string, ctx: Design
 export function moveDesignRequest(request: ModuleRecord, to: DesignStage, ctx: DesignContext & { versions: number; note?: string; from?: DesignStage }): ModuleRecord {
   if (request.module !== "diseno-marca" || request.collection !== "trabajos") throw new Error("Solo se mueven pedidos de diseño.");
   if (request.values.contenidoId) throw new Error("Este pedido avanza desde el contenido de origen.");
+  if (request.values.anuncioId) throw new Error("Este pedido avanza desde el anuncio de Publicidad digital.");
   if (!isDesignStage(to)) throw new Error("Estado de operación inválido.");
   const from = ctx.from ?? designStage(request);
   if (from === to) return request;

@@ -96,6 +96,7 @@ export function DesignRequestsSection({ client, editable, supportOnly = false }:
               <button className={m.rowButton} onClick={() => setOpen(record.id)}>{record.values.nombre}</button>
               <small>{originLabel(record.values.servicioOrigen)} · {designCategory(record.values.tipoPieza || "Otros")} · {record.values.canal || "Sin canal"} · {formatDate(record.values.fechaObjetivo)}</small>
               {record.values.contenidoId ? <Link className={m.rowLink} href={`${serviceHref(client.slug, "contenidos")}?seccion=piezas&registro=${encodeURIComponent(record.values.contenidoId)}`}>Abrir contenido de origen</Link> : null}
+              {record.values.anuncioId ? <Link className={m.rowLink} href={`${serviceHref(client.slug, "publicidad-digital")}?seccion=anuncios&anuncio=${encodeURIComponent(record.values.anuncioId)}`}>Abrir anuncio de origen</Link> : null}
             </div>
             <Person name={record.values.responsable} />
             <span className={d.prio} data-prio={record.values.prioridad || "Media"}>{record.values.prioridad || "Media"}</span>
