@@ -13,7 +13,8 @@ import { serviceHref, serviceWorkspaceById } from "../service-workspace-data";
 import { Badge, buttonClass, OSDue } from "../ui";
 import s from "../os.module.css";
 import { CollectionView } from "./collection-view";
-import { AV_STAGES, collectionDef, moduleCollections, WEB_STAGES } from "./collections";
+import { collectionDef, moduleCollections, WEB_STAGES } from "./collections";
+import { AvSummary } from "./av-jornadas";
 import { AttentionPanel, ApprovalsPanel, DocsPanel, NextActionsPanel, ScopePanel, sectionHref, TaskHealthStrip } from "./module-common";
 import { Panel, StatusBadge, Strip } from "./module-ui";
 import { StagePipeline } from "./stage-pipeline";
@@ -251,37 +252,9 @@ export function ReleasesSection({ client, editable }: { client: OsClient; editab
 }
 
 /* ───────── Audiovisuales ───────── */
-const AV = "audiovisuales" as const;
-
+/** Resumen de Audiovisuales: procedimiento «Jornada audiovisual» (av-jornadas.tsx). */
 export function AudiovisualSummary({ client, go }: { client: OsClient; go: Go }) {
-  const { data } = useModuleRecords(client.slug, AV, ["producciones", "guiones", "rodajes", "versiones"]);
-  const shoots = (data.rodajes ?? []).filter((shoot) => shoot.values.estado !== "Realizado");
-  return (
-    <div className={m.stack}>
-      <TaskHealthStrip client={client} serviceId={AV} extra={[
-        { label: "Producciones", value: (data.producciones ?? []).length, href: sectionHref(client.slug, AV, "producciones") },
-        { label: "Guiones para aprobar", value: (data.guiones ?? []).filter((script) => script.values.estado === "En aprobación").length, alert: (data.guiones ?? []).some((script) => script.values.estado === "En aprobación") },
-        { label: "Rodajes pendientes", value: shoots.length },
-      ]} />
-      <Panel title="Producciones por etapa" id="av-pipeline" description="Brief → guion → preproducción → rodaje → edición → aprobación → entrega" actions={<button type="button" className={buttonClass("secondary", true)} onClick={() => go("producciones")}>Ver producciones</button>}>
-        <div className={m.panelBody}><StagePipeline label="Producciones por etapa" stages={AV_STAGES} records={data.producciones ?? []} stageKey="etapa" titleKey="titulo" /></div>
-      </Panel>
-      <div className={m.grid}>
-        <div className={m.stack}>
-          <NextActionsPanel client={client} serviceId={AV} />
-          <ApprovalsPanel client={client} serviceId={AV} />
-          <Panel title="Próximos rodajes" id="av-shoots" actions={<button type="button" className={buttonClass("ghost")} onClick={() => go("rodajes")}>Plan de rodaje</button>}>
-            {shoots.length ? <div className={m.rows}>{shoots.map((shoot) => <div className={m.row} key={shoot.id}><div><strong>{shoot.values.jornada}</strong><small>{shoot.values.fecha} · {shoot.values.locacion} · {shoot.values.recursos}</small></div><StatusBadge status={shoot.values.estado ?? ""} /></div>)}</div> : <div className={m.panelBody}><p className={s.cellSub} style={{ margin: 0 }}>Sin rodajes pendientes.</p></div>}
-          </Panel>
-        </div>
-        <aside className={m.stack}>
-          <AttentionPanel client={client} serviceId={AV} />
-          <ScopePanel client={client} serviceId={AV} />
-          <DocsPanel client={client} />
-        </aside>
-      </div>
-    </div>
-  );
+  return <AvSummary client={client} go={go} />;
 }
 
 /* ───────── Módulos con proceso genérico ───────── */

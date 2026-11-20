@@ -165,7 +165,7 @@ export type OsTask = {
   id: string;
   /** Vínculo explícito para tareas sin proyecto y para aislar flujos operativos. */
   clientSlug?: string;
-  workflow?: { kind: "content" | "design"; stage: string; href: string };
+  workflow?: { kind: "content" | "design" | "jornada"; stage: string; href: string };
   projectSlug: string;
   /** Módulo de servicio al que pertenece la tarea. Cada tarea vive una sola vez y en un solo módulo.
    * Opcional para leer datos guardados antes de este campo: el store lo completa al hidratar. */

@@ -13,6 +13,7 @@ export type DesignStage = typeof DESIGN_STAGES[number];
 export const DESIGN_ORIGINS = [
   { id: "contenidos", label: "Contenidos" },
   { id: "publicidad-digital", label: "Publicidad Digital" },
+  { id: "audiovisuales", label: "Audiovisuales" },
   { id: "soporte", label: "Soporte" },
   { id: "estrategia", label: "Estrategia" },
   { id: "interno", label: "Solicitudes internas" },
@@ -87,6 +88,7 @@ export function addDesignComment(record: ModuleRecord, text: string, ctx: Design
 export function moveDesignRequest(request: ModuleRecord, to: DesignStage, ctx: DesignContext & { versions: number; note?: string; from?: DesignStage }): ModuleRecord {
   if (request.module !== "diseno-marca" || request.collection !== "trabajos") throw new Error("Solo se mueven pedidos de diseño.");
   if (request.values.contenidoId) throw new Error("Este pedido avanza desde el contenido de origen.");
+  if (request.values.jornadaId) throw new Error("Este pedido avanza desde la jornada audiovisual de origen.");
   if (!isDesignStage(to)) throw new Error("Estado de operación inválido.");
   const from = ctx.from ?? designStage(request);
   if (from === to) return request;

@@ -8,6 +8,7 @@ import type { ServiceId } from "../os-data";
 import type { DemoSeed } from "./types";
 import { contentDemoSeedsFor } from "./content-demo";
 import { designDemoSeeds } from "./design-demo";
+import { avDemoSeedsFor } from "./av-demo";
 
 type SeedTable = Partial<Record<ServiceId, Record<string, Record<string, DemoSeed[]>>>>;
 
@@ -213,6 +214,8 @@ export const moduleDemoSeeds: SeedTable = {
 export function demoSeedsFor(clientSlug: string, serviceId: ServiceId, collection: string): DemoSeed[] {
   // Contenidos de ACA (y sus pedidos/versiones de Diseño derivados) viven en content-demo.ts.
   const fromContent = contentDemoSeedsFor(clientSlug, serviceId, collection);
+  // Audiovisuales · jornadas de demostración (av-demo.ts).
+  if (serviceId === "audiovisuales") { const jornadas = avDemoSeedsFor(clientSlug, collection); if (jornadas) return jornadas; }
   if (serviceId === "diseno-marca") {
     // Diseño de marca: escenario propio (design-demo.ts) + lo derivado de Contenidos, sin duplicar
     // pedidos ni versiones de un mismo contenido (prevalece el derivado del flujo de Contenidos).

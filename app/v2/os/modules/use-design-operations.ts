@@ -56,8 +56,8 @@ export function useDesignOperations(client: OsClient) {
       store.notify("El pedido cambió en otra vista. Volvé a abrirlo antes de guardar.", "error");
       return false;
     }
-    // A content request already owns a single central task; never create a second design task.
-    if (record.values.contenidoId) {
+    // A content (or audiovisual jornada) request already owns a single central task; never create a second design task.
+    if (record.values.contenidoId || record.values.jornadaId) {
       if (!options.persistRecord) return true;
       const ok = writeLocalBatch([{ key, value: records.map((item) => item.id === record.id && item.client === client.slug ? record : item) }, ...(options.extraWrites || [])]);
       if (!ok) store.notify("No se pudo guardar en este navegador.", "error");
@@ -78,7 +78,7 @@ export function useDesignOperations(client: OsClient) {
     const key = moduleKey(client.slug, SERVICE, "trabajos");
     let created = 0;
     const pending = readLocalJson<ModuleRecord[]>(key, seedRecords(client.slug, SERVICE, "trabajos"))
-      .filter((record) => record.client === client.slug && record.source === "demo" && !record.values.contenidoId && (force || !record.values.tareaId));
+      .filter((record) => record.client === client.slug && record.source === "demo" && !record.values.contenidoId && !record.values.jornadaId && (force || !record.values.tareaId));
     for (const target of pending) {
       const records = readLocalJson<ModuleRecord[]>(key, seedRecords(client.slug, SERVICE, "trabajos"));
       const tasks = readLocalJson<{ tasks: OsTask[] }>("workspace", { tasks: store.tasks }).tasks;
