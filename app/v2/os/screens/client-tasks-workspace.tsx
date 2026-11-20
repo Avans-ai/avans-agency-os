@@ -19,7 +19,7 @@ import { dueLabel, getProject } from "../selectors";
 import { serviceHref } from "../service-workspace-data";
 import { moduleTaskHref, NewTaskModal, TaskSidePanel } from "../task-blocks";
 import { Avatar, Badge, buttonClass, OSDue, OSEmptyState, OSPriority } from "../ui";
-import { generatePeriodicTasks, isProcedureTask, PROCEDURE_ROLE_LABEL, procedureRows, PROCEDURES_DEMO_LABEL, PROCEDURES_DEMO_NOTE, shortIsoDate } from "../procedures-periodic";
+import { dueSortKey, generatePeriodicTasks, isProcedureTask, PROCEDURE_ROLE_LABEL, procedureRows, PROCEDURES_DEMO_LABEL, PROCEDURES_DEMO_NOTE, shortIsoDate } from "../procedures-periodic";
 import s from "../os.module.css";
 import d from "./director-update.module.css";
 import m from "../modules/modules.module.css";
@@ -33,17 +33,9 @@ export type TasksSort = "prioridad" | "fecha";
 type ViewPreference = { view: TasksView; sort: TasksSort };
 const DEFAULT_PREFERENCE: ViewPreference = { view: "persona", sort: "prioridad" };
 const VIEWS: { id: TasksView; label: string }[] = [{ id: "persona", label: "Por rol / persona" }, { id: "modulo", label: "Por módulo" }, { id: "lista", label: "Lista" }];
-const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const PRIORITY_ORDER: Record<Priority, number> = { Alta: 0, Media: 1, Baja: 2 };
 const CARDS_PER_COLUMN = 8;
 
-/** Clave comparable para vencimientos con formatos mixtos («30 oct», «Mié 4 nov», AAAA-MM-DD, «Sin fecha»). */
-export function dueSortKey(due: string) {
-  if (/^\d{4}-\d{2}-\d{2}/.test(due)) return due.slice(0, 10);
-  const match = due.toLocaleLowerCase("es").match(/(\d{1,2})\s+([a-zé]{3})/);
-  const month = match ? MONTHS.indexOf(match[2]) : -1;
-  return match && month >= 0 ? `2026-${String(month + 1).padStart(2, "0")}-${match[1].padStart(2, "0")}` : "9999-12-31";
-}
 function showDue(task: OsTask) {
   return /^\d{4}-\d{2}-\d{2}$/.test(task.due) ? { ...task, due: shortIsoDate(task.due) } : task;
 }

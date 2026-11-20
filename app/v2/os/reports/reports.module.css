@@ -59,7 +59,7 @@
 .conclusion span{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--av-coral-200);padding-top:3px}
 .conclusion p{margin:0;font-size:15px;line-height:1.55}
 
-.tableScroll{overflow-x:auto;max-width:100%}
+.tableScroll{overflow-x:auto;max-width:100%;position:relative}
 .dataTable{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
 .dataTable th,.dataTable td{padding:9px 10px;border-bottom:1px solid var(--av-border);text-align:left;white-space:nowrap}
 .dataTable thead th{background:var(--av-bg-sunken);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.06em}

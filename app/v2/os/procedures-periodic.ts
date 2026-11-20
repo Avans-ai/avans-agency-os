@@ -156,3 +156,11 @@ export function generatePeriodicTasks(client: OsClient, services: ServiceId[], t
 export function isProcedureTask(task: Pick<OsTask, "id" | "workItem">) {
   return task.id.startsWith("PROC-") && task.workItem?.collection === "procedimientos";
 }
+
+/** Clave comparable para vencimientos con formatos mixtos («30 oct», «Mié 4 nov», AAAA-MM-DD, «Sin fecha»). */
+export function dueSortKey(due: string) {
+  if (/^\d{4}-\d{2}-\d{2}/.test(due)) return due.slice(0, 10);
+  const match = due.toLocaleLowerCase("es").match(/(\d{1,2})\s+([a-zé]{3})/);
+  const month = match ? MONTHS.indexOf(match[2]) : -1;
+  return match && month >= 0 ? `2026-${String(month + 1).padStart(2, "0")}-${match[1].padStart(2, "0")}` : "9999-12-31";
+}

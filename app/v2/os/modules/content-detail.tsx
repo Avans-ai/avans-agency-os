@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import { getProfileFile } from "../knowledge/profile-files";
@@ -245,7 +245,10 @@ function HistoryTab({ record }: { record: ModuleRecord }) {
 
 /** Advertencias de la revisión de lineamientos (sin IA). El Content decide: seguir igual (queda registrado) o ajustar a mano. */
 function GuidelineReview({ check, actionLabel, onProceed, onAdjust, adjustLabel = "Ajustar a mano" }: { check: GuidelineCheck; actionLabel: string; onProceed: () => void; onAdjust: () => void; adjustLabel?: string }) {
-  return <section className={c.guideCheck} aria-label="Revisión de lineamientos" aria-live="polite" data-wide="true">
+  // Aparece donde el usuario no está mirando (arriba del formulario): se lleva a la vista.
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => { ref.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" }); }, [check]);
+  return <section ref={ref} className={c.guideCheck} aria-label="Revisión de lineamientos" aria-live="polite" data-wide="true">
     <h3>Revisión de lineamientos · {check.warnings.length} {check.warnings.length === 1 ? "advertencia" : "advertencias"}</h3>
     <ul>{check.warnings.map((warning) => <li key={warning.id} data-severity={warning.severity}><span>{warning.message} · {warning.sourceLabel}</span><small>En {warning.fieldLabel.toLowerCase()}</small></li>)}</ul>
     {check.suggestions.map((item) => <small key={item}>{item}</small>)}
