@@ -1,3 +1,4 @@
+import "../globals.css";
 import { notFound } from "next/navigation";
 import { AgencyOS } from "../components/agency-os";
 import { sections } from "../data";

@@ -5,24 +5,36 @@
   "scripts": {
     "dev": "next dev",
     "typecheck": "tsc --noEmit",
+    "prebuild": "node scripts/copy-presentation-template.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "test:discovery": "playwright test --project=domain",
+    "test:discovery:browser": "playwright test --project=browser",
+    "postinstall": "node scripts/copy-pdf-worker.mjs && node scripts/copy-presentation-template.mjs",
+    "test:pptx": "playwright test --project=domain tests/pptx-generation-model.spec.ts",
+    "validate:pptx": "python3 scripts/pptx-validate.py"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.55.0",
+    "fast-xml-parser": "^5.12.0",
+    "fflate": "^0.8.3",
+    "jose": "^6.2.17",
     "lucide-react": "^0.468.0",
-    "next": "16.3.1",
+    "next": "16.4.5",
+    "pdfjs-dist": "^6.5.438",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
     "eslint": "^9.17.0",
-    "eslint-config-next": "16.3.1",
+    "eslint-config-next": "16.4.5",
     "typescript": "^5.9.2"
   }
 }

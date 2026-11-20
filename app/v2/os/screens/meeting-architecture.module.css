@@ -1,0 +1,106 @@
+.managementBlock{display:flex;flex-direction:column;gap:10px}
+.levelLabel{display:flex;align-items:center;gap:10px;margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--av-text-muted)}
+.levelLabel::before{content:"";width:10px;height:10px;background:var(--av-coral-300)}
+.managementNav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--av-border);border:1px solid var(--av-border)}
+.managementLink{min-height:84px;padding:14px 16px;background:var(--av-bg-raised);color:var(--av-text);text-decoration:none;display:flex;flex-direction:column;gap:7px;justify-content:center}
+.managementLink strong{font-size:15px;font-weight:600}
+.managementLink span{font-size:13px;line-height:1.35;color:var(--av-text-muted)}
+.managementLink[data-active="true"]{background:var(--av-cocoa);color:var(--av-paper)}
+.managementLink[data-active="true"] span{color:var(--av-ash)}
+
+.serviceBand{display:flex;flex-direction:column;gap:10px;padding:0 32px 20px;background:var(--av-bg-raised);border-bottom:1px solid var(--av-border)}
+.serviceBand .levelLabel::before{background:var(--av-teal-300)}
+.serviceTabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.serviceTab{min-width:186px;min-height:66px;padding:10px 12px;border:1px solid var(--av-border);background:var(--av-bg);color:var(--av-text);text-decoration:none;display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;align-items:center}
+.serviceTab:hover{border-color:var(--av-border-strong);background:var(--av-bg-cool)}
+.serviceTabIcon{color:var(--av-coral-300)}
+.serviceTab span:last-child{font-size:14px;line-height:1.3;font-weight:500}
+
+.summaryGrid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}
+.factGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--av-border);border:1px solid var(--av-border)}
+.fact{background:var(--av-bg-raised);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.fact span{font-size:13px;color:var(--av-text-muted)}
+.fact strong{font-size:15px;font-weight:500;line-height:1.45}
+.managementCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.managementCard{padding:18px;background:var(--av-bg-raised);border:1px solid var(--av-border);display:flex;flex-direction:column;gap:10px;min-height:150px}
+.managementCard h3{margin:0;font-size:17px;font-weight:500}
+.managementCard p{margin:0;color:var(--av-text-muted);font-size:14px;line-height:1.5}
+.managementCard a{margin-top:auto;color:var(--av-link);font-size:14px}
+.healthStrip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--av-border);border:1px solid var(--av-border)}
+.healthStrip>div{background:var(--av-bg-raised);padding:15px;display:flex;flex-direction:column;gap:7px}
+.healthStrip span{font-size:13px;color:var(--av-text-muted)}
+.healthStrip strong{font-size:16px;font-weight:500}
+
+.viewToggle{display:flex;align-items:center;width:fit-content;border:1px solid var(--av-text);background:var(--av-bg-raised)}
+.viewToggle button{min-width:42px;min-height:40px;border:0;border-right:1px solid var(--av-text);background:transparent;color:var(--av-text);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.viewToggle button:last-child{border-right:0}
+.viewToggle button[aria-pressed="true"]{background:var(--av-text);color:var(--av-bg)}
+.clientGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.clientCard{min-height:270px;padding:18px;background:var(--av-bg-raised);border:1px solid var(--av-border);color:var(--av-text);text-decoration:none;display:flex;flex-direction:column;gap:16px}
+.clientCard:hover{border-color:var(--av-border-strong);transform:translateY(-1px)}
+.clientCardTop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.clientIdentity{display:flex;align-items:center;gap:11px;min-width:0}
+.clientMark{width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:var(--av-bg-cool);font-size:13px;font-weight:700;flex:none}
+.clientIdentity strong{font-size:17px;font-weight:600}
+.clientIdentity small{display:block;margin-top:3px;color:var(--av-text-muted)}
+.clientServices{display:flex;flex-wrap:wrap;gap:6px}
+.clientService{font-size:12px;padding:4px 7px;background:var(--av-bg-sunken);color:var(--av-text-muted)}
+.clientMeta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto}
+.clientMeta div{display:flex;flex-direction:column;gap:4px}
+.clientMeta span{font-size:12px;color:var(--av-text-muted)}
+.clientMeta strong{font-size:14px;font-weight:500}
+.clientMilestone{padding-top:12px;border-top:1px solid var(--av-border);display:flex;flex-direction:column;gap:4px}
+.clientMilestone span{font-size:12px;color:var(--av-text-muted)}
+.clientMilestone strong{font-size:14px;font-weight:500}
+
+.workspace{display:flex;flex-direction:column;gap:20px}
+.workspaceHero{display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px;align-items:flex-start;padding:24px 32px;background:var(--av-bg-raised);border-bottom:1px solid var(--av-border)}
+.workspaceTitle{display:flex;gap:14px;align-items:center;min-width:0}
+.workspaceIcon{width:56px;height:56px;display:flex;align-items:center;justify-content:center;background:var(--av-cocoa);color:var(--av-coral-300);flex:none}
+.workspaceTitle h1{margin:2px 0 5px;font-size:26px;font-weight:500}
+.workspaceTitle p{margin:0;color:var(--av-text-muted);max-width:720px;line-height:1.5}
+.workspaceBody{padding:0 32px 48px;display:flex;flex-direction:column;gap:20px}
+.workspaceTabs{display:flex;gap:7px;overflow-x:auto;padding:0 32px 18px;background:var(--av-bg-raised);border-bottom:1px solid var(--av-border)}
+.workspaceTab{white-space:nowrap;padding:10px 13px;border:1px solid var(--av-border);color:var(--av-text);text-decoration:none;font-size:14px;background:var(--av-bg)}
+.workspaceTab[data-active="true"]{background:var(--av-text);color:var(--av-bg);border-color:var(--av-text)}
+.workspaceGrid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:20px;align-items:start}
+.workflow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--av-border);border:1px solid var(--av-border)}
+.workflowStep{background:var(--av-bg-raised);padding:14px;display:flex;flex-direction:column;gap:7px;min-height:82px}
+.workflowStep span{font-size:12px;color:var(--av-link);font-weight:700}
+.workflowStep strong{font-size:14px;font-weight:500}
+.queueRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:15px 18px;border-bottom:1px solid var(--av-border)}
+.queueRow:last-child{border-bottom:0}
+.queueRow strong{font-size:15px;font-weight:500}
+.queueRow p{margin:5px 0 0;font-size:14px;color:var(--av-text-muted);line-height:1.45}
+.queueRow em{font-size:12px;font-style:normal;padding:4px 7px;background:var(--av-bg-sunken);align-self:start}
+.recRow{display:flex;flex-direction:column;gap:8px;padding:16px 18px;border-bottom:1px solid var(--av-border)}
+.recRow:last-child{border-bottom:0}
+.recTop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.recTop strong{font-size:15px;font-weight:500}
+.recRow p{margin:0;font-size:14px;line-height:1.5;color:var(--av-text-muted)}
+.recMeta{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--av-text-muted)}
+.sourceList{display:flex;flex-direction:column;gap:8px;padding:16px 18px}
+.sourceItem{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding-bottom:8px;border-bottom:1px solid var(--av-border)}
+.sourceItem:last-child{border:0;padding-bottom:0}
+.sourceItem span:last-child{color:var(--av-text-muted);text-align:right}
+.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.formGrid label:first-child{grid-column:1/-1}
+
+@media (max-width:1279px){
+  .managementNav{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .summaryGrid,.workspaceGrid{grid-template-columns:minmax(0,1fr)}
+  .clientGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .workflow{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:767px){
+  .managementNav{display:flex;overflow-x:auto}
+  .managementLink{min-width:210px}
+  .serviceBand{padding:0 16px 16px}
+  .factGrid,.managementCards,.healthStrip,.clientGrid,.formGrid{grid-template-columns:minmax(0,1fr)}
+  .workspaceHero{padding:18px 16px}
+  .workspaceTabs{padding:0 16px 14px}
+  .workspaceBody{padding:0 16px 32px}
+  .workflow{display:flex;overflow-x:auto;background:transparent;border:0;gap:8px}
+  .workflowStep{min-width:170px;border:1px solid var(--av-border)}
+  .clientCard{min-height:0}
+}

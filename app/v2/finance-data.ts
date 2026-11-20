@@ -239,7 +239,7 @@ export const financeSources: FinanceSource[] = [
     role: "Asignaciones, frentes, entregables y esfuerzo",
     method: "Dato nativo de Avans OS",
     update: "Continua",
-    href: "/v2/operaciones",
+    href: "/v2/clientes",
   },
   {
     name: "RRHH y capacidad",

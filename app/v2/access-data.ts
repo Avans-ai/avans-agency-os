@@ -103,7 +103,7 @@ export const accessSources: AccessSource[] = [
     detail: "Clientes, proyectos y frentes que delimitan el alcance de cada persona.",
     method: "Cliente 360° + Operaciones",
     freshness: "Continua",
-    href: "/v2/operaciones",
+    href: "/v2/clientes",
   },
   {
     title: "Sesiones y auditoría de acceso",
