@@ -200,7 +200,7 @@ export function AvSummary({ client, go }: { client: OsClient; go: Go }) {
       <div className={a.summaryGrid}>
         <QuotaMeter key={`${quota.updatedAt}-${quota.contracted}`} client={client} quota={quota} usage={usage} canEdit={canQuota} />
         <Panel title="Jornada audiovisual" id="av-stages" description="Procedimiento del manual: cada etapa asigna la tarea y avisa al siguiente responsable" actions={<button type="button" className={buttonClass("secondary", true)} onClick={() => go("jornadas")}>Ver jornadas</button>}>
-          <ul className={a.stageBars} aria-label="Cantidad de jornadas por etapa">
+          <ul className={a.stageBars} aria-label="Resumen de etapas">
             {JORNADA_STAGES.map((stage) => {
               const count = jornadas.filter((record) => stage.states.includes(jornadaState(record))).length;
               return <li key={stage.step} data-step={stage.step}><span>{stage.step} · {stage.label}</span><i style={{ "--w": `${(count / max) * 100}%` } as CSSProperties} /><b>{count}</b></li>;
