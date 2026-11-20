@@ -1,7 +1,14 @@
 import type { ModuleRecord } from "./types";
 
-export const DESIGN_KINDS = ["Logo", "Color", "Tipografía", "Recurso gráfico", "Componente", "Moodboard", "Aplicación"] as const;
-export const DESIGN_CATEGORIES = ["Redes", "Anuncios", "Carruseles", "Videos", "Motion", "Material institucional", "Presentaciones", "Plantillas", "Otros"] as const;
+export const DESIGN_KINDS = ["Logo", "Color", "Tipografía", "Recurso gráfico", "Componente", "Moodboard", "Aplicación", "Tono"] as const;
+export const DESIGN_CATEGORIES = ["Identidad", "Redes sociales", "Carruseles", "Publicidad", "Presentaciones", "Material comercial", "Banners", "Packaging", "Videos", "Motion", "Otros"] as const;
+export type DesignCategory = typeof DESIGN_CATEGORIES[number];
+/** Categorías anteriores a noviembre de 2026: se traducen al leer, sin reescribir registros. */
+const LEGACY_CATEGORIES: Record<string, DesignCategory> = { Redes: "Redes sociales", Anuncios: "Publicidad", "Material institucional": "Material comercial", Plantillas: "Otros" };
+export function designCategory(value?: string): DesignCategory {
+  if (!value) return "Otros";
+  return (DESIGN_CATEGORIES as readonly string[]).includes(value) ? value as DesignCategory : LEGACY_CATEGORIES[value] ?? "Otros";
+}
 export type DesignContext = { actor: string; at: string };
 
 export function safeDesignUrl(value: string) {

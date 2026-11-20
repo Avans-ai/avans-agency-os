@@ -6,6 +6,7 @@
  * ni LinkedIn Ads. Reemplazar por datos persistidos o integraciones reales. */
 import type { ServiceId } from "../os-data";
 import type { DemoSeed } from "./types";
+import { designDemoSeeds } from "./design-demo";
 
 type SeedTable = Partial<Record<ServiceId, Record<string, Record<string, DemoSeed[]>>>>;
 
@@ -227,5 +228,7 @@ export const moduleDemoSeeds: SeedTable = {
 };
 
 export function demoSeedsFor(clientSlug: string, serviceId: ServiceId, collection: string): DemoSeed[] {
-  return moduleDemoSeeds[serviceId]?.[collection]?.[clientSlug] ?? [];
+  return moduleDemoSeeds[serviceId]?.[collection]?.[clientSlug]
+    ?? (serviceId === "diseno-marca" ? designDemoSeeds[collection]?.[clientSlug] : undefined)
+    ?? [];
 }

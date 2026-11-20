@@ -16,7 +16,8 @@ import { ClientOperationNav } from "../screens/client-operation-nav";
 import { CollectionView, useWorkItems } from "./collection-view";
 import { collectionDef, moduleCollections, primaryWorkCollection } from "./collections";
 import { AxesSection, CalendarSection, ContentResultsSection, ContentSummary, IdeasSection, PiecesSection, PlansSection } from "./content";
-import { BrandSummary, BrandSystemSection, DesignLibrarySection, DesignRequestsSection } from "./design-workspace";
+import { BrandSummary, DesignLibrarySection, DesignOperationSection, DesignRequestsSection } from "./design-workspace";
+import { DesignGuidelines } from "./design-guidelines";
 import { ServiceGuidelines } from "./service-guidelines";
 import { useModuleRecords } from "./store";
 import { DeliverablesSection, HistorySection, RecommendationsSection } from "./module-common";
@@ -62,9 +63,9 @@ export function moduleSections(serviceId: ServiceId): Section[] {
     case "diseno-marca":
       return [
         { id: "resumen", label: "Resumen" },
-        { id: "sistema", label: "Design System" },
+        { id: "operacion", label: "Producción" },
         { id: "trabajos", label: "Pedidos de diseño" },
-        { id: "biblioteca", label: "Biblioteca de piezas" },
+        { id: "biblioteca", label: "Biblioteca de marca" },
         { id: "tareas", label: "Tareas" },
         ...COMMON_TAIL,
       ];
@@ -136,7 +137,7 @@ function renderSection(section: string, ctx: Ctx): ReactNode {
       if (section === "resultados") return <ContentResultsSection client={client} editable={editable} />;
       return <ContentSummary client={client} go={go} />;
     case "diseno-marca":
-      if (section === "sistema") return <BrandSystemSection client={client} editable={editable} />;
+      if (section === "operacion") return <DesignOperationSection client={client} editable={editable} />;
       if (section === "trabajos") return <DesignRequestsSection client={client} editable={editable} supportOnly={ctx.supportDesign} />;
       if (section === "biblioteca") return <DesignLibrarySection client={client} editable={editable} />;
       return <BrandSummary client={client} editable={editable} />;
@@ -284,7 +285,7 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
 
       <div className={m.body}>
         {!editable ? <p className={s.demoNote} style={{ margin: 0 }}>Tu rol de vista previa puede consultar este módulo, pero no modificarlo. Los permisos son visuales: todavía no se aplican en servidor.</p> : null}
-        {guidelines ? <ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} /> : <><ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} compact />{renderSection(current, ctx)}</>}
+        {guidelines ? (serviceId === "diseno-marca" && !supportDesign ? <DesignGuidelines client={client} editable={editable} /> : <ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} />) : <><ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} compact />{renderSection(current, ctx)}</>}
       </div>
     </div>
   );
