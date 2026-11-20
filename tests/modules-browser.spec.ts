@@ -80,15 +80,16 @@ test("publicidad digital: no generic flow block, own sections, campaign persists
   await expect(page.getByRole("heading", { name: "Publicidad digital", level: 1 })).toBeVisible();
   await expect(page.getByText("Flujo del servicio")).toHaveCount(0);
   const nav = sectionNav(page, "Publicidad digital");
-  for (const label of ["Resumen", "Campañas", "Tareas", "Producción creativa", "Optimización", "Resultados", "Recomendaciones"]) {
+  for (const label of ["Inicio", "Plan de medios", "Campañas", "Anuncios y piezas", "Tareas", "Optimización", "Resultados", "Recomendaciones"]) {
     await expect(nav.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
   }
   await expect(page.getByText("No conectada").first()).toBeVisible();
 
   await nav.getByRole("link", { name: /^Campañas/ }).click();
   await expect(page).toHaveURL(/seccion=campanas/);
-  await page.getByRole("button", { name: "Nueva campaña" }).click();
-  const panel = page.getByRole("dialog", { name: "Nueva campaña" });
+  // Alta asistida: guarda un borrador y abre la planificación paso a paso (Instancia 1).
+  await page.getByRole("button", { name: "Nueva campaña con asistente" }).click();
+  const panel = page.getByRole("dialog", { name: "Nueva campaña", exact: true });
   // El formulario asistido arranca como borrador; los campos están en la columna de configuración.
   await panel.getByRole("button", { name: "Guardar borrador" }).click();
   const dialog = panel.locator("form");
@@ -103,6 +104,7 @@ test("publicidad digital: no generic flow block, own sections, campaign persists
   await dialog.getByLabel(/^Inicio/).fill("2026-11-20");
   await panel.getByRole("button", { name: "Guardar en este navegador" }).click();
   await expect(panel).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Planificación · QA Campaña de prueba" })).toBeVisible();
 
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("avans-os:preview:v1:client:epsa:module:publicidad-digital:campanas") || "null")?.value);
   const created = stored.find((record: { values: { nombre: string } }) => record.values.nombre === "QA Campaña de prueba");
@@ -114,7 +116,7 @@ test("publicidad digital: no generic flow block, own sections, campaign persists
   await page.getByRole("button", { name: "QA Campaña de prueba" }).click();
   await expect(page).toHaveURL(/campana=CMP-/);
   await expect(page.getByRole("heading", { name: "QA Campaña de prueba", level: 2 })).toBeVisible();
-  await expect(page.getByText("no está conectada a esta preview", { exact: false })).toBeVisible();
+  await expect(page.getByText("las plataformas no están conectadas", { exact: false })).toBeVisible();
 
   // Isolation: ACA never sees the EPSA campaign.
   await page.goto("/v2/clientes/aca/campanas?seccion=campanas");

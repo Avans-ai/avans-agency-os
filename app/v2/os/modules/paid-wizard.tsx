@@ -50,7 +50,10 @@ export function CampaignWizard({ client, campaign, onClose, onDone }: { client: 
   const ids = (key: string) => (values[key] || "").split(",").filter(Boolean);
   const total = sharesTotal(Object.fromEntries(Object.entries(channels).map(([key, value]) => [key, Number(value) || 0])));
   const payload = () => ({ ...values, canales: JSON.stringify(Object.fromEntries(Object.entries(channels).filter(([, value]) => Number(value) > 0).map(([key, value]) => [key, Number(value)]))), pasoPlan: String(step) });
-  const done = (index: number) => !planStepErrors(payload(), PLAN_STEPS[index].id).length;
+  // Un paso figura completo cuando no tiene errores y tiene algún dato cargado (los pasos opcionales vacíos no se marcan).
+  const STEP_KEYS: Record<string, string[]> = { target: ["nombre"], productos: ["productoIds", "productosTexto"], presupuesto: ["presupuestoMensual"], canales: [], enfoque: ["enfoque"], anuncios: ["metaAds", "googleAds", "otrosCanales"], landing: ["landing"], estimulos: ["estimuloWhatsapp", "estimuloCrm", "estimuloEmail"] };
+  const hasData = (index: number) => PLAN_STEPS[index].id === "canales" ? total > 0 : STEP_KEYS[PLAN_STEPS[index].id].some((key) => values[key]?.trim());
+  const done = (index: number) => hasData(index) && !planStepErrors(payload(), PLAN_STEPS[index].id).length;
 
   function save(note?: string) {
     const record = ops.savePlanDraft(payload(), current, note);
@@ -74,7 +77,8 @@ export function CampaignWizard({ client, campaign, onClose, onDone }: { client: 
   }
 
   const months = monthsBetween(values.inicio, values.fin);
-  const title = current ? `Planificación · ${current.values.nombre}` : "Nueva campaña · Instancia 1";
+  // El título queda fijo mientras el panel está abierto (aunque el borrador ya se haya guardado).
+  const title = campaign ? `Planificación · ${campaign.values.nombre}` : "Nueva campaña · Instancia 1";
   return <OSSidePanel label={title} heading={<span>Instancia 1 · Planificación general · {client.name}</span>} onClose={onClose} extraWide>
     <div className={p.stack} style={{ gap: 12 }}>
       <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>{title}</h2>

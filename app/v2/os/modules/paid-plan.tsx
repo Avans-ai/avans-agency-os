@@ -79,8 +79,8 @@ export function MediaPlanSection({ client, go }: { client: OsClient; go: Go }) {
 
     <Panel title="Plan de cada campaña" id="paid-campaign-plans" description="Detalle de la Instancia 1 · Planificación general de cada campaña abierta">
       <div className={p.body}>
-        {campaigns.length ? campaigns.map((campaign) => { const plan = campaignPlan(campaign); return <details key={campaign.id} className={p.section} open={campaigns.length <= 2}>
-          <summary style={{ cursor: "pointer", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}><strong>{campaign.values.nombre}</strong><StatusBadge status={campaign.values.estado || "Borrador"} /><Badge tone={plan.state === "Aprobada" ? "cool" : plan.state === "Borrador" ? "stone" : "peach"}>Plan: {plan.state}</Badge>{plan.legacy ? <span className={p.small}>Cargada antes del paso a paso</span> : null}</summary>
+        {campaigns.length ? campaigns.map((campaign, index) => { const plan = campaignPlan(campaign); return <details key={campaign.id} className={p.section} open={index === 0}>
+          <summary style={{ cursor: "pointer", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}><span aria-hidden="true" className={p.small}>Ver plan ▾</span><strong>{campaign.values.nombre}</strong><StatusBadge status={campaign.values.estado || "Borrador"} /><Badge tone={plan.state === "Aprobada" ? "cool" : plan.state === "Borrador" ? "stone" : "peach"}>Plan: {plan.state}</Badge>{plan.legacy ? <span className={p.small}>Cargada antes del paso a paso</span> : null}</summary>
           <CampaignPlanSummary client={client} campaign={campaign} />
           <div className={p.actions}><button type="button" className={buttonClass("ghost", true)} onClick={() => go("campanas", { campana: campaign.id })}>Abrir campaña</button></div>
         </details>; }) : <p className={p.muted}>Sin campañas abiertas.</p>}
