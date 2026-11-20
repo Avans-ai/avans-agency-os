@@ -90,7 +90,7 @@
 .moduleSwitcher ul{position:absolute;right:0;top:calc(100% + 4px);z-index:20;min-width:240px;margin:0;padding:6px;list-style:none;background:var(--av-bg-raised);border:1px solid var(--av-border);box-shadow:var(--av-shadow-overlay)}
 .moduleSwitcher a{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 10px;color:var(--av-text);text-decoration:none;font-size:14px}
 .moduleSwitcher a:hover{background:var(--av-bg)}
-@media (max-width:480px){.operationNav{gap:4px;padding:10px 12px}.operationTab{flex:1 1 auto;justify-content:center;padding:9px 8px}.operationTab svg{display:none}.operationCrumb{display:none}}
+@media (max-width:480px){.operationNav{gap:4px;padding:10px 12px}.operationTab{padding:9px 10px}}
 .readOnly{margin-left:4px;padding:2px 5px;border:1px solid currentColor;font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.75}
 
 .clientBody{padding:22px 32px 48px;display:flex;flex-direction:column;gap:20px}

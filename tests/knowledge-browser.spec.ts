@@ -15,7 +15,7 @@ async function open(page: Page, view: string, slug = "epsa") {
   await page.goto(`/v2/clientes/${slug}?view=${view}`);
   await expect(
     page.getByRole("navigation", {
-      name: slug === "epsa" ? "Gestión de EPSA / Line Up" : "Gestión de ACA",
+      name: slug === "epsa" ? "Estrategia de EPSA / Line Up" : "Estrategia de ACA",
     }),
   ).toBeVisible();
 }
@@ -80,7 +80,7 @@ test("questionnaire to proposal to approved Discovery, dependencies, persistence
     .toBe(1);
   const before = (await knowledge(page)).discovery.companyProfile.coverage;
   expect(before).not.toContain("Cobertura QA");
-  await page.getByRole("navigation", { name: /^Gestión de / }).getByRole("link", { name: "Documentos", exact: true }).click();
+  await page.getByRole("navigation", { name: /^Estrategia de / }).getByRole("link", { name: "Documentos", exact: true }).click();
   await page
     .getByRole("button", { name: "Cambios para aprobar", exact: true })
     .click();
@@ -99,7 +99,7 @@ test("questionnaire to proposal to approved Discovery, dependencies, persistence
     .selectOption("applied");
   await expect(page.getByText(/Revisada por/)).toBeVisible();
   expect((await knowledge(page)).versions.length).toBeGreaterThan(1);
-  await page.getByRole("navigation", { name: /^Gestión de / }).getByRole("link", { name: "Plan de Marketing", exact: true }).click();
+  await page.getByRole("navigation", { name: /^Estrategia de / }).getByRole("link", { name: "Plan de Marketing", exact: true }).click();
   await expect(
     page.getByText("Requiere revisión", { exact: true }).first(),
   ).toBeVisible();

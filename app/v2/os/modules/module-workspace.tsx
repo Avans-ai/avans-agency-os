@@ -12,7 +12,7 @@ import { useOsStore } from "../os-store";
 import { serviceHref, type ServiceWorkspaceConfig } from "../service-workspace-data";
 import { Badge, LinkButton, OSEmptyState, OSSkeletonRows } from "../ui";
 import s from "../os.module.css";
-import { ClientOperationNav, ModuleSwitcher } from "../screens/client-operation-nav";
+import { ClientOperationNav } from "../screens/client-operation-nav";
 import { ActivateDemoModuleButton } from "../screens/service-modules-dialog";
 import { CollectionView, useWorkItems } from "./collection-view";
 import { collectionDef, moduleCollections, primaryWorkCollection } from "./collections";
@@ -262,7 +262,6 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
           </div>
         </div>
         <div className={s.actions}>
-          <ModuleSwitcher client={client} active={serviceId} />
           {supportDesign ? <ActivateDemoModuleButton client={client} serviceId={serviceId} /> : null}
           {serviceId === "contenidos" ? <LinkButton href={`/v2/portal/${client.slug}`} variant="secondary" small>Vista del cliente</LinkButton> : null}
           <LinkButton href={`/v2/clientes/${client.slug}?view=reportes`} variant="ghost">Reportes</LinkButton>

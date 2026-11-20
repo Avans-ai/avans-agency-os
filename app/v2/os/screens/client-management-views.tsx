@@ -13,6 +13,7 @@ import { GeneratePresentationButton } from "../knowledge/presentation/presentati
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { QuestionnaireView } from "../knowledge/questionnaire-view";
+import { ClientChannelsPanel } from "./client-management-hub";
 import { useOsStore } from "../os-store";
 import { canManageClient } from "../director-data";
 import type { ClientBenchmark } from "../../benchmark-data";
@@ -119,6 +120,7 @@ function ClientSheet({ client }: { client: OsClient }) {
           </LinkButton>
         </div>
       </div>
+      <ClientChannelsPanel client={client} />
       <div
         className={d.managementTabs}
         role="tablist"

@@ -1,0 +1,24 @@
+.modules{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--av-text-muted)}
+.modules ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.module{position:relative;display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border:1px solid var(--av-border);background:var(--av-bg);color:var(--av-text);font:inherit;font-size:14px;cursor:pointer}
+.module:hover{border-color:var(--av-text)}
+.module:focus-visible{outline:2px solid var(--av-focus);outline-offset:2px}
+.dot{width:8px;height:8px;background:var(--av-coral-400);border-radius:50%}
+.scope{display:flex;flex-direction:column;gap:16px}
+.scopeHead{display:flex;gap:8px;flex-wrap:wrap}
+.scope h3{margin:0 0 6px;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--av-text-muted)}
+.scope p{margin:0;line-height:1.5}
+.scope ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.alert{padding:12px 14px;background:var(--av-warning-soft);border-left:3px solid var(--av-coral-400)}
+
+.shortcuts{position:fixed;right:max(16px,calc(env(safe-area-inset-right,0px) + 12px));bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:40;display:flex;flex-direction:column;gap:6px}
+.shortcuts a{position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;background:var(--av-text);color:var(--av-bg);text-decoration:none;font-size:14px;box-shadow:var(--av-shadow-overlay)}
+.shortcuts a span{position:absolute;right:calc(100% + 8px);top:50%;transform:translateY(-50%);padding:6px 10px;background:var(--av-text);color:var(--av-bg);white-space:nowrap;opacity:0;pointer-events:none}
+.shortcuts a:hover,.shortcuts a:focus-visible{background:var(--av-coral-400);color:var(--av-text)}
+.shortcuts a:hover span,.shortcuts a:focus-visible span{opacity:1}
+.shortcuts a:focus-visible{outline:2px solid var(--av-focus);outline-offset:2px}
+@media (max-width:1023px){
+  .shortcuts{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-motion:no-preference){.shortcuts a span{transition:opacity .15s}}

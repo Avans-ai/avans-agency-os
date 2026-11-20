@@ -1,6 +1,6 @@
 "use client";
 
-/* Gestión y estrategia: información de la cuenta y canales, accesos a Ficha,
+/* Estrategia (Funcionalidades 2): información de la cuenta, accesos a Ficha,
  * Benchmark, Plan, Reportes y Documentos, y estado/actualizaciones recientes.
  * Todo lo que antes ocupaba la cabecera del cliente vive acá. */
 import Link from "next/link";
@@ -64,11 +64,11 @@ export const MANAGEMENT_SECTIONS: { id: ClientManagementView; label: string; des
   { id: "documentos", label: "Documentos", description: "Fuentes y actualizaciones", icon: "registro" },
 ];
 
-/** Subnavegación dentro de Gestión y estrategia (resumen + cinco accesos). */
+/** Subnavegación dentro de Estrategia (resumen + cinco accesos). */
 export function ManagementSubnav({ client, view }: { client: OsClient; view: string }) {
   const current = view === "cuestionario" ? "ficha" : view;
   return (
-    <nav className={h.subnav} aria-label={`Gestión de ${client.name}`}>
+    <nav className={h.subnav} aria-label={`Estrategia de ${client.name}`}>
       <Link href={`/v2/clientes/${client.slug}?view=gestion`} aria-current={current === "gestion" ? "page" : undefined}>Resumen</Link>
       {MANAGEMENT_SECTIONS.map((item) => (
         <Link key={item.id} href={`/v2/clientes/${client.slug}?view=${item.id}`} aria-current={current === item.id ? "page" : undefined}>{item.label}</Link>
@@ -84,12 +84,7 @@ function formatDate(value: string) {
 }
 
 export function ClientManagementHub({ client }: { client: OsClient }) {
-  const { role, notify, servicesOf } = useOsStore();
-  const canManage = canManageClient(role, client.slug);
-  const meta = directorMeta(client.slug);
-  const [channels, setChannels] = useLocalStorageState<StoredChannel[]>(`client:${client.slug}:channels`, meta?.channels ?? []);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<{ type: ChannelType; label: string; value: string }>({ type: "Sitio web", label: "", value: "" });
+  const { servicesOf } = useOsStore();
   const { k, d: discovery } = useKnowledge(client);
   const active = serviceCatalog.filter((service) => servicesOf(client.slug).includes(service.id));
 
@@ -112,6 +107,79 @@ export function ClientManagementHub({ client }: { client: OsClient }) {
   }, [active.length, discovery.status, k]);
 
   const updates = useMemo(() => [...k.audit].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 6), [k.audit]);
+  return (
+    <div className={h.hub}>
+      <section className={h.account} aria-labelledby="account-title">
+        <div className={h.sectionHead}>
+          <div>
+            <span className={h.eyebrow}>Cuenta</span>
+            <h2 id="account-title">Información de la cuenta</h2>
+          </div>
+          <Link className={s.link} href={`/v2/clientes/${client.slug}?view=ficha`}>Canales y plataformas en la Ficha</Link>
+        </div>
+        <dl className={h.facts}>
+          <div><dt>Cliente desde</dt><dd>{client.since}</dd></div>
+          <div><dt>Burbuja</dt><dd>{client.bubble}</dd></div>
+          <div><dt>Responsable</dt><dd>{client.owner}</dd></div>
+          <div><dt>Equipo</dt><dd className={h.team}>{client.team.slice(0, 5).map((person) => <Avatar key={person.name} name={person.name} size="sm" />)}<span>{client.team.length}</span></dd></div>
+          <div className={h.wide}><dt>Módulos activos</dt><dd className={h.modules}>{active.length ? active.map((service) => <span key={service.id}><AvansModuleIcon name={service.icon} size={20} />{service.label}</span>) : "Sin módulos activos"}</dd></div>
+        </dl>
+      </section>
+
+      <section aria-labelledby="management-access-title">
+        <div className={h.sectionHead}>
+          <div>
+            <span className={h.eyebrow}>Estrategia</span>
+            <h2 id="management-access-title">Ficha, Benchmark, Plan, Reportes y Documentos</h2>
+          </div>
+        </div>
+        <nav className={h.accessGrid} aria-label={`Accesos de estrategia de ${client.name}`}>
+          {MANAGEMENT_SECTIONS.map((item) => {
+            const info = status[item.id as "ficha" | "benchmark" | "plan" | "reportes" | "documentos"];
+            return (
+              <Link key={item.id} href={`/v2/clientes/${client.slug}?view=${item.id}`} className={h.access}>
+                <span className={h.accessIcon}><AvansIcon name={item.icon} size={22} /></span>
+                <strong>{item.label}</strong>
+                <span className={h.accessDesc}>{item.description}</span>
+                <span className={h.accessStatus}><Badge tone={info.tone}>{info.badge}</Badge><small>{info.line}</small></span>
+              </Link>
+            );
+          })}
+        </nav>
+      </section>
+
+      <section className={h.updates} aria-labelledby="management-updates-title">
+        <div className={h.sectionHead}>
+          <div>
+            <span className={h.eyebrow}>Estado</span>
+            <h2 id="management-updates-title">Estado y actualizaciones relevantes</h2>
+          </div>
+          <div className={h.counters}>
+            <span><strong>{status.pendingProposals}</strong> cambios para aprobar</span>
+            <span><strong>{status.openReviews}</strong> revisiones abiertas</span>
+          </div>
+        </div>
+        {updates.length ? (
+          <ol className={h.timeline}>
+            {updates.map((entry) => (
+              <li key={entry.id}><time dateTime={entry.at}>{formatDate(entry.at)}</time><span>{entry.action}</span><small>{entry.actor}</small></li>
+            ))}
+          </ol>
+        ) : <p className={s.demoNote}>Sin actualizaciones registradas en Discovery, Benchmark, Plan o Documentos.</p>}
+        {status.pendingProposals || status.openReviews ? <Link className={s.link} href={`/v2/clientes/${client.slug}?view=documentos`}>Revisar en Documentos</Link> : null}
+      </section>
+    </div>
+  );
+}
+
+/** Canales y plataformas del cliente (se editan desde la Ficha del cliente). */
+export function ClientChannelsPanel({ client }: { client: OsClient }) {
+  const { role, notify } = useOsStore();
+  const canManage = canManageClient(role, client.slug);
+  const meta = directorMeta(client.slug);
+  const [channels, setChannels] = useLocalStorageState<StoredChannel[]>(`client:${client.slug}:channels`, meta?.channels ?? []);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<{ type: ChannelType; label: string; value: string }>({ type: "Sitio web", label: "", value: "" });
   const byType = useMemo(() => {
     const groups = new Map<ChannelType, StoredChannel[]>();
     for (const channel of channels) groups.set(channelType(channel), [...(groups.get(channelType(channel)) ?? []), channel]);
@@ -136,24 +204,16 @@ export function ClientManagementHub({ client }: { client: OsClient }) {
   }
 
   return (
-    <div className={h.hub}>
-      <section className={h.account} aria-labelledby="account-title">
+      <section className={h.account} aria-labelledby="channels-title">
         <div className={h.sectionHead}>
           <div>
-            <span className={h.eyebrow}>01 · Cuenta</span>
-            <h2 id="account-title">Información de la cuenta y canales</h2>
+            <span className={h.eyebrow}>Ficha del cliente</span>
+            <h2 id="channels-title">Canales y plataformas</h2>
           </div>
           {canManage ? (
             <button type="button" className={buttonClass(editing ? "dark" : "secondary", true)} aria-expanded={editing} onClick={() => setEditing((value) => !value)}>{editing ? "Listo" : "Editar canales"}</button>
           ) : <Badge tone="stone">Canales en solo lectura</Badge>}
         </div>
-        <dl className={h.facts}>
-          <div><dt>Cliente desde</dt><dd>{client.since}</dd></div>
-          <div><dt>Burbuja</dt><dd>{client.bubble}</dd></div>
-          <div><dt>Responsable</dt><dd>{client.owner}</dd></div>
-          <div><dt>Equipo</dt><dd className={h.team}>{client.team.slice(0, 5).map((person) => <Avatar key={person.name} name={person.name} size="sm" />)}<span>{client.team.length}</span></dd></div>
-          <div className={h.wide}><dt>Módulos activos</dt><dd className={h.modules}>{active.length ? active.map((service) => <span key={service.id}><AvansModuleIcon name={service.icon} size={20} />{service.label}</span>) : "Sin módulos activos"}</dd></div>
-        </dl>
         <div className={h.channels} aria-label="Canales y plataformas">
           {channels.length ? CHANNEL_TYPES.filter((type) => byType.has(type)).map((type) => (
             <div className={h.channelGroup} key={type}>
@@ -187,50 +247,5 @@ export function ClientManagementHub({ client }: { client: OsClient }) {
         ) : null}
         <p className={s.demoNote}>Canales guardados en este navegador. Registrar un canal no conecta la plataforma ni sincroniza datos; los permisos de la preview son visuales, no de backend.</p>
       </section>
-
-      <section aria-labelledby="management-access-title">
-        <div className={h.sectionHead}>
-          <div>
-            <span className={h.eyebrow}>02 · Gestión y estrategia</span>
-            <h2 id="management-access-title">Documentos de gestión</h2>
-          </div>
-        </div>
-        <nav className={h.accessGrid} aria-label={`Accesos de gestión de ${client.name}`}>
-          {MANAGEMENT_SECTIONS.map((item) => {
-            const info = status[item.id as "ficha" | "benchmark" | "plan" | "reportes" | "documentos"];
-            return (
-              <Link key={item.id} href={`/v2/clientes/${client.slug}?view=${item.id}`} className={h.access}>
-                <span className={h.accessIcon}><AvansIcon name={item.icon} size={22} /></span>
-                <strong>{item.label}</strong>
-                <span className={h.accessDesc}>{item.description}</span>
-                <span className={h.accessStatus}><Badge tone={info.tone}>{info.badge}</Badge><small>{info.line}</small></span>
-              </Link>
-            );
-          })}
-        </nav>
-      </section>
-
-      <section className={h.updates} aria-labelledby="management-updates-title">
-        <div className={h.sectionHead}>
-          <div>
-            <span className={h.eyebrow}>03 · Estado</span>
-            <h2 id="management-updates-title">Estado y actualizaciones relevantes</h2>
-          </div>
-          <div className={h.counters}>
-            <span><strong>{status.pendingProposals}</strong> cambios para aprobar</span>
-            <span><strong>{status.openReviews}</strong> revisiones abiertas</span>
-          </div>
-        </div>
-        {updates.length ? (
-          <ol className={h.timeline}>
-            {updates.map((entry) => (
-              <li key={entry.id}><time dateTime={entry.at}>{formatDate(entry.at)}</time><span>{entry.action}</span><small>{entry.actor}</small></li>
-            ))}
-          </ol>
-        ) : <p className={s.demoNote}>Sin actualizaciones registradas en Discovery, Benchmark, Plan o Documentos.</p>}
-        {status.pendingProposals || status.openReviews ? <Link className={s.link} href={`/v2/clientes/${client.slug}?view=documentos`}>Revisar en Documentos</Link> : null}
-      </section>
-    </div>
   );
 }
-
