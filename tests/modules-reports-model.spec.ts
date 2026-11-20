@@ -107,9 +107,11 @@ test("content and monthly reports read module objects and keep demo metrics labe
 });
 
 test("module definitions only use stages already defined for generic services", () => {
-  for (const id of ["crm", "ia-automatizaciones", "diseno-marca", "soluciones-graficas", "mercado-libre"] as const) {
+  for (const id of ["crm", "ia-automatizaciones", "soluciones-graficas", "mercado-libre"] as const) {
     expect(moduleCollections[id]).toHaveLength(1);
     expect(moduleCollections[id][0].fields.find((field) => field.key === "etapa")?.options?.length).toBeGreaterThan(0);
   }
   expect(moduleCollections["publicidad-digital"].map((def) => def.id)).toEqual(["campanas", "creatividades", "optimizaciones", "aprendizajes"]);
+  expect(moduleCollections["diseno-marca"].map((def) => def.id)).toEqual(["trabajos", "sistema", "biblioteca"]);
+  expect(moduleCollections["diseno-marca"][0].fields.find((field) => field.key === "etapa")?.options).toEqual(["Brief", "Exploración", "Diseño", "Revisión", "Entrega"]);
 });

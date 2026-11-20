@@ -15,7 +15,10 @@ import s from "../os.module.css";
 import { ClientOperationNav } from "../screens/client-operation-nav";
 import { CollectionView, useWorkItems } from "./collection-view";
 import { collectionDef, moduleCollections, primaryWorkCollection } from "./collections";
-import { AxesSection, CalendarSection, ContentResultsSection, ContentSummary, IdeasSection, PiecesSection } from "./content";
+import { AxesSection, CalendarSection, ContentResultsSection, ContentSummary, IdeasSection, PiecesSection, PlansSection } from "./content";
+import { BrandSummary, BrandSystemSection, DesignLibrarySection, DesignRequestsSection } from "./design-workspace";
+import { ServiceGuidelines } from "./service-guidelines";
+import { useModuleRecords } from "./store";
 import { DeliverablesSection, HistorySection, RecommendationsSection } from "./module-common";
 import { ModuleTaskBoard, useModuleTaskStats } from "./module-task-board";
 import { AudiovisualSummary, GenericSummary, QaSection, ReleasesSection, RisksSection, SitemapSection, StrategySummary, TrackingSection, WebSummary } from "./other-modules";
@@ -24,7 +27,7 @@ import m from "./modules.module.css";
 
 type Section = { id: string; label: string };
 type Go = (section: string, extra?: Record<string, string>) => void;
-type Ctx = { client: OsClient; serviceId: ServiceId; editable: boolean; go: Go; params: URLSearchParams; tasksBoard: ReactNode };
+type Ctx = { client: OsClient; serviceId: ServiceId; editable: boolean; go: Go; params: URLSearchParams; tasksBoard: ReactNode; supportDesign: boolean };
 
 const COMMON_TAIL: Section[] = [
   { id: "entregables", label: "Entregables y aprobaciones" },
@@ -47,12 +50,22 @@ export function moduleSections(serviceId: ServiceId): Section[] {
     case "contenidos":
       return [
         { id: "resumen", label: "Resumen" },
+        { id: "planes", label: "Plan mensual" },
         { id: "calendario", label: "Calendario" },
         { id: "piezas", label: "Piezas" },
         { id: "ejes", label: "Ejes temáticos" },
         { id: "ideas", label: "Ideas" },
         { id: "tareas", label: "Tareas" },
         { id: "resultados", label: "Resultados" },
+        ...COMMON_TAIL,
+      ];
+    case "diseno-marca":
+      return [
+        { id: "resumen", label: "Resumen" },
+        { id: "sistema", label: "Design System" },
+        { id: "trabajos", label: "Pedidos de diseño" },
+        { id: "biblioteca", label: "Biblioteca de piezas" },
+        { id: "tareas", label: "Tareas" },
         ...COMMON_TAIL,
       ];
     case "estrategia":
@@ -115,12 +128,18 @@ function renderSection(section: string, ctx: Ctx): ReactNode {
       if (section === "resultados") return <PaidResultsSection client={client} editable={editable} />;
       return <PaidSummary client={client} go={go} />;
     case "contenidos":
+      if (section === "planes") return <PlansSection client={client} editable={editable} />;
       if (section === "calendario") return <CalendarSection client={client} editable={editable} />;
       if (section === "piezas") return <PiecesSection client={client} editable={editable} />;
       if (section === "ejes") return <AxesSection client={client} editable={editable} />;
       if (section === "ideas") return <IdeasSection client={client} editable={editable} />;
       if (section === "resultados") return <ContentResultsSection client={client} editable={editable} />;
       return <ContentSummary client={client} go={go} />;
+    case "diseno-marca":
+      if (section === "sistema") return <BrandSystemSection client={client} editable={editable} />;
+      if (section === "trabajos") return <DesignRequestsSection client={client} editable={editable} supportOnly={ctx.supportDesign} />;
+      if (section === "biblioteca") return <DesignLibrarySection client={client} editable={editable} />;
+      return <BrandSummary client={client} editable={editable} />;
     case "estrategia":
       if (section === "planificacion") return collectionSection(ctx, "prioridades");
       if (section === "seguimiento") return <TrackingSection client={client} />;
@@ -162,12 +181,16 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
   const router = useRouter();
   const pathname = usePathname();
   const serviceId = service.id;
+  const { data: designData } = useModuleRecords(client.slug, "diseno-marca", ["trabajos"]);
+  const activeServices = servicesOf(client.slug);
+  const supportDesign = serviceId === "diseno-marca" && !activeServices.includes("diseno-marca") && activeServices.includes("contenidos") && (designData.trabajos || []).some((record) => record.values.contenidoId);
   const definition = serviceCatalog.find((item) => item.id === serviceId);
   const editable = canEditService(role, client.slug, serviceId);
-  const sections = moduleSections(serviceId);
-  const requested = params.get("seccion");
+  const sections = moduleSections(serviceId).filter((section) => !supportDesign || ["trabajos", "biblioteca", "tareas", "historial"].includes(section.id));
+  const requested = params.get("seccion") === "pedidos" && serviceId === "diseno-marca" ? "trabajos" : params.get("seccion");
+  const guidelines = params.get("area") === "lineamientos";
   const taskParam = params.get("task");
-  const current = sections.some((section) => section.id === requested) ? requested! : taskParam ? "tareas" : "resumen";
+  const current = sections.some((section) => section.id === requested) ? requested! : taskParam ? "tareas" : supportDesign ? "trabajos" : "resumen";
   const primary = primaryWorkCollection(serviceId);
   const workItems = useWorkItems(client, serviceId, primary);
   const stats = useModuleTaskStats(client, serviceId);
@@ -190,7 +213,7 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
     return <div className={m.body}><OSSkeletonRows rows={5} label={`Cargando ${service.label}…`} /></div>;
   }
 
-  if (!servicesOf(client.slug).includes(serviceId)) {
+  if (!activeServices.includes(serviceId) && !supportDesign) {
     return (
       <>
         <ClientOperationNav client={client} />
@@ -209,6 +232,7 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
     editable,
     go,
     params,
+    supportDesign,
     tasksBoard: <ModuleTaskBoard client={client} serviceId={serviceId} editable={editable} workItems={workItems} workItemLabel={WORK_ITEM_LABEL[serviceId] ?? (primary ? primary.singular.charAt(0).toUpperCase() + primary.singular.slice(1) : "Objeto")} selectedTaskId={taskParam} onSelectTask={selectTask} />,
   };
 
@@ -219,16 +243,18 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
           <span className={m.heroIcon}>{definition ? <AvansModuleIcon name={definition.icon} size={34} /> : null}</span>
           <div>
             <span className={s.rotulo}>Módulo · {client.name}</span>
-            <h1>{service.label}</h1>
-            <p>{service.description}</p>
+            <h1>{supportDesign ? "Pedidos de diseño de Contenidos" : service.label}</h1>
+            <p>{supportDesign ? "Producción y versiones de los contenidos aprobados de la cuenta." : service.description}</p>
             <div className={m.heroMeta}>
               <span>Responsable de cuenta <strong>{client.owner}</strong></span>
               <span>Permiso <strong>{editable ? "Puede editar" : "Solo lectura"}</strong></span>
               <span><Badge tone="stone">Guardado en este navegador</Badge></span>
+              {supportDesign ? <span><Badge tone="stone">Apoyo a Contenidos</Badge></span> : null}
             </div>
           </div>
         </div>
         <div className={s.actions}>
+          {serviceId === "contenidos" ? <LinkButton href={`/v2/portal/${client.slug}`} variant="secondary" small>Vista del cliente</LinkButton> : null}
           <LinkButton href={`/v2/clientes/${client.slug}?view=reportes`} variant="ghost">Reportes</LinkButton>
           <LinkButton href={`/v2/clientes/${client.slug}/tareas`} variant="secondary" small>Tareas del cliente</LinkButton>
         </div>
@@ -236,7 +262,12 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
 
       <ClientOperationNav client={client} active={serviceId} />
 
-      <nav className={m.sectionNav} aria-label={`Secciones de ${service.label}`}>
+      <nav className={m.sectionNav} aria-label={`Áreas de ${service.label}`}>
+        <Link className={m.sectionTab} aria-current={!guidelines ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?seccion=${current}`} scroll={false}>Operación mensual</Link>
+        <Link className={m.sectionTab} aria-current={guidelines ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?area=lineamientos`} scroll={false}>Lineamientos del servicio</Link>
+      </nav>
+
+      {!guidelines ? <nav className={m.sectionNav} aria-label={`Secciones de ${service.label}`}>
         {sections.map((section) => (
           <Link
             key={section.id}
@@ -249,11 +280,11 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
             {section.id === "tareas" && stats.open.length ? <em>{stats.open.length}</em> : null}
           </Link>
         ))}
-      </nav>
+      </nav> : null}
 
       <div className={m.body}>
         {!editable ? <p className={s.demoNote} style={{ margin: 0 }}>Tu rol de vista previa puede consultar este módulo, pero no modificarlo. Los permisos son visuales: todavía no se aplican en servidor.</p> : null}
-        {renderSection(current, ctx)}
+        {guidelines ? <ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} /> : <><ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} compact />{renderSection(current, ctx)}</>}
       </div>
     </div>
   );

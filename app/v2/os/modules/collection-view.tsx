@@ -321,6 +321,7 @@ export function RecordPanel({
   serviceId,
   def,
   record,
+  taskRecordId,
   refs,
   titleKeyOf,
   editable,
@@ -331,6 +332,8 @@ export function RecordPanel({
   serviceId: ServiceId;
   def: CollectionDef;
   record: ModuleRecord;
+  /** A design request reuses the task of its originating content. */
+  taskRecordId?: string;
   refs: Record<string, ModuleRecord[]>;
   titleKeyOf: (collection: string) => string;
   editable: boolean;
@@ -342,7 +345,7 @@ export function RecordPanel({
   const [taskOpen, setTaskOpen] = useState(false);
   const [note, setNote] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const linkedTasks = tasks.filter((task) => task.workItem?.id === record.id && serviceForTask(task) === serviceId);
+  const linkedTasks = tasks.filter((task) => task.clientSlug === client.slug && task.workItem?.id === (taskRecordId || record.id) && (taskRecordId || serviceForTask(task) === serviceId));
   const statusValue = def.statusKey ? record.values[def.statusKey] ?? "" : "";
   const pendingApproval = def.approval && statusValue === def.approval.pending;
   const workItem: TaskWorkItem = { collection: def.id, id: record.id, label: record.values[def.titleKey] || record.id };

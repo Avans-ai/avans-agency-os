@@ -7,7 +7,7 @@
  * the workspace store (`servicesOf`), which navigation, Plan and modules read.
  * Deactivating a module never deletes its data or history. */
 import { useCallback, useMemo } from "react";
-import { isAssignedClient } from "./director-data";
+import { canManageClient } from "./director-data";
 import { planBlueprints } from "./knowledge/blueprints";
 import { CURRENT_USER, serviceCatalog, type OsClient, type ServiceId } from "./os-data";
 import { useLocalStorageState } from "./local-persistence";
@@ -97,7 +97,7 @@ function seed(client: OsClient, active: ServiceId[]): ServiceModuleState {
 
 /** Admin, or the Project Manager assigned to the client. Preview roles are visual, not security. */
 export function canManageModules(role: PreviewRole, clientSlug: string) {
-  return role === "admin" || (role === "pm" && isAssignedClient(clientSlug));
+  return role === "admin" || (role === "pm" && canManageClient(role, clientSlug));
 }
 
 export type ModuleDraft = Pick<ServiceModuleConfig, "serviceId" | "active" | "kind" | "scope" | "startDate" | "leader">;
