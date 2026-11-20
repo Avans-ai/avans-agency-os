@@ -72,7 +72,7 @@ test("complete PM journey: eight sections, CRUD, relationships, quadrants, ICP, 
     page
       .getByRole("navigation", { name: "Gestión de EPSA / Line Up" })
       .getByRole("link"),
-  ).toHaveCount(5);
+  ).toHaveCount(6);
   for (const label of [
     "Quiénes somos",
     "Datos relevantes",
@@ -388,14 +388,14 @@ test("regression: scope, five management accesses, home, tasks, content, modules
     ).toBeVisible();
   }
   await page
-    .getByRole("navigation", { name: "Trabajo diario de EPSA / Line Up" })
+    .getByRole("navigation", { name: "Navegación de EPSA / Line Up" })
     .getByRole("link", { name: "Inicio", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Resumen de módulos" }),
   ).toBeVisible();
   const nav = page.getByRole("navigation", {
-    name: "Trabajo diario de EPSA / Line Up",
+    name: "Navegación de EPSA / Line Up",
   });
   const links = await nav
     .getByRole("link")

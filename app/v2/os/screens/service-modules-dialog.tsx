@@ -177,3 +177,20 @@ function ServiceModulesDialog({ client, onClose }: { client: OsClient; onClose: 
     </OSSidePanel>
   );
 }
+
+/** Activa un módulo inactivo como «Demostración» (no contractual), sin tocar los demás ni borrar datos. */
+export function ActivateDemoModuleButton({ client, serviceId }: { client: OsClient; serviceId: ServiceId }) {
+  const { role, servicesOf, setServices, notify } = useOsStore();
+  const { stored, save } = useServiceModules(client);
+  if (!canManageModules(role, client.slug)) return null;
+  function activate() {
+    const active = servicesOf(client.slug);
+    const current = resolveModules(client, stored, active);
+    const saved = current[serviceId];
+    const { modules } = applyModuleDrafts(current, [{ serviceId, active: true, kind: "demo", scope: saved?.scope ?? "", startDate: saved?.startDate ?? "", leader: saved?.leader ?? defaultLeader(client, serviceId) }]);
+    save(modules);
+    setServices(client.slug, serviceCatalog.map((service) => service.id).filter((id) => id === serviceId || active.includes(id)));
+    notify(`${serviceLabel(serviceId)} activado como demostración · no modifica el alcance contratado`, "success");
+  }
+  return <button type="button" className={buttonClass("primary")} onClick={activate}>Activar como demostración</button>;
+}

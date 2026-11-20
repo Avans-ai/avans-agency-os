@@ -12,7 +12,8 @@ import { useOsStore } from "../os-store";
 import { serviceHref, type ServiceWorkspaceConfig } from "../service-workspace-data";
 import { Badge, LinkButton, OSEmptyState, OSSkeletonRows } from "../ui";
 import s from "../os.module.css";
-import { ClientOperationNav } from "../screens/client-operation-nav";
+import { ClientOperationNav, ModuleSwitcher } from "../screens/client-operation-nav";
+import { ActivateDemoModuleButton } from "../screens/service-modules-dialog";
 import { CollectionView, useWorkItems } from "./collection-view";
 import { collectionDef, moduleCollections, primaryWorkCollection } from "./collections";
 import { AxesSection, CalendarSection, ContentResultsSection, ContentSummary, IdeasSection, PiecesSection, PlansSection } from "./content";
@@ -216,9 +217,9 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
   if (!activeServices.includes(serviceId) && !supportDesign) {
     return (
       <>
-        <ClientOperationNav client={client} />
+        <ClientOperationNav client={client} active={serviceId} />
         <div className={m.body}>
-          <OSEmptyState icon="ajuste" title={`${service.label} no está activo para ${client.name}`} actions={<LinkButton href={`/v2/clientes/${client.slug}`} variant="dark">Volver a la cuenta</LinkButton>}>
+          <OSEmptyState icon="ajuste" title={`${service.label} no está activo para ${client.name}`} actions={<><ActivateDemoModuleButton client={client} serviceId={serviceId} /><LinkButton href={`/v2/clientes/${client.slug}`} variant="dark">Volver a la cuenta</LinkButton></>}>
             Este módulo no figura entre los servicios activos del cliente, por eso no se puede operar desde acá. Si se había usado antes, sus objetos y tareas siguen guardados en este navegador y vuelven a aparecer al reactivarlo desde la cuenta. Ningún dato se borra al desactivar un módulo.
           </OSEmptyState>
         </div>
@@ -238,6 +239,7 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
 
   return (
     <div>
+      <ClientOperationNav client={client} active={serviceId} />
       <header className={m.hero}>
         <div className={m.heroTitle}>
           <span className={m.heroIcon}>{definition ? <AvansModuleIcon name={definition.icon} size={34} /> : null}</span>
@@ -254,13 +256,12 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
           </div>
         </div>
         <div className={s.actions}>
+          <ModuleSwitcher client={client} active={serviceId} />
           {serviceId === "contenidos" ? <LinkButton href={`/v2/portal/${client.slug}`} variant="secondary" small>Vista del cliente</LinkButton> : null}
           <LinkButton href={`/v2/clientes/${client.slug}?view=reportes`} variant="ghost">Reportes</LinkButton>
           <LinkButton href={`/v2/clientes/${client.slug}/tareas`} variant="secondary" small>Tareas del cliente</LinkButton>
         </div>
       </header>
-
-      <ClientOperationNav client={client} active={serviceId} />
 
       <nav className={m.sectionNav} aria-label={`Áreas de ${service.label}`}>
         <Link className={m.sectionTab} aria-current={!guidelines ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?seccion=${current}`} scroll={false}>Operación mensual</Link>

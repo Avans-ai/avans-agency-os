@@ -42,6 +42,7 @@ export default defineConfig({
         "modules-browser.spec.ts",
         "assistant-browser.spec.ts",
         "operations-clients-browser.spec.ts",
+        "client-navigation-browser.spec.ts",
       ],
       use: { browserName: "chromium" },
     },

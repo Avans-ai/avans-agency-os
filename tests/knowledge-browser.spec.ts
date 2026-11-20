@@ -80,7 +80,7 @@ test("questionnaire to proposal to approved Discovery, dependencies, persistence
     .toBe(1);
   const before = (await knowledge(page)).discovery.companyProfile.coverage;
   expect(before).not.toContain("Cobertura QA");
-  await page.getByRole("link", { name: /^Documentos / }).click();
+  await page.getByRole("navigation", { name: /^Gestión de / }).getByRole("link", { name: "Documentos", exact: true }).click();
   await page
     .getByRole("button", { name: "Cambios para aprobar", exact: true })
     .click();
@@ -99,7 +99,7 @@ test("questionnaire to proposal to approved Discovery, dependencies, persistence
     .selectOption("applied");
   await expect(page.getByText(/Revisada por/)).toBeVisible();
   expect((await knowledge(page)).versions.length).toBeGreaterThan(1);
-  await page.getByRole("link", { name: /^Plan de Marketing / }).click();
+  await page.getByRole("navigation", { name: /^Gestión de / }).getByRole("link", { name: "Plan de Marketing", exact: true }).click();
   await expect(
     page.getByText("Requiere revisión", { exact: true }).first(),
   ).toBeVisible();

@@ -8,8 +8,10 @@ async function knowledge(page: Page, slug = "epsa") {
     slug,
   );
 }
-function dailyNav(page: Page, name: string) {
-  return page.getByRole("navigation", { name: `Trabajo diario de ${name}` });
+/** Los módulos activos se abren desde el resumen de Inicio (ya no son pestañas de la navegación principal). */
+function dailyNav(page: Page, _name: string) {
+  void _name;
+  return page.getByRole("region", { name: "Resumen de módulos" });
 }
 
 test("service modules: add with scope and confirmation, persist after reload, feed navigation and Plan, deactivate keeping data, isolate clients", async ({ page }) => {
