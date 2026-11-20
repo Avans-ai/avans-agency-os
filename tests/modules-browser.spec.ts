@@ -221,9 +221,11 @@ test("contenidos, estrategia, web and audiovisual workspaces show their own obje
   const errors = errorsOf(page);
   await page.goto("/v2/clientes/epsa/contenido");
   const contentNav = sectionNav(page, "Contenidos");
-  for (const label of ["Calendario", "Piezas", "Ejes temáticos", "Ideas", "Tareas", "Resultados", "Entregables y aprobaciones", "Historial"]) {
+  for (const label of ["Calendario", "Piezas", "Ejes temáticos", "Tareas", "Resultados", "Entregables y aprobaciones", "Historial"]) {
     await expect(contentNav.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
   }
+  // El Banco de ideas es un área propia (C), separada de la operación mensual.
+  await expect(page.getByRole("navigation", { name: "Áreas de Contenidos" }).getByRole("link", { name: "Banco de ideas" })).toBeVisible();
   await contentNav.getByRole("link", { name: "Calendario" }).click();
   await expect(page.getByRole("grid", { name: /Calendario editorial · noviembre de 2026/i })).toBeVisible();
   await page.getByRole("button", { name: /Teaser del lanzamiento Line Up/ }).click();

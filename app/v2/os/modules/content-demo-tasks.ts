@@ -60,9 +60,13 @@ export function resetContentDemo(slug: string, tasks: OsTask[]): { writes: Local
   for (const { serviceId, collection } of contentDemoCollections(slug)) {
     const stored = readLocalJson<ModuleRecord[] | null>(key(slug, serviceId, collection), null);
     if (!Array.isArray(stored)) continue; // La clave vacía ya muestra la demo original.
-    const manual = stored.filter((record) => record.source !== "demo");
+    const fresh = contentDemoRecords(slug, serviceId, collection);
+    const freshIds = new Set(fresh.map((record) => record.id));
+    const demoContents = new Set(contentDemoRecords(slug, "contenidos", "piezas").map((record) => record.id));
+    // En Diseño de marca se conservan los registros demo propios del módulo (no derivados de estos contenidos).
+    const manual = stored.filter((record) => record.source !== "demo" || (serviceId !== "contenidos" && !freshIds.has(record.id) && !demoContents.has(record.values.contenidoId ?? "")));
     removed += stored.length - manual.length; kept += manual.length;
-    writes.push({ key: key(slug, serviceId, collection), value: [...manual, ...contentDemoRecords(slug, serviceId, collection)] });
+    writes.push({ key: key(slug, serviceId, collection), value: [...manual, ...fresh] });
   }
   const demoIds = new Set(contentDemoRecords(slug, "contenidos", "piezas").map((record) => record.id));
   const linked = (task: OsTask) => task.workItem?.collection === "piezas" && demoIds.has(task.workItem.id) && (task.clientSlug ? task.clientSlug === slug : osTasks.some((item) => item.id === task.id));

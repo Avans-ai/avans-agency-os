@@ -17,7 +17,8 @@ import { ActivateDemoModuleButton } from "../screens/service-modules-dialog";
 import { CollectionView, useWorkItems } from "./collection-view";
 import { collectionDef, moduleCollections, primaryWorkCollection } from "./collections";
 import { AxesSection, CalendarSection, ContentResultsSection, ContentSummary, IdeasSection, PiecesSection, PlansSection } from "./content";
-import { BrandSummary, BrandSystemSection, DesignLibrarySection, DesignRequestsSection } from "./design-workspace";
+import { BrandSummary, DesignLibrarySection, DesignOperationSection, DesignRequestsSection } from "./design-workspace";
+import { DesignGuidelines } from "./design-guidelines";
 import { ServiceGuidelines } from "./service-guidelines";
 import { ContentGuidelines } from "./content-guidelines";
 import { useModuleRecords } from "./store";
@@ -64,9 +65,9 @@ export function moduleSections(serviceId: ServiceId): Section[] {
     case "diseno-marca":
       return [
         { id: "resumen", label: "Resumen" },
-        { id: "sistema", label: "Design System" },
+        { id: "operacion", label: "Producción" },
         { id: "trabajos", label: "Pedidos de diseño" },
-        { id: "biblioteca", label: "Biblioteca de piezas" },
+        { id: "biblioteca", label: "Biblioteca de marca" },
         { id: "tareas", label: "Tareas" },
         ...COMMON_TAIL,
       ];
@@ -138,7 +139,7 @@ function renderSection(section: string, ctx: Ctx): ReactNode {
       if (section === "resultados") return <ContentResultsSection client={client} editable={editable} />;
       return <ContentSummary client={client} go={go} />;
     case "diseno-marca":
-      if (section === "sistema") return <BrandSystemSection client={client} editable={editable} />;
+      if (section === "operacion") return <DesignOperationSection client={client} editable={editable} />;
       if (section === "trabajos") return <DesignRequestsSection client={client} editable={editable} supportOnly={ctx.supportDesign} />;
       if (section === "biblioteca") return <DesignLibrarySection client={client} editable={editable} />;
       return <BrandSummary client={client} editable={editable} />;
@@ -193,6 +194,10 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
   const guidelines = params.get("area") === "lineamientos";
   const taskParam = params.get("task");
   const current = sections.some((section) => section.id === requested) ? requested! : taskParam ? "tareas" : supportDesign ? "trabajos" : "resumen";
+  // Área C de cada módulo creativo: repositorio separado de la operación mensual.
+  const repository = serviceId === "diseno-marca" ? { id: "biblioteca", label: "Biblioteca de marca" } : serviceId === "contenidos" ? { id: "ideas", label: "Banco de ideas" } : null;
+  const inRepository = !guidelines && Boolean(repository) && current === repository?.id && sections.some((section) => section.id === repository?.id);
+  const operationSections = sections.filter((section) => section.id !== repository?.id);
   const primary = primaryWorkCollection(serviceId);
   const workItems = useWorkItems(client, serviceId, primary);
   const stats = useModuleTaskStats(client, serviceId);
@@ -258,6 +263,7 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
         </div>
         <div className={s.actions}>
           <ModuleSwitcher client={client} active={serviceId} />
+          {supportDesign ? <ActivateDemoModuleButton client={client} serviceId={serviceId} /> : null}
           {serviceId === "contenidos" ? <LinkButton href={`/v2/portal/${client.slug}`} variant="secondary" small>Vista del cliente</LinkButton> : null}
           <LinkButton href={`/v2/clientes/${client.slug}?view=reportes`} variant="ghost">Reportes</LinkButton>
           <LinkButton href={`/v2/clientes/${client.slug}/tareas`} variant="secondary" small>Tareas del cliente</LinkButton>
@@ -265,12 +271,13 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
       </header>
 
       <nav className={m.sectionNav} aria-label={`Áreas de ${service.label}`}>
-        <Link className={m.sectionTab} aria-current={!guidelines ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?seccion=${current}`} scroll={false}>Operación mensual</Link>
+        <Link className={m.sectionTab} aria-current={!guidelines && !inRepository ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?seccion=${inRepository ? operationSections[0]?.id ?? "resumen" : current}`} scroll={false}>Operación mensual</Link>
         <Link className={m.sectionTab} aria-current={guidelines ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?area=lineamientos`} scroll={false}>Lineamientos del servicio</Link>
+        {repository ? <Link className={m.sectionTab} aria-current={inRepository ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?seccion=${repository.id}`} scroll={false}>{repository.label}</Link> : null}
       </nav>
 
-      {!guidelines ? <nav className={m.sectionNav} aria-label={`Secciones de ${service.label}`}>
-        {sections.map((section) => (
+      {!guidelines && !inRepository ? <nav className={m.sectionNav} aria-label={`Secciones de ${service.label}`}>
+        {operationSections.map((section) => (
           <Link
             key={section.id}
             href={`${serviceHref(client.slug, serviceId)}?seccion=${section.id}`}
@@ -286,7 +293,7 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
 
       <div className={m.body}>
         {!editable ? <p className={s.demoNote} style={{ margin: 0 }}>Tu rol de vista previa puede consultar este módulo, pero no modificarlo. Los permisos son visuales: todavía no se aplican en servidor.</p> : null}
-        {guidelines ? serviceId === "contenidos" ? <ContentGuidelines client={client} /> : <ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} /> : <><ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} compact />{renderSection(current, ctx)}</>}
+        {guidelines ? (serviceId === "diseno-marca" && !supportDesign ? <DesignGuidelines client={client} editable={editable} /> : serviceId === "contenidos" ? <ContentGuidelines client={client} /> : <ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} />) : <><ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} compact />{renderSection(current, ctx)}</>}
       </div>
     </div>
   );

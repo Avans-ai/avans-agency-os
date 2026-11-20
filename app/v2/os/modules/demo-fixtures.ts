@@ -7,6 +7,7 @@
 import type { ServiceId } from "../os-data";
 import type { DemoSeed } from "./types";
 import { contentDemoSeedsFor } from "./content-demo";
+import { designDemoSeeds } from "./design-demo";
 
 type SeedTable = Partial<Record<ServiceId, Record<string, Record<string, DemoSeed[]>>>>;
 
@@ -211,5 +212,17 @@ export const moduleDemoSeeds: SeedTable = {
 
 export function demoSeedsFor(clientSlug: string, serviceId: ServiceId, collection: string): DemoSeed[] {
   // Contenidos de ACA (y sus pedidos/versiones de Diseño derivados) viven en content-demo.ts.
-  return contentDemoSeedsFor(clientSlug, serviceId, collection) ?? moduleDemoSeeds[serviceId]?.[collection]?.[clientSlug] ?? [];
+  const fromContent = contentDemoSeedsFor(clientSlug, serviceId, collection);
+  if (serviceId === "diseno-marca") {
+    // Diseño de marca: escenario propio (design-demo.ts) + lo derivado de Contenidos, sin duplicar
+    // pedidos ni versiones de un mismo contenido (prevalece el derivado del flujo de Contenidos).
+    const derived = fromContent ?? [];
+    const design = designDemoSeeds[collection]?.[clientSlug] ?? [];
+    if (derived.length || design.length) {
+      const ids = new Set(derived.map((seed) => seed.id));
+      const contents = new Set(derived.map((seed) => seed.contenidoId).filter(Boolean));
+      return [...derived, ...design.filter((seed) => !ids.has(seed.id) && !(seed.contenidoId && contents.has(seed.contenidoId)))];
+    }
+  }
+  return fromContent ?? moduleDemoSeeds[serviceId]?.[collection]?.[clientSlug] ?? [];
 }

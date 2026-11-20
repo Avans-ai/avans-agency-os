@@ -242,6 +242,11 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
       const added = services.filter((id) => !before.includes(id)).map(serviceLabel);
       const removed = before.filter((id) => !services.includes(id)).map(serviceLabel);
       const parts = [added.length ? `Activado: ${added.join(", ")}` : "", removed.length ? `Desactivado: ${removed.join(", ")}` : ""].filter(Boolean);
+      // Se persiste en el acto: commitTasks/commitWorkflow parten de lo guardado y, si un módulo que se
+      // monta enseguida (p. ej. al activarse) los usa antes del efecto de persistencia, no deben
+      // restaurar la lista de servicios anterior.
+      const latest = validPersistedState(readLocalJson<PersistedState | null>(STORE_KEY, null), state);
+      writeLocalJson(STORE_KEY, { ...latest, services: { ...latest.services, [clientSlug]: services } });
       dispatch({ type: "services", clientSlug, services, message: localMessage(parts.join(" · ") || "Sin cambios en los servicios") });
     },
     addIdea: (clientSlug, title, detail) => {

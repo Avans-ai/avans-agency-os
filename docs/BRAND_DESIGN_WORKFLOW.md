@@ -1,52 +1,61 @@
-# Diseño de marca y lineamientos · noviembre de 2026
+# Diseño de marca · noviembre de 2026
 
-Implementación de la primera etapa acordada el 17/11. Conserva la identidad visual y las colecciones previas del módulo. No modifica contratos, activa integraciones ni ejecuta migraciones.
+Espacio de identidad y diseño por cliente. Conserva las claves, entidades y comportamientos de la primera etapa (17/11) y separa tres áreas que no se mezclan: lineamientos permanentes, operación mensual y biblioteca. No modifica contratos, no activa integraciones ni ejecuta migraciones.
 
-## Operación
+## Áreas
 
-- **Design System visual:** logos y variantes, colores con selector y hexadecimal, muestras tipográficas, recursos gráficos, componentes, aplicaciones y moodboards. Edición, estados e historial por recurso. Las muestras de tipografía usan fuentes instaladas; no descargan archivos de proveedores.
-- **Fuentes centrales:** los materiales de identidad y el glosario se leen de la Ficha del cliente. Los documentos visuales se consultan directamente desde el Plan de Marketing. No se replican esas entidades en Diseño.
-- **Pedidos:** se conserva `diseno-marca:trabajos`. Los pedidos manuales guardan brief, objetivo, canal, formatos, referencias, recursos, responsable, fecha, origen y comentarios. Pedido y tarea se guardan juntos mediante `commitWorkflow`; ante una falla de almacenamiento, ambos se revierten y el formulario sigue abierto.
-- **Pedidos de Contenidos:** se identifican por `contenidoId`; las reiteraciones de una revisión reutilizan el pedido y la tarea central. El brief se modifica desde el contenido de origen. El detalle del pedido muestra esa misma tarea, aun cuando cambia el módulo responsable.
-- **Biblioteca de piezas:** cada archivo o enlace conserva su versión, autor, fecha, estado, pedido y contenido de origen. Nueva versión no reemplaza los archivos anteriores. Las piezas vinculadas a Contenidos comienzan como borrador y siguen su flujo de aprobación. Entregar a revisión utiliza la misma transición que Contenidos.
-- **Lineamientos / Operación mensual:** navegación común disponible en todos los módulos, conservando las secciones operativas existentes. Los lineamientos consultan alcance configurado, objetivos y estrategia del Plan, con procedimientos y criterios adicionales editables por administración o PM autorizado. Un panel desplegable permite consultarlos durante la ejecución.
+| Área | Ruta | Contenido |
+| --- | --- | --- |
+| A. Lineamientos del servicio | `?area=lineamientos[&parte=…]` | Design System por partes: Resumen, Identidad, Sistema de color, Tipografía, Recursos gráficos, Componentes, Tono y comunicación, Moodboard y referencias. En Resumen, además, alcance, estrategia y procedimientos del servicio (`ServiceGuidelines`). |
+| B. Operación mensual | `?seccion=resumen`, `operacion`, `trabajos` | Resumen con las tres áreas; Producción (Kanban y lista); bandeja única de Pedidos de diseño. Tareas, entregables, recomendaciones e historial comunes se conservan. |
+| C. Biblioteca de marca | `?seccion=biblioteca` | Piezas (con versiones), Recursos de marca, Referencias y Materiales de la Ficha. |
 
-## Diseño de apoyo dentro de Contenidos
+La navegación de áreas del encabezado pertenece a `module-workspace.tsx`; la Biblioteca se abre como sección de la Operación y desde la tarjeta C del Resumen. Los enlaces antiguos `?seccion=pedidos` siguen abriendo pedidos; `?seccion=sistema` cae en el Resumen, que enlaza a Lineamientos.
 
-Algunos clientes tienen Contenidos activo sin contratar Diseño de marca como servicio independiente. El proceso aprobado igualmente requiere producción de diseño.
+## Design System (A)
 
-Cuando existe un pedido vinculado a un contenido y Contenidos está activo, la ruta de Diseño permite acceder a **Pedidos de diseño de Contenidos**, su biblioteca, tareas e historial. Los lineamientos consultados corresponden a Contenidos. Esta vista no activa Diseño como contrato, no lo agrega a la navegación contractual y no habilita pedidos manuales de otros servicios. El contenido enlaza al pedido real. Sin pedido ni contrato activo, permanece el bloqueo previo del módulo.
+- **Identidad:** logos principal, secundario, isotipo, monocromático y negativo; usos incorrectos marcados con ✕; aplicaciones; materiales de identidad de la Ficha sin duplicarlos.
+- **Color:** muestras reales agrupadas en principales, secundarios y de apoyo, con HEX, RGB, función y contraste WCAG 2.1 contra blanco y negro. Combinaciones de la paleta con relación de contraste y nivel (AAA ≥ 7, AA ≥ 4.5, AA grande ≥ 3). Cálculo en `design-system-model.ts`.
+- **Tipografía:** familia, pesos, tamaño/interlineado y jerarquía aplicada renderizada. Solo se cargan Figtree (global) y Syne (`next/font`, variable `--font-design-syne`); otras familias usan la fuente instalada o pilas del sistema.
+- **Recursos gráficos, componentes y moodboard:** visuales generados en la app con SVG/CSS y los tokens del cliente (`--b-*` derivados de la paleta y tipografías). Nunca se usan imágenes de internet como referencias del cliente. Cada referencia del moodboard exige descripción y justificación.
+- **Tono y comunicación:** personalidad, voz y ejemplos son recursos del Design System. Palabras permitidas, a evitar, expresiones y mensajes aprobados se leen del **glosario de la Ficha** (`KnowledgeState.brandGlossary`), única fuente; se editan allí. Si el glosario de ACA está vacío, un administrador puede cargar un glosario rotulado «[Demostración]» en la Ficha mediante `saveGlossary`.
+
+## Pedidos y operación (B)
+
+- **Orígenes:** Contenidos, Publicidad Digital, Soporte, Estrategia y Solicitudes internas (`servicioOrigen`: `contenidos`, `publicidad-digital`, `soporte`, `estrategia`, `interno`).
+- **Pedido:** nombre, objetivo, descripción, tipo de pieza, canal, formato, medidas, referencias, materiales, recursos del Design System vinculados (`recursosDS`), responsable, revisor, prioridad, fecha y estado. Formulario corto agrupado en un panel lateral. El asistente opcional se conserva.
+- **Una tarea por pedido:** `buildDesignTask` + `commitWorkflow` guardan pedido y tarea juntos; ante una falla ambos se revierten. La tarea lleva brief, responsable, prioridad, revisor y enlace al pedido. Los pedidos de Contenidos usan la tarea central del contenido y nunca crean otra.
+- **Estados:** Pendientes, En producción, En revisión interna, Ajustes, Esperando aprobación, Aprobados, Entregados (`values.operacion`). Se mantiene `estado` genérico y `etapa` por compatibilidad con aprobaciones y entregables; si otra vista cambia `estado`, prevalece ese valor. Pasar a revisión, aprobación o entrega exige al menos una versión.
+- **Detalle de la pieza:** vista previa, acciones contextuales, versiones, comentarios (`designComments`), aprobaciones (`designApprovals`), historial combinado de pedido y versiones, brief, recursos vinculados, responsables, fechas, tarea y archivos.
+- **Contenidos:** contenido aprobado → `upsertDesignRequest` → diseño produce → Contenidos revisa → cliente aprueba → la versión queda «Aprobado» y entra a la Biblioteca. Los pedidos de Contenidos muestran la columna derivada del estado del contenido y se avanzan desde el contenido.
+
+## Biblioteca (C)
+
+- Una tarjeta por pieza (`piezaId`), con su última versión; «Ver versiones anteriores» muestra todas. Cada versión es un registro inmutable de `biblioteca`.
+- Al aprobar o entregar un pedido, `libraryAfterMove` actualiza el estado de la **misma** última versión vinculada (`pedidoId`); no copia archivos ni crea registros. El filtro «Aprobadas y entregadas» también incluye piezas cuyo pedido quedó aprobado en otra vista.
+- Categorías: Identidad, Redes sociales, Carruseles, Publicidad, Presentaciones, Material comercial, Banners, Packaging, Videos, Motion, Otros. Los valores anteriores se traducen al leer (`designCategory`): Redes → Redes sociales, Anuncios → Publicidad, Material institucional → Material comercial, Plantillas → Otros.
+
+## Datos de demostración
+
+- `app/v2/os/modules/design-demo.ts`, registrado en `demo-fixtures.ts`. Solo para ACA y solo cuando la clave local está vacía. Marca genérica «ACA DEMO» dibujada en la app; no imita la identidad real del cliente.
+- Incluye logos y variantes, usos incorrectos, aplicaciones, paleta, tipografías, recursos, componentes, tono, moodboard, 13 pedidos en los siete estados y 19 versiones en las once categorías. Las tareas de los pedidos de demostración se crean una sola vez al abrir el módulo.
+- Banner visible «DATOS DE DEMOSTRACIÓN» en cada área y rótulo «Demo» por registro. «Reiniciar datos de demostración» reemplaza solo los registros `source: "demo"` de este cliente en las tres colecciones y regenera sus tareas; conserva registros manuales, sus versiones y tareas manuales.
+- ACA no tiene Diseño de marca activo por defecto: se activa desde «Gestionar módulos».
 
 ## Persistencia
 
 | Información | Ubicación |
 | --- | --- |
-| Pedidos existentes y nuevos | `client:<slug>:module:diseno-marca:trabajos` |
-| Recursos propios del Design System | `client:<slug>:module:diseno-marca:sistema` |
-| Entregables y versiones | `client:<slug>:module:diseno-marca:biblioteca` |
-| Procedimientos adicionales del servicio | `client:<slug>:service-guidelines:<serviceId>` |
+| Pedidos (con operación, comentarios y aprobaciones) | `client:<slug>:module:diseno-marca:trabajos` |
+| Recursos del Design System | `client:<slug>:module:diseno-marca:sistema` |
+| Versiones de piezas | `client:<slug>:module:diseno-marca:biblioteca` |
+| Procedimientos del servicio | `client:<slug>:service-guidelines:<serviceId>` |
 | Tareas y notificaciones | Store central `workspace` |
-| Materiales, productos, glosario y Plan | Agregado canónico `knowledge:v1` del cliente |
+| Glosario, materiales y Plan | Agregado `client:<slug>:knowledge:v1` |
 
-Las claves mantienen el prefijo `avans-os:preview:v1` y el sobre versionado existente. No se reemplazan claves antiguas ni se borran trabajos al desactivar un servicio.
+Prefijo `avans-os:preview:v1` y sobre versionado existentes. Las interfaces muestran «Guardado en este navegador». Sin sincronización multiusuario ni RLS: los roles de preview (`canEditService`) son controles visuales, no seguridad de servidor.
 
-Las imágenes cargadas directamente en el Design System o su biblioteca admiten PNG, JPG, WebP o GIF de hasta 1 MB; se conservan en este navegador. Los materiales de la Ficha se consultan desde su almacenamiento local existente. Para entregar una pieza de Contenidos a revisión se requiere un enlace HTTP/HTTPS accesible: un archivo local no se presenta como compartido con el cliente.
+## Verificación
 
-Sin sincronización multiusuario, autenticación de cliente ni RLS activa. Los roles de preview son controles de interfaz, no seguridad de servidor. Claude Design y otras herramientas externas no se presentan como integraciones activas.
-
-## Verificación ejecutada
-
-Suite focal del dominio, reportes y navegador: **12 casos aprobados** contra servidor local de desarrollo en `localhost:3101`.
-
-- Reutilización de pedido y conservación de registros anteriores al reiterar la revisión.
-- Versiones inmutables, numeración e aislamiento por cliente.
-- Validación de URL, color, tipografía y archivos vacíos.
-- Creación y persistencia de recurso visual e imagen tras recargar.
-- Pedido manual, tarea única y vínculo visible.
-- Biblioteca con dos versiones y conservación de la primera.
-- Edición y persistencia de lineamientos; viewport de 390 px sin desborde horizontal.
-- Reversión conjunta de pedido y tarea cuando falla la escritura del store; reintento sin duplicar tareas.
-- Acceso de diseño de apoyo sin activar un contrato independiente.
-- Regresión de reportes, aislamiento de tareas y módulos secundarios.
-
-`npm run typecheck` y ESLint focal aprobados al cerrar este dominio. Build y QA consolidado quedan registrados en el informe principal de la entrega.
+- Dominio: `tests/design-operation-model.spec.ts`, `tests/design-workspace-model.spec.ts`.
+- Navegador: `tests/design-brand-browser.spec.ts`, `tests/design-workspace-browser.spec.ts`.
