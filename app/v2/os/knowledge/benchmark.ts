@@ -4,7 +4,7 @@ import {
   type EntityKind,
 } from "../discovery/schema";
 import { discoveryOf } from "./state";
-import { serviceCatalog } from "../os-data";
+import { osClients, serviceCatalog } from "../os-data";
 import {
   benchmarkBlueprints,
   commonKnowledgeFields,
@@ -56,6 +56,17 @@ export function newBrand(name = "", own = false): BenchmarkBrand {
     items: [],
     demo: false,
   };
+}
+/** Legacy own-brand records stay stored, but are never active Benchmark input. */
+export function externalBrands(benchmark: BenchmarkState) {
+  return benchmark.brands.filter((brand) => brand.type !== "Propia" && brand.id !== "own");
+}
+const normalizedBrandName = (name: string) => name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es").replace(/[^a-z0-9]/g, "");
+export function assertExternalBrand(k: KnowledgeState, brand: BenchmarkBrand) {
+  const ownNames = [k.discovery.companyProfile.name, osClients.find((c) => c.slug === k.clientSlug)?.name ?? "", k.clientSlug]
+    .flatMap((name) => [name, ...name.split("/")]).map(normalizedBrandName).filter(Boolean);
+  if (brand.type === "Propia" || brand.id === "own" || ownNames.includes(normalizedBrandName(brand.name)))
+    throw new Error("La marca propia pertenece a la Ficha del cliente, Discovery y Plan; el Benchmark analiza solo marcas externas.");
 }
 export function itemValues(
   item: KnowledgeItem,
@@ -246,7 +257,7 @@ export function validateItem(
   return errors;
 }
 export function benchmarkCoverage(b: BenchmarkState) {
-  return b.brands.map((brand) => {
+  return externalBrands(b).map((brand) => {
     const blocks = benchmarkBlueprints.map((bp) => {
       const rows = brand.items.filter((i) => i.section === bp.id);
       const missing = rows.length
@@ -283,6 +294,9 @@ export function benchmarkCoverage(b: BenchmarkState) {
 }
 export function saveBrand(k: KnowledgeState, brand: BenchmarkBrand) {
   if (!brand.name.trim()) throw new Error("Ingresá el nombre de la marca");
+  assertExternalBrand(k, brand);
+  if (externalBrands(k.benchmark).some((b) => b.id !== brand.id && normalizedBrandName(b.name) === normalizedBrandName(brand.name)))
+    throw new Error("Esta marca ya está seleccionada. Editá su análisis para evitar duplicados.");
   if (
     brand.type !== "Propia" &&
     brand.principal &&
@@ -335,6 +349,7 @@ export function captureBenchmark(
 ) {
   const brand = k.benchmark.brands.find((b) => b.id === brandId);
   if (!brand) throw new Error("Marca inexistente");
+  assertExternalBrand(k, brand);
   if (!brand.items.length) throw new Error("Primero cargá un relevamiento");
   return {
     ...k,
@@ -355,7 +370,7 @@ export function captureBenchmark(
 }
 /** Reports compare saved, dated observations only; never synthesize campaigns or findings. */
 export function benchmarkReport(k: KnowledgeState) {
-  return k.benchmark.brands.map((brand) => {
+  return externalBrands(k.benchmark).map((brand) => {
     const snapshots = k.benchmark.snapshots
       .filter((s) => s.brandId === brand.id)
       .sort((a, b) => a.capturedAt.localeCompare(b.capturedAt));
@@ -382,7 +397,7 @@ export function benchmarkReport(k: KnowledgeState) {
 export const conclusionTypes = findingBlueprint.fields[0].options!;
 
 export function validatedBenchmarkToFindings(k: KnowledgeState) {
-  return k.benchmark.brands.flatMap((brand) =>
+  return externalBrands(k.benchmark).flatMap((brand) =>
     brand.items
       .filter(
         (item) =>

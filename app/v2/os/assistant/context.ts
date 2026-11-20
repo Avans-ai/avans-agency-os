@@ -1,4 +1,5 @@
 "use client";
+import { externalBrands } from "../knowledge/benchmark";
 
 /* Contexto del asistente (cliente). Reúne, solo para el cliente abierto, lo que
  * el perfil necesita: Discovery, ICP y segmentos, Benchmark y conclusiones,
@@ -95,7 +96,7 @@ export function useAssistantContext(client: OsClient, profile: AssistantProfile,
     const itemStatus = (item: KnowledgeItem): SourceStatus => (item.demo ? "demo" : item.status === "Validado" ? "validado" : "pendiente");
 
     // Benchmark: análisis por marca y conclusiones.
-    for (const brand of k.benchmark.brands) {
+    for (const brand of externalBrands(k.benchmark)) {
       for (const item of brand.items) {
         const blueprint = benchmarkBlueprints.find((entry) => entry.id === item.section);
         const labels = new Map((blueprint?.fields ?? []).map((field) => [field.key, field.label]));

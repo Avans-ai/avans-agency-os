@@ -190,7 +190,7 @@ test("DEMO meeting inbox, ambiguous manual assignment, duplicate delivery and ro
     page.getByRole("button", { name: "Aprobar propuesta", exact: true }),
   ).toHaveCount(0);
 });
-test("Benchmark brand baseline, competitor, evidence, conclusions and immutable snapshots", async ({
+test("Benchmark external competitor, evidence, conclusions and immutable snapshots", async ({
   page,
 }) => {
   await open(page, "benchmark");
@@ -213,31 +213,31 @@ test("Benchmark brand baseline, competitor, evidence, conclusions and immutable 
   await expect(
     page.getByRole("navigation", { name: "Índice de Benchmark" }).getByRole("link", { name: "Competidor QA", exact: true }),
   ).toBeVisible();
-  const own = page.locator("#benchmark-propia-overview");
+  const competitor = page.locator("section[id^=benchmark-competidor-]").filter({ has: page.getByRole("heading", { name: "Competidor QA", exact: true }) });
   await page
     .getByRole("navigation", { name: "Índice de Benchmark" })
-    .getByRole("link", { name: "Marca del cliente", exact: true })
+    .getByRole("link", { name: "Competidor QA", exact: true })
     .click();
-  await own.getByRole("button", { name: "+ Agregar", exact: true }).click();
+  await competitor.getByRole("button", { name: "+ Agregar", exact: true }).first().click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Claim o promesa").fill("Promesa propia QA");
+  await dialog.getByLabel("Claim o promesa").fill("Promesa externa QA");
   await dialog
     .getByLabel("Descripción general")
     .fill("Descripción basada en evidencia QA");
   await dialog.getByLabel("Fecha del relevamiento").fill("2026-11-10");
   await saveRecord(page);
-  await own.getByRole("button", { name: "Guardar snapshot fechado" }).click();
-  await own.getByRole("button", { name: "Editar", exact: true }).click();
+  await competitor.getByRole("button", { name: "Guardar snapshot fechado" }).click();
+  await competitor.getByRole("button", { name: "Editar", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByLabel("Claim o promesa")
-    .fill("Promesa propia revisada");
+    .fill("Promesa externa revisada");
   await saveRecord(page);
-  await own.getByRole("button", { name: "Guardar snapshot fechado" }).click();
+  await competitor.getByRole("button", { name: "Guardar snapshot fechado" }).click();
   const state = await knowledge(page);
   expect(state.benchmark.snapshots).toHaveLength(2);
   expect(state.benchmark.snapshots[0].brand.items[0].values.claim).toBe(
-    "Promesa propia QA",
+    "Promesa externa QA",
   );
   await page
     .getByRole("navigation", { name: "Índice de Benchmark" })

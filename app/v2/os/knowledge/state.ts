@@ -13,7 +13,8 @@ import {
 } from "../director-data";
 import { strategyByClient, serviceCatalog, type OsClient } from "../os-data";
 import { emptyQuestionnaire } from "./questionnaire";
-import { newBrand } from "./benchmark";
+import { externalBrands, newBrand } from "./benchmark";
+import { isBrandGlossary } from "./profile-model";
 import { newSource, sourceFromDiscovery, sourceToDiscovery } from "./sources";
 import { newId, type KnowledgeState, type MutationContext } from "./types";
 export const knowledgeKey = (slug: string) => `client:${slug}:knowledge:v1`;
@@ -71,7 +72,6 @@ export function seedKnowledge(
     proposals: [],
     benchmark: {
       brands: [
-        { ...newBrand(client.name, true), id: "own" },
         ...(competitors ?? meta?.competitors ?? []).map((c, i) => ({
           ...newBrand(c.name),
           id: `legacy-brand-${i}`,
@@ -110,6 +110,7 @@ export function isKnowledge(v: unknown, slug: string): v is KnowledgeState {
   return (
     k.version === 1 &&
     k.clientSlug === slug &&
+    (k.brandGlossary === undefined || isBrandGlossary(k.brandGlossary)) &&
     Number.isInteger(k.revision) &&
     !!k.discovery &&
     Array.isArray(k.sources) &&
@@ -199,7 +200,7 @@ export function versionChange(
 }
 export function rebuildDependencies(k: KnowledgeState): KnowledgeState {
   const deps: KnowledgeState["dependencies"] = [];
-  for (const brand of k.benchmark.brands) {
+  for (const brand of externalBrands(k.benchmark)) {
     for (const id of brand.segmentIds)
       deps.push({
         sourceEntityType: "targetSegments",
@@ -276,7 +277,7 @@ export function flagDependents(
     }));
   if (type !== "finding" && type !== "benchmark" && type !== "marketing-plan")
     targets.push(
-      ...k.benchmark.brands.map((b) => ({
+      ...externalBrands(k.benchmark).map((b) => ({
         entityType: "benchmark",
         entityId: b.id,
         reason,

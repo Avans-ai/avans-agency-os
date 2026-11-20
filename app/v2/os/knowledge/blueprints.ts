@@ -64,11 +64,13 @@ export const benchmarkBlueprints: Blueprint[] = [
       t("positioning", "Posicionamiento"),
       t("audience", "Público principal / cliente ideal"),
       rel("segments", "Segmentos relacionados", "segments"),
+      t("socialLinks", "Redes sociales", false),
+      t("products", "Productos y servicios", false),
     ],
   },
   {
     id: "content",
-    label: "Contenidos",
+    label: "Redes sociales y contenidos destacados",
     slide: "16 / 21",
     fields: [
       t("links", "Links a contenidos relevantes"),
@@ -79,6 +81,7 @@ export const benchmarkBlueprints: Blueprint[] = [
       t("protagonists", "Protagonistas"),
       t("channelRole", "Rol del canal"),
       t("summary", "Síntesis"),
+      t("learning", "Por qué resulta interesante", false),
     ],
   },
   {
@@ -121,6 +124,18 @@ export const benchmarkBlueprints: Blueprint[] = [
       t("categoryCodes", "Códigos de categoría"),
       t("differentiation", "Diferenciación"),
       t("summary", "Síntesis"),
+    ],
+  },
+  {
+    id: "news",
+    label: "Lanzamientos, promociones y novedades",
+    slide: "20",
+    fields: [
+      t("title", "Novedad"),
+      select("kind", "Tipo de novedad", ["Lanzamiento", "Promoción", "Producto o servicio", "Otra novedad"]),
+      t("description", "Qué cambió"),
+      t("url", "URL de la novedad"),
+      t("learning", "Aprendizaje para la marca", false),
     ],
   },
 ];

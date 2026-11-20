@@ -3,7 +3,7 @@ import {
   findingBlueprint,
   planBlueprints,
 } from "./blueprints";
-import { validateItem } from "./benchmark";
+import { assertExternalBrand, validateItem } from "./benchmark";
 import { validatePlanItem } from "./plan";
 import { flagDependents, rebuildDependencies, versionChange } from "./state";
 import { serviceCatalog, type ServiceId } from "../os-data";
@@ -29,6 +29,7 @@ export function saveBenchmarkItem(
   if (brandId) {
     const brand = k.benchmark.brands.find((b) => b.id === brandId);
     if (!brand) throw new Error("Marca inexistente");
+    assertExternalBrand(k, brand);
     const next = versionChange(
       k,
       "benchmark",

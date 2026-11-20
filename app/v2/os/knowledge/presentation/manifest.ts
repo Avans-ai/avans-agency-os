@@ -7,7 +7,7 @@ import {
   findingBlueprint,
   planBlueprints,
 } from "../blueprints";
-import { itemMissing, validateItem, benchmarkCoverage } from "../benchmark";
+import { externalBrands, itemMissing, validateItem, benchmarkCoverage } from "../benchmark";
 import { planCoverage, validatePlanItem, allocationErrors } from "../plan";
 import { serviceLabel, type OsClient, type ServiceId } from "../../os-data";
 import {
@@ -158,7 +158,7 @@ export function presentationSnapshot(
 ): PresentationSnapshot {
   return structuredClone({
     discovery: k.discovery,
-    benchmark: k.benchmark,
+    benchmark: { ...k.benchmark, brands: externalBrands(k.benchmark), snapshots: k.benchmark.snapshots.filter((s) => externalBrands(k.benchmark).some((b) => b.id === s.brandId)) },
     marketingPlan: k.plan,
     includedServiceIds: [...active].sort(),
     sources: k.sources.map(
@@ -219,10 +219,9 @@ function preparation(
     planMissing: string[] = [];
   let bmInvalid = 0,
     planInvalid = 0;
-  for (const brand of k.benchmark.brands) {
+  for (const brand of externalBrands(k.benchmark)) {
     if (
-      brand.type !== "Propia" &&
-      (!brand.clientValidated || brand.status !== "Validado" || brand.demo)
+      !brand.clientValidated || brand.status !== "Validado" || brand.demo
     )
       bmInvalid++;
     for (const bp of benchmarkBlueprints) {
@@ -243,7 +242,7 @@ function preparation(
       }
     }
   }
-  if (!k.benchmark.brands.some((b) => b.type !== "Propia"))
+  if (!externalBrands(k.benchmark).length)
     bmMissing.push(
       "Seleccionar competidores y validar la selección con el cliente",
     );
@@ -299,12 +298,12 @@ function preparation(
       label: "Benchmark · páginas 13–25",
       percent: Math.round(
         benchmarkCoverage(k.benchmark).reduce((n, b) => n + b.percent, 0) /
-          Math.max(1, k.benchmark.brands.length),
+          Math.max(1, externalBrands(k.benchmark).length),
       ),
       missing: bmMissing,
       unvalidated: bmInvalid,
       rows: [
-        ...k.benchmark.brands.flatMap((b) => b.items),
+        ...externalBrands(k.benchmark).flatMap((b) => b.items),
         ...k.benchmark.findings,
       ],
       href: base + "benchmark",
@@ -687,7 +686,7 @@ export function buildPresentationManifest(
         `ICP B2C · ${p.name}`,
       );
   add(13, {}, undefined, "Benchmark");
-  const rivals = k.benchmark.brands.filter((b) => b.type !== "Propia");
+  const rivals = externalBrands(k.benchmark);
   for (const [i, group] of chunks(rivals, 4).entries())
     add(
       14,
@@ -715,12 +714,8 @@ export function buildPresentationManifest(
       "Marcas a analizar",
     );
   function brandBlock(b: BenchmarkBrand) {
-    const own = b.type === "Propia",
-      overview = b.items.find((i) => i.section === "overview");
-    if (own)
-      add(15, { 398: `02 · BENCHMARK · ${b.name.toLocaleUpperCase("es")}`, 399: b.name }, b.id, b.name);
-    else
-      add(
+    const overview = b.items.find((i) => i.section === "overview");
+    add(
         20,
         {
           518: `02 · BENCHMARK · ${b.name.toLocaleUpperCase("es")}`,
@@ -736,7 +731,7 @@ export function buildPresentationManifest(
     for (const section of ["content", "paid", "web", "design"]) {
       const rows = b.items.filter((i) => i.section === section),
         page =
-          (own ? 16 : 21) +
+          21 +
           ["content", "paid", "web", "design"].indexOf(section);
       for (const [index, group] of chunks(
         rows,
@@ -745,25 +740,7 @@ export function buildPresentationManifest(
         const first = group[0],
           r: Record<string, string> = {};
         const imageUrls = group.flatMap((i) => imageLinks(i.captures));
-        const ids = own
-          ? {
-              header:
-                section === "content"
-                  ? 408
-                  : section === "paid"
-                    ? 437
-                    : section === "web"
-                      ? 462
-                      : 490,
-              links: [412, 415, 418, 421],
-              channels: [423, 424, 425],
-              contentSummary: 428,
-              platforms: [448, 449, 450],
-              paidSummary: 453,
-              web: [468, 473, 475, 476, 477, 478, 481],
-              design: [503, 504, 505, 506, 509],
-            }
-          : {
+        const ids = {
               header:
                 section === "content"
                   ? 539
@@ -853,7 +830,16 @@ export function buildPresentationManifest(
       }
     }
   }
-  for (const b of k.benchmark.brands) brandBlock(b);
+  for (const b of rivals) {
+    brandBlock(b);
+    for (const item of b.items.filter((i) => i.section === "news"))
+      add(20, {
+        518: `02 · BENCHMARK · ${b.name.toLocaleUpperCase("es")}`,
+        519: values(item, "title"), 520: values(item, "kind"),
+        522: values(item, "description"), 524: values(item, "learning"),
+        526: [values(item, "url"), item.observedAt, item.evidence].filter(Boolean).join("\n"),
+      }, `${b.id}-news-${item.id}`, `${b.name} · Novedades`);
+  }
   add(
     25,
     binding(

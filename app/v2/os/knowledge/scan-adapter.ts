@@ -30,6 +30,7 @@ export async function runBenchmarkScan(
   adapter: BenchmarkScanAdapter,
   signal: AbortSignal,
 ): Promise<{ job: ScanJob; result?: ScanResult }> {
+  if (brand.type === "Propia" || brand.id === "own") return { job: { ...job, status: "failed", error: "El Benchmark analiza exclusivamente marcas externas." } };
   if (!adapter.isConfigured())
     return {
       job: {

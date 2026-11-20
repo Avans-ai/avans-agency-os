@@ -1,3 +1,4 @@
+import { externalBrands } from "./benchmark";
 import {
   entityFields,
   fields,
@@ -68,7 +69,7 @@ export function proposalCurrent(
   }
   const item =
     p.targetModule === "benchmark"
-      ? (k.benchmark.brands
+      ? (externalBrands(k.benchmark)
           .flatMap((b) => b.items)
           .find((i) => i.id === p.targetEntityId) ??
         k.benchmark.findings.find((i) => i.id === p.targetEntityId))
@@ -498,7 +499,7 @@ export function reviewProposal(
       ? Object.values(k.plan.modules)
           .flat()
           .find((i) => i?.id === p.targetEntityId)
-      : (k.benchmark.brands
+      : (externalBrands(k.benchmark)
           .flatMap((b) => b.items)
           .find((i) => i.id === p.targetEntityId) ??
         k.benchmark.findings.find((i) => i.id === p.targetEntityId));

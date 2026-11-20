@@ -343,18 +343,19 @@ test("brands enforce four main competitors, allow additional brands and real evi
 });
 test("Benchmark snapshots and report compare saved evidence without modifying history", () => {
   let k = withSource();
+  k.benchmark.brands = [{ ...newBrand("Rival QA"), id: "rival-qa" }];
   let item = {
     ...newItem("overview", ctx),
     values: { claim: "Promesa original" },
   };
-  k = saveBenchmarkItem(k, item, "own", ctx);
-  k = captureBenchmark(k, "own", ctx);
-  expect(benchmarkReport(k).find((r) => r.brand === client.name)?.pending).toBe(
+  k = saveBenchmarkItem(k, item, "rival-qa", ctx);
+  k = captureBenchmark(k, "rival-qa", ctx);
+  expect(benchmarkReport(k).find((r) => r.brand === "Rival QA")?.pending).toBe(
     true,
   );
   item = { ...item, values: { claim: "Promesa nueva" } };
-  k = saveBenchmarkItem(k, item, "own", ctx);
-  k = captureBenchmark(k, "own", { ...ctx, at: "2026-11-24T12:00:00.000Z" });
+  k = saveBenchmarkItem(k, item, "rival-qa", ctx);
+  k = captureBenchmark(k, "rival-qa", { ...ctx, at: "2026-11-24T12:00:00.000Z" });
   expect(k.benchmark.snapshots[0].brand.items[0].values.claim).toBe(
     "Promesa original",
   );

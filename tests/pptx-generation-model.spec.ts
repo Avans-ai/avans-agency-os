@@ -84,7 +84,7 @@ function richEpsa(): KnowledgeState {
     potential: 60,
     currentRelevance: 20,
   });
-  const own = k.benchmark.brands[0];
+  const own = newBrand(epsa.name, true);
   own.items = [
     item("content", {
       links: "https://example.com/post-1",
@@ -236,7 +236,7 @@ test("products, ICPs, competitor blocks and campaigns are duplicated from their 
   expect(count(11)).toBe(2); // two B2B ICPs
   expect(count(12)).toBe(0); // B2C not applicable
   for (const n of [20, 21, 22, 23, 24]) expect(count(n)).toBe(2); // two competitors
-  expect(count(15)).toBe(1); // own brand block
+  for (const n of [15, 16, 17, 18, 19]) expect(count(n)).toBe(0); // own brand is excluded
   expect(count(36)).toBe(2);
   expect(count(37)).toBe(2); // one investment page per campaign
   const at = (n: number, i = 0) => texts[manifest.slides.filter((s) => s.templateSlideNumber === n)[i].outputOrder - 1];

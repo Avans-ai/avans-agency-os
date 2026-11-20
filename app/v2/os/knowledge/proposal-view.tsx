@@ -1,4 +1,5 @@
 "use client";
+import { externalBrands } from "./benchmark";
 import { useState } from "react";
 import type { OsClient } from "../os-data";
 import { buttonClass } from "../ui";
@@ -45,7 +46,7 @@ export function proposalTargets(k: KnowledgeState, module: KnowledgeModule) {
     );
   if (module === "benchmark")
     return [
-      ...k.benchmark.brands.flatMap((b) =>
+      ...externalBrands(k.benchmark).flatMap((b) =>
         b.items.map((i) => ({
           id: i.id,
           section: i.section,

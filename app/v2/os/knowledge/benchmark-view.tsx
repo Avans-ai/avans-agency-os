@@ -11,6 +11,7 @@ import {
   type KnowledgeField,
 } from "./blueprints";
 import {
+  externalBrands,
   newBrand,
   newItem,
   saveBrand,
@@ -40,6 +41,9 @@ import {
   type SectionState,
 } from "./document-shell";
 import { saveBenchmarkItem, deleteBenchmarkItem } from "./mutations";
+import { BenchmarkIdeaDialog } from "./benchmark-idea-dialog";
+import { useOsStore } from "../os-store";
+import { canEditService } from "../director-data";
 function BrandEditor({
   client,
   brand,
@@ -58,10 +62,7 @@ function BrandEditor({
       key: "type",
       label: "Tipo",
       kind: "select",
-      options:
-        brand.type === "Propia"
-          ? ["Propia"]
-          : ["Directa", "Indirecta", "Referente"],
+      options: ["Directa", "Indirecta", "Referente"],
     },
     {
       key: "segmentIds",
@@ -179,7 +180,10 @@ export function BenchmarkView({
   headerActions?: ReactNode;
 }) {
   const { k, editable, invalid, mutate, context } = useKnowledge(client);
+  const { role, localHydrated } = useOsStore();
+  const canSaveIdea = localHydrated && canEditService(role, client.slug, "contenidos");
   const [brandEditor, setBrandEditor] = useState<BenchmarkBrand | null>(null);
+  const [idea, setIdea] = useState<{ brand: BenchmarkBrand; item: KnowledgeItem } | null>(null);
   const [editor, setEditor] = useState<{
     item: KnowledgeItem;
     bp: Blueprint;
@@ -190,10 +194,14 @@ export function BenchmarkView({
   const coverage = benchmarkCoverage(k.benchmark);
   const reports = benchmarkReport(k);
   const segments = discoveryOf(k).targetSegments;
-  const own = k.benchmark.brands.find((b) => b.type === "Propia");
-  const competitors = k.benchmark.brands
-    .filter((b) => b.type !== "Propia")
+  const competitors = externalBrands(k.benchmark)
     .sort((a, b) => Number(b.principal) - Number(a.principal));
+  const ownHistoryIds = new Set(k.benchmark.brands.filter((b) => b.type === "Propia" || b.id === "own").flatMap((b) => [b.id, ...b.items.map((i) => i.id)]));
+  const benchmarkHistory = {
+    ...k,
+    versions: k.versions.filter((v) => ["benchmark", "benchmark-brand", "finding"].includes(v.entityType) && !ownHistoryIds.has(v.entityId)),
+    audit: k.audit.filter((a) => /^Actualización de (benchmark|benchmark-brand|finding) ·/.test(a.action) && ![...ownHistoryIds].some((id) => a.action.includes(`· ${id} ·`))),
+  };
   const findingsBlueprint: Blueprint = {
     ...findingBlueprint,
     fields: [
@@ -271,6 +279,7 @@ export function BenchmarkView({
                   </button>
                 </div>
               ) : null}
+              {canSaveIdea && ["content", "paid", "news"].includes(bp.id) ? <button className={buttonClass("secondary", true)} onClick={() => setIdea({ brand, item })}>Guardar en Banco de ideas</button> : null}
             </article>
           ))
         ) : (
@@ -334,35 +343,9 @@ export function BenchmarkView({
       </details>
     ) : null;
   }
-  const ownBlocks = benchmarkBlueprints.map((bp, i) => ({
-    bp,
-    id: `benchmark-propia-${bp.id}`,
-    number: String(i + 2).padStart(2, "0"),
-    title:
-      bp.id === "overview"
-        ? `Análisis de ${own?.name ?? client.name}`
-        : bp.id === "content"
-          ? "Contenidos propios"
-          : bp.id === "paid"
-            ? "Paid media propio"
-            : bp.id === "web"
-              ? "Sitio web propio"
-              : "Diseño propio",
-    short:
-      bp.id === "overview"
-        ? "Marca del cliente"
-        : bp.id === "content"
-          ? "Contenidos"
-          : bp.id === "paid"
-            ? "Paid media"
-            : bp.id === "web"
-              ? "Web"
-              : "Diseño",
-  }));
-  const firstCompetitorNumber = ownBlocks.length + 2;
+  const firstCompetitorNumber = 2;
   const index = [
     { id: "benchmark-marcas", label: "Marcas" },
-    ...(own ? ownBlocks.map((b) => ({ id: b.id, label: b.short })) : []),
     ...competitors.map((c) => ({ id: `benchmark-competidor-${c.id}`, label: c.name })),
     { id: "benchmark-conclusiones", label: "Conclusiones" },
     { id: "benchmark-monitoreo", label: "Monitoreo" },
@@ -379,7 +362,7 @@ export function BenchmarkView({
                 <p className={m.eyebrowDoc}>02 · Análisis competitivo</p>
                 <h2>Benchmark</h2>
                 <p>
-                  Marca propia, competidores y conclusiones respaldadas por
+                  Competidores externos, referentes y conclusiones respaldadas por
                   relevamientos fechados. Las conclusiones alimentan el Plan de
                   Marketing.
                 </p>
@@ -404,7 +387,7 @@ export function BenchmarkView({
           id="benchmark-marcas"
           number="01"
           title="Marcas seleccionadas"
-          hint="Hasta cuatro competidores principales, elegidos con criterio y validados con el cliente. La marca propia se analiza con la misma estructura."
+          hint="Competidores directos, indirectos y referentes externos. La marca del cliente se consulta en Ficha, Discovery y Plan de Marketing."
           actions={
             editable ? (
               <button
@@ -416,7 +399,7 @@ export function BenchmarkView({
             ) : null
           }
         >
-          {k.benchmark.brands.length ? (
+          {competitors.length ? (
             <div className={o.tableWrap}>
               <table className={o.table}>
                 <thead>
@@ -430,10 +413,10 @@ export function BenchmarkView({
                   </tr>
                 </thead>
                 <tbody>
-                  {[...(own ? [own] : []), ...competitors].map((b) => (
+                  {competitors.map((b) => (
                     <tr key={b.id}>
                       <td>
-                        <a className={o.linkInk} href={b.type === "Propia" ? "#benchmark-propia-overview" : `#benchmark-competidor-${b.id}`}>{b.name}</a>
+                        <a className={o.linkInk} href={`#benchmark-competidor-${b.id}`}>{b.name}</a>
                         {b.demo ? <span className={m.small}> · DEMO</span> : null}
                       </td>
                       <td>{b.type}{b.principal ? " · principal" : ""}</td>
@@ -459,33 +442,6 @@ export function BenchmarkView({
             <p className={m.empty}>Todavía no hay marcas seleccionadas.</p>
           )}
         </DocumentSection>
-        {own
-          ? ownBlocks.map((block) => (
-              <DocumentSection
-                key={block.id}
-                id={block.id}
-                number={block.number}
-                title={block.title}
-                hint={block.bp.id === "overview" ? undefined : `Cómo trabaja ${own.name} en ${block.bp.label.toLowerCase()}.`}
-                state={blockState(coverageOf(own.id, block.bp.id))}
-                actions={
-                  <>
-                    {block.bp.id === "overview" ? brandTools(own) : null}
-                    {addButton(own, block.bp)}
-                  </>
-                }
-              >
-                {block.bp.id === "overview" ? (
-                  <>
-                    {brandMeta(own)}
-                    <ReviewBanner client={client} type="benchmark" id={own.id} />
-                  </>
-                ) : null}
-                {blockItems(own, block.bp)}
-                {block.bp.id === "design" ? snapshots(own) : null}
-              </DocumentSection>
-            ))
-          : null}
         {competitors.map((brand, i) => (
           <DocumentSection
             key={brand.id}
@@ -698,7 +654,7 @@ export function BenchmarkView({
               </article>
             ))}
           </section>
-          {editable ? <History k={k} /> : null}
+          {editable ? <History k={benchmarkHistory} /> : null}
         </DocumentSection>
       </DocumentShell>
       {brandEditor ? (
@@ -708,6 +664,7 @@ export function BenchmarkView({
           onClose={() => setBrandEditor(null)}
         />
       ) : null}
+      {idea ? <BenchmarkIdeaDialog client={client} brand={idea.brand} item={idea.item} onClose={() => setIdea(null)} /> : null}
       {editor ? (
         <ItemEditor
           item={editor.item}
