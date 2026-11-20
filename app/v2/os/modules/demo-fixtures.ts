@@ -6,6 +6,7 @@
  * ni LinkedIn Ads. Reemplazar por datos persistidos o integraciones reales. */
 import type { ServiceId } from "../os-data";
 import type { DemoSeed } from "./types";
+import { contentDemoSeedsFor } from "./content-demo";
 
 type SeedTable = Partial<Record<ServiceId, Record<string, Record<string, DemoSeed[]>>>>;
 
@@ -65,11 +66,6 @@ export const moduleDemoSeeds: SeedTable = {
         { id: "EJE-EPSA-02", nombre: "Servicio posventa", descripcion: "Respuesta técnica, repuestos y acompañamiento.", perfil: "Jefes de mantenimiento", participacion: "35", estado: "Activo" },
         { id: "EJE-EPSA-03", nombre: "Lanzamiento Line Up", descripcion: "Piezas que acompañan la pauta del lanzamiento.", perfil: "Compras y mantenimiento", participacion: "25", estado: "Activo" },
       ],
-      aca: [
-        { id: "EJE-ACA-01", nombre: "Beneficios para socios", descripcion: "Beneficios del mes y cómo acceder.", perfil: "Socios actuales", participacion: "45", estado: "Activo" },
-        { id: "EJE-ACA-02", nombre: "Asistencia y movilidad", descripcion: "Preguntas frecuentes y uso del servicio.", perfil: "Socios y potenciales socios", participacion: "35", estado: "Activo" },
-        { id: "EJE-ACA-03", nombre: "Turismo", descripcion: "Destinos y beneficios de viaje.", perfil: "Familias y viajeros", participacion: "20", estado: "En revisión" },
-      ],
       edinovo: [
         { id: "EJE-EDI-01", nombre: "Formación aplicable", descripcion: "Contenidos que muestran qué se aprende y para qué sirve.", perfil: "Profesionales", participacion: "60", estado: "Activo" },
         { id: "EJE-EDI-02", nombre: "Especialistas", descripcion: "Docentes y referentes de cada programa.", perfil: "Estudiantes e instituciones", participacion: "40", estado: "Activo" },
@@ -79,9 +75,6 @@ export const moduleDemoSeeds: SeedTable = {
       epsa: [
         { id: "IDE-EPSA-01", idea: "Webinar técnico con clientes actuales", eje: "EJE-EPSA-01", origen: "Reunión", detalle: "Caso de éxito en vivo para compras industriales.", estado: "Nueva" },
         { id: "IDE-EPSA-02", idea: "Checklist descargable de mantenimiento preventivo", eje: "EJE-EPSA-02", origen: "Benchmark", detalle: "Pieza de valor para jefes de mantenimiento.", estado: "En evaluación" },
-      ],
-      aca: [
-        { id: "IDE-ACA-01", idea: "Serie «Lo que tu credencial incluye»", eje: "EJE-ACA-01", origen: "Resultados", detalle: "Una pieza por beneficio poco conocido.", estado: "Aprobada" },
       ],
       edinovo: [
         { id: "IDE-EDI-01", idea: "Cápsulas de 60 s por episodio", eje: "EJE-EDI-01", origen: "Equipo", detalle: "Sostener frecuencia mientras se destraba la serie.", estado: "En evaluación" },
@@ -97,13 +90,6 @@ export const moduleDemoSeeds: SeedTable = {
         { id: "PZA-EPSA-06", titulo: "Guía de repuestos", eje: "EJE-EPSA-02", formato: "Documento LinkedIn", canal: "LinkedIn", fecha: "2026-10-29", estado: "Publicada", responsable: "Lucía Benítez", brief: "", copy: "", version: "v2", feedback: "", enlace: "Publicación de demostración" },
         { id: "PZA-EPSA-07", titulo: "Newsletter de octubre", eje: "EJE-EPSA-01", formato: "Newsletter", canal: "Email", fecha: "2026-10-30", estado: "Publicada", responsable: "Lucía Benítez", brief: "", copy: "", version: "v1", feedback: "", enlace: "Envío de demostración" },
       ],
-      aca: [
-        { id: "PZA-ACA-01", titulo: "Beneficios de noviembre", eje: "EJE-ACA-01", formato: "Carrusel", canal: "Instagram", fecha: "2026-11-05", estado: "Programada", responsable: "Lucía Benítez", brief: "", copy: "", version: "v2", feedback: "", enlace: "" },
-        { id: "PZA-ACA-02", titulo: "Reel: asistencia en ruta", eje: "EJE-ACA-02", formato: "Reel", canal: "Instagram", fecha: "2026-10-20", estado: "Publicada", responsable: "Lucía Benítez", brief: "", copy: "", version: "v1", feedback: "", enlace: "Publicación de demostración" },
-        { id: "PZA-ACA-03", titulo: "Carrusel · Preguntas frecuentes de asistencia", eje: "EJE-ACA-02", formato: "Carrusel", canal: "Instagram", fecha: "2026-11-09", estado: "En aprobación", responsable: "Lucía Benítez", brief: "Responder las seis consultas más repetidas.", copy: "", version: "v1", feedback: "", enlace: "" },
-        { id: "PZA-ACA-04", titulo: "Destinos de verano para socios", eje: "EJE-ACA-03", formato: "Post estático", canal: "Facebook", fecha: "2026-10-27", estado: "Publicada", responsable: "Lucía Benítez", brief: "", copy: "", version: "v1", feedback: "", enlace: "Publicación de demostración" },
-        { id: "PZA-ACA-05", titulo: "Historia: cómo pedir auxilio", eje: "EJE-ACA-02", formato: "Historia", canal: "Instagram", fecha: "2026-11-14", estado: "En producción", responsable: "Lucía Benítez", brief: "", copy: "", version: "", feedback: "", enlace: "" },
-      ],
       edinovo: [
         { id: "PZA-EDI-01", titulo: "Cápsula: introducción al programa", eje: "EJE-EDI-01", formato: "Video corto", canal: "YouTube", fecha: "2026-10-15", estado: "Publicada", responsable: "Lucía Benítez", brief: "", copy: "", version: "v1", feedback: "", enlace: "Publicación de demostración" },
         { id: "PZA-EDI-02", titulo: "Carrusel: programas 2027", eje: "EJE-EDI-02", formato: "Carrusel", canal: "Instagram", fecha: "2026-11-11", estado: "En revisión", responsable: "Tomás Aguirre", brief: "", copy: "", version: "v1", feedback: "", enlace: "" },
@@ -113,9 +99,6 @@ export const moduleDemoSeeds: SeedTable = {
     aprendizajes: {
       epsa: [
         { id: "APR-EPSA-C1", aprendizaje: "Los documentos de LinkedIn generan más guardados que los posts", evidencia: "Guía de repuestos vs. posts de octubre (demo)", eje: "EJE-EPSA-02", fecha: "2026-10-31", aplicar: "Sumar un documento por mes en el eje posventa." },
-      ],
-      aca: [
-        { id: "APR-ACA-C1", aprendizaje: "Las piezas de asistencia tienen más alcance que las de beneficios", evidencia: "Reel de asistencia en ruta (demo)", eje: "EJE-ACA-02", fecha: "2026-10-30", aplicar: "Usar asistencia como puerta de entrada a beneficios." },
       ],
     },
   },
@@ -227,5 +210,6 @@ export const moduleDemoSeeds: SeedTable = {
 };
 
 export function demoSeedsFor(clientSlug: string, serviceId: ServiceId, collection: string): DemoSeed[] {
-  return moduleDemoSeeds[serviceId]?.[collection]?.[clientSlug] ?? [];
+  // Contenidos de ACA (y sus pedidos/versiones de Diseño derivados) viven en content-demo.ts.
+  return contentDemoSeedsFor(clientSlug, serviceId, collection) ?? moduleDemoSeeds[serviceId]?.[collection]?.[clientSlug] ?? [];
 }

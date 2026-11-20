@@ -19,6 +19,7 @@ import { collectionDef, moduleCollections, primaryWorkCollection } from "./colle
 import { AxesSection, CalendarSection, ContentResultsSection, ContentSummary, IdeasSection, PiecesSection, PlansSection } from "./content";
 import { BrandSummary, BrandSystemSection, DesignLibrarySection, DesignRequestsSection } from "./design-workspace";
 import { ServiceGuidelines } from "./service-guidelines";
+import { ContentGuidelines } from "./content-guidelines";
 import { useModuleRecords } from "./store";
 import { DeliverablesSection, HistorySection, RecommendationsSection } from "./module-common";
 import { ModuleTaskBoard, useModuleTaskStats } from "./module-task-board";
@@ -285,7 +286,7 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
 
       <div className={m.body}>
         {!editable ? <p className={s.demoNote} style={{ margin: 0 }}>Tu rol de vista previa puede consultar este módulo, pero no modificarlo. Los permisos son visuales: todavía no se aplican en servidor.</p> : null}
-        {guidelines ? <ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} /> : <><ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} compact />{renderSection(current, ctx)}</>}
+        {guidelines ? serviceId === "contenidos" ? <ContentGuidelines client={client} /> : <ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} /> : <><ServiceGuidelines client={client} serviceId={supportDesign ? "contenidos" : serviceId} compact />{renderSection(current, ctx)}</>}
       </div>
     </div>
   );

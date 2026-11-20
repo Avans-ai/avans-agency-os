@@ -1,4 +1,5 @@
 import type { ModuleRecord } from "../modules/types";
+import { clientRequests, CLIENT_REQUEST_TYPES } from "../modules/content-workflow";
 
 export type PortalComment = {
   id: string;
@@ -8,7 +9,10 @@ export type PortalComment = {
   attachmentUrl?: string;
   attachmentName?: string;
   attachmentId?: string;
+  version?: string;
 };
+/** Pedido al cliente: solo tipo, detalle y estado (sin responsables internos). */
+export type PortalRequest = { id: string; type: typeof CLIENT_REQUEST_TYPES[number]; detail: string; status: "Pendiente" | "Recibido"; attachmentName?: string };
 
 /** Explicit public projection; never return the internal record or its history. */
 export type PortalContent = {
@@ -19,7 +23,10 @@ export type PortalContent = {
   description: string;
   objective: string;
   requestedMaterial: string;
+  requests: PortalRequest[];
   copy: string;
+  cta: string;
+  demo: boolean;
   channel: string;
   format: string;
   date: string;
@@ -80,11 +87,15 @@ export function projectPortalContent(record: ModuleRecord, clientSlug: string, a
   const status = review === "preliminary" ? "Revisá la propuesta" : review === "final" ? "Revisá la pieza final"
     : review === "information" ? "Necesitamos tu información" : v.estado === "Aprobado" ? "Aprobado para programar"
     : ["Programado", "Programada"].includes(v.estado) ? "Programado" : v.estado === "Publicada" ? "Publicado"
-    : v.estado === "Ajustes" ? "Estamos aplicando tus cambios" : "En preparación";
+    : v.estado === "Ajustes" ? "Estamos aplicando tus cambios"
+    : ["Preproducción", "Producción de diseño", "Revisión interna del diseño"].includes(v.estado) ? "Aprobada · en producción" : "En preparación";
+  // Pedidos compartidos (del snapshot) con su estado actual: la respuesta del cliente se ve enseguida.
+  const live = clientRequests(v);
+  const requests: PortalRequest[] = clientRequests(publicValues).map((item) => { const current = live.find((entry) => entry.id === item.id); return { id: item.id, type: item.type, detail: item.detail, status: current?.status || item.status, attachmentName: current?.attachmentName }; });
   return {
     id: record.id, title: publicValues.titulo || "Contenido sin título", axis,
     idea: publicValues.idea || "", description: publicValues.bajada || "", objective: publicValues.objetivo || "",
-    requestedMaterial: publicValues.necesitaCliente || "", copy: publicValues.copy || "", channel: publicValues.canal || "",
+    requestedMaterial: publicValues.necesitaCliente || "", requests, copy: publicValues.copy || "", cta: publicValues.cta || "", demo: record.source === "demo", channel: publicValues.canal || "",
     format: publicValues.formato || "", date: final ? v.fecha || publicValues.fecha || "" : publicValues.fecha || "", time: final ? v.hora || publicValues.hora || "" : publicValues.hora || "",
     reference: portalSafeUrl(publicValues.referencia), artwork: final || v.clientSnapshot ? portalSafeUrl(publicValues.archivoDiseno) : undefined,
     version: final || v.clientSnapshot ? publicValues.version || "" : "", status, pending: review !== null, review,
@@ -97,6 +108,7 @@ export function projectPortalContent(record: ModuleRecord, clientSlug: string, a
       attachmentName: typeof entry.attachmentName === "string" ? entry.attachmentName : undefined,
       attachmentId: typeof entry.attachmentId === "string" ? entry.attachmentId
         : typeof entry.attachmentUrl === "string" && entry.attachmentUrl.startsWith("local-file:") ? entry.attachmentUrl.slice(11) : undefined,
+      version: typeof entry.version === "string" ? entry.version : undefined,
     })),
   };
 }
