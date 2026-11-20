@@ -411,11 +411,11 @@ export function directorMeta(clientSlug: string) {
   return metaByClient[clientSlug];
 }
 
-export function isAssignedClient(clientSlug: string, userName = CURRENT_USER.name) {
+export function isAssignedClient(clientSlug: string, userName: string = CURRENT_USER.name) {
   return Boolean(metaByClient[clientSlug]?.assignedTo.includes(userName));
 }
 
-export function assignedClients(userName = CURRENT_USER.name) {
+export function assignedClients(userName: string = CURRENT_USER.name) {
   return osClients.filter((client) => isAssignedClient(client.slug, userName));
 }
 
@@ -423,16 +423,26 @@ export function isActiveClient(client: OsClient) {
   return Boolean(metaByClient[client.slug]?.active) && client.status !== "pausado";
 }
 
-export function canViewFinancials(role: "admin" | "operativo" | "pm") {
+export function canViewFinancials(role: import("./preview-roles").PreviewRole) {
   return role === "admin";
 }
 
-export function canManageClient(role: "admin" | "operativo" | "pm", clientSlug: string) {
-  return role === "admin" || isAssignedClient(clientSlug);
+export function canManageClient(role: import("./preview-roles").PreviewRole, clientSlug: string) {
+  return role === "admin" || (role === "operativo" && isAssignedClient(clientSlug)) || (role === "pm" && Boolean(osClients.find((client) => client.slug === clientSlug)?.team.some((person) => person.name === "Valentina Ríos" && person.role.startsWith("Responsable de cuenta"))));
 }
 
-export function canEditService(role: "admin" | "operativo" | "pm", clientSlug: string, serviceId: ServiceId) {
+export function canEditService(role: import("./preview-roles").PreviewRole, clientSlug: string, serviceId: ServiceId) {
   if (role === "admin") return true;
+  if (role === "client" || role === "provider") return false;
+  const peopleByRole = { content: "Lucía Benítez", designer: "Tomás Aguirre", technical: "Martín Ledesma", pm: "Valentina Ríos" };
+  if (role !== "operativo") {
+    const assigned = osClients.find((c) => c.slug === clientSlug)?.team.some((p) => p.name === peopleByRole[role]);
+    if (!assigned) return false;
+    if (role === "pm") return true;
+    if (role === "content") return serviceId === "contenidos" || serviceId === "audiovisuales";
+    if (role === "designer") return serviceId === "diseno-marca" || serviceId === "contenidos";
+    if (role === "technical") return ["publicidad-digital", "desarrollo-web", "crm"].includes(serviceId);
+  }
   return isAssignedClient(clientSlug) && operativeServiceAccess.has(serviceId);
 }
 
@@ -483,14 +493,15 @@ export function taskOwnerRole(task: Pick<OsTask, "owner">) {
   return people.find((person) => person.name === task.owner)?.role ?? "Rol sin definir";
 }
 
-export function clientOfTask(task: Pick<OsTask, "projectSlug">) {
+export function clientOfTask(task: Pick<OsTask, "projectSlug" | "clientSlug">) {
+  if (task.clientSlug) return osClients.find((client) => client.slug === task.clientSlug);
   const project = osProjects.find((item) => item.slug === task.projectSlug);
   return project ? osClients.find((client) => client.slug === project.clientSlug) : undefined;
 }
 
 export function tasksForClient(tasks: OsTask[], clientSlug: string) {
   const projectSlugs = new Set(osProjects.filter((project) => project.clientSlug === clientSlug).map((project) => project.slug));
-  return tasks.filter((task) => projectSlugs.has(task.projectSlug));
+  return tasks.filter((task) => task.clientSlug ? task.clientSlug === clientSlug : projectSlugs.has(task.projectSlug));
 }
 
 export function isArchivedTask(task: OsTask) {

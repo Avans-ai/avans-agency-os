@@ -59,6 +59,29 @@ export function writeLocalJson<T>(key: string, value: T) {
   }
 }
 
+/** Commit local de varias entidades: las vistas reciben eventos solo al finalizar.
+ * Restaura valores previos ante cuota/errores. No reemplaza transacciones servidor. */
+export function writeLocalBatch(writes: { key: string; value: unknown }[]) {
+  if (typeof window === "undefined") return false;
+  const previous = new Map<string, string | null>();
+  try {
+    const at = new Date().toISOString();
+    const serialized = writes.map(({ key, value }) => ({ key, raw: JSON.stringify({ version: 1, value, savedAt: at }) }));
+    for (const { key } of serialized) previous.set(key, window.localStorage.getItem(fullKey(key)));
+    for (const { key, raw } of serialized) window.localStorage.setItem(fullKey(key), raw);
+    for (const { key } of serialized) emitLocalChange(key);
+    return true;
+  } catch {
+    for (const [key, raw] of previous) {
+      try {
+        if (raw === null) window.localStorage.removeItem(fullKey(key));
+        else window.localStorage.setItem(fullKey(key), raw);
+      } catch { /* La UI informa el fallo; no se declara guardado. */ }
+    }
+    return false;
+  }
+}
+
 export function removeLocalJson(key: string) {
   if (typeof window === "undefined") return false;
   try {

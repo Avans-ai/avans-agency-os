@@ -14,6 +14,7 @@ import {
 import { Glyph } from "../glyphs";
 import { osClients, osProjects, serviceCatalog, serviceLabel, type ClientStatus, type OsClient, type ServiceId } from "../os-data";
 import { useOsStore } from "../os-store";
+import { previewActor, type PreviewRole } from "../preview-roles";
 import { dueLabel, formatMoney, STATUS_ORDER } from "../selectors";
 import { Avatar, buttonClass, cx, OSEmptyState, OSStatus, PageHead, Progress } from "../ui";
 import s from "../os.module.css";
@@ -46,8 +47,8 @@ function validTab(value: string | null): ClientTab {
   return value === "active" || value === "inactive" || value === "all" || value === "mine" ? value : "mine";
 }
 
-function inTab(client: OsClient, tab: ClientTab) {
-  if (tab === "mine") return isAssignedClient(client.slug);
+function inTab(client: OsClient, tab: ClientTab, role: PreviewRole) {
+  if (tab === "mine") return isAssignedClient(client.slug, previewActor(role)) || client.team.some((p) => p.name === previewActor(role));
   if (tab === "active") return isActiveClient(client);
   if (tab === "inactive") return !isActiveClient(client);
   return true;
@@ -153,17 +154,17 @@ export function ClientsRestructured() {
   const operations = useMemo(() => new Map(osClients.map((client) => [client.slug, clientOperation(client, tasks)])), [tasks]);
 
   const tabCounts = useMemo(() => ({
-    mine: osClients.filter((client) => inTab(client, "mine")).length,
-    active: osClients.filter((client) => inTab(client, "active")).length,
-    inactive: osClients.filter((client) => inTab(client, "inactive")).length,
+    mine: osClients.filter((client) => inTab(client, "mine", role)).length,
+    active: osClients.filter((client) => inTab(client, "active", role)).length,
+    inactive: osClients.filter((client) => inTab(client, "inactive", role)).length,
     all: osClients.length,
-  }), []);
+  }), [role]);
 
   const { rows, attentionCount } = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
     const base = osClients
       .map((client) => ({ client, meta: directorMeta(client.slug), op: operations.get(client.slug)! }))
-      .filter(({ client }) => inTab(client, tab))
+      .filter(({ client }) => inTab(client, tab, role))
       .filter(({ client }) => status === "todos" || client.status === status)
       .filter(({ client }) => service === "todos" || servicesOf(client.slug).includes(service))
       .filter(({ client }) => !normalized || [
@@ -182,7 +183,7 @@ export function ClientsRestructured() {
         return a.client.name.localeCompare(b.client.name, "es");
       });
     return { rows: filtered, attentionCount: base.filter(({ op }) => op.needsAttention).length };
-  }, [activeSort, attentionOnly, operations, query, service, servicesOf, status, tab]);
+  }, [activeSort, attentionOnly, operations, query, service, servicesOf, status, tab, role]);
 
   function clearFilters() {
     setQuery("");

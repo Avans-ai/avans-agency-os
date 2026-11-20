@@ -6,12 +6,14 @@
  * multi-user persistence. Replace these actions with authenticated server
  * mutations once the Avans Supabase project is active and its RLS policies
  * have been applied and tested. */
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useSyncExternalStore, type ReactNode } from "react";
 import { CURRENT_USER, ideas as seedIdeas, osClients, osTasks, serviceLabel, type DueKind, type Idea, type IdeaState, type OsTask, type Priority, type ServiceId, type TaskStatus, type TaskWorkItem } from "./os-data";
-import { readLocalJson, writeLocalJson } from "./local-persistence";
-import { serviceForTask, withTaskService } from "./director-data";
+import { readLocalJson, writeLocalJson, writeLocalBatch } from "./local-persistence";
+import { clientOfTask, serviceForTask, withTaskService } from "./director-data";
 
-export type PreviewRole = "admin" | "operativo" | "pm";
+import { PREVIEW_ROLES, previewActor, type PreviewRole } from "./preview-roles";
+import { upcomingNotifications, workflowNotification, type WorkflowNotification, type LocalWrite } from "./workflow-tasks";
+export type { PreviewRole } from "./preview-roles";
 export type Toast = { id: number; message: string; tone: "default" | "success" | "error"; undo?: OsTask[] };
 
 type State = {
@@ -23,12 +25,13 @@ type State = {
   services: Record<string, ServiceId[]>;
   ideas: Idea[];
   ideaSeq: number;
+  notifications: WorkflowNotification[];
   hydrated: boolean;
 };
-type PersistedState = Pick<State, "tasks" | "seq" | "role" | "services" | "ideas" | "ideaSeq">;
+type PersistedState = Pick<State, "tasks" | "seq" | "role" | "services" | "ideas" | "ideaSeq" | "notifications">;
 type Action =
   | { type: "hydrate"; state: PersistedState }
-  | { type: "replace"; tasks: OsTask[]; toast?: Omit<Toast, "id"> | null; seq?: number }
+  | { type: "replace"; tasks: OsTask[]; toast?: Omit<Toast, "id"> | null; seq?: number; notification?: WorkflowNotification }
   | { type: "toast"; toast: Omit<Toast, "id"> | null }
   | { type: "role"; role: PreviewRole }
   | { type: "services"; clientSlug: string; services: ServiceId[]; message: string }
@@ -47,6 +50,7 @@ function seedState(): State {
     services: Object.fromEntries(osClients.map((client) => [client.slug, client.services])),
     ideas: seedIdeas,
     ideaSeq: 40,
+    notifications: [],
     hydrated: false,
   };
 }
@@ -60,7 +64,8 @@ function validPersistedState(value: PersistedState | null, fallback: State): Per
     // desde serviceForTask. No se descarta ni se reescribe ningún otro dato.
     tasks: value.tasks.map(withTaskService),
     seq: Number.isFinite(value.seq) ? value.seq : fallback.seq,
-    role: value.role === "operativo" || value.role === "pm" ? value.role : "admin",
+    role: PREVIEW_ROLES.some((item) => item.id === value.role) ? value.role : "admin",
+    notifications: Array.isArray(value.notifications) ? value.notifications : [],
     services: { ...fallback.services, ...value.services },
     ideas: value.ideas,
     ideaSeq: Number.isFinite(value.ideaSeq) ? value.ideaSeq : fallback.ideaSeq,
@@ -70,10 +75,10 @@ function validPersistedState(value: PersistedState | null, fallback: State): Per
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "hydrate":
-      return { ...state, ...action.state, hydrated: true };
+      return { ...state, ...action.state, hydrated: true, toast: state.toast?.undo ? null : state.toast };
     case "replace": {
       const toastSeq = action.toast ? state.toastSeq + 1 : state.toastSeq;
-      return { ...state, tasks: action.tasks, seq: action.seq ?? state.seq, toastSeq, toast: action.toast ? { ...action.toast, id: toastSeq } : action.toast === null ? null : state.toast };
+      return { ...state, notifications: action.notification ? [action.notification, ...state.notifications] : state.notifications, tasks: action.tasks, seq: action.seq ?? state.seq, toastSeq, toast: action.toast ? { ...action.toast, id: toastSeq } : action.toast === null ? null : state.toast };
     }
     case "toast": {
       const toastSeq = state.toastSeq + 1;
@@ -118,6 +123,9 @@ type Store = {
   toast: Toast | null;
   ideas: Idea[];
   localHydrated: boolean;
+  notifications: WorkflowNotification[];
+  markNotificationRead: (id: string) => void;
+  commitWorkflow: (task: OsTask, notification: WorkflowNotification | undefined, writes: LocalWrite[]) => boolean;
   servicesOf: (clientSlug: string) => ServiceId[];
   setServices: (clientSlug: string, services: ServiceId[]) => void;
   addIdea: (clientSlug: string, title: string, detail: string) => void;
@@ -160,13 +168,31 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
       services: state.services,
       ideas: state.ideas,
       ideaSeq: state.ideaSeq,
+      notifications: state.notifications,
     };
-    writeLocalJson(STORE_KEY, persisted);
-  }, [state.hydrated, state.ideaSeq, state.ideas, state.role, state.seq, state.services, state.tasks]);
+    const saved = readLocalJson<PersistedState | null>(STORE_KEY, null);
+    if (JSON.stringify(saved) !== JSON.stringify(persisted)) writeLocalJson(STORE_KEY, persisted);
+  }, [state.hydrated, state.ideaSeq, state.ideas, state.role, state.seq, state.services, state.tasks, state.notifications]);
+
+  // Keep other open tabs in this browser coherent. No cross-device sync is implied.
+  useEffect(() => {
+    function receive(event: StorageEvent) {
+      if (event.key === "avans-os:preview:v1:workspace" && event.newValue) {
+        const value = readLocalJson<PersistedState | null>(STORE_KEY, null);
+        if (value) dispatch({ type: "hydrate", state: validPersistedState(value, seedState()) });
+      }
+    }
+    window.addEventListener("storage", receive);
+    return () => window.removeEventListener("storage", receive);
+  }, []);
 
   const update = useCallback((id: string, change: (task: OsTask) => OsTask, message: string, tone: Toast["tone"] = "default", undoable = false) => {
     const next = state.tasks.map((item) => (item.id === id ? change({ ...item }) : item));
-    dispatch({ type: "replace", tasks: next, toast: { message: localMessage(message), tone, undo: undoable ? state.tasks : undefined } });
+    const before = state.tasks.find((item) => item.id === id);
+    const after = next.find((item) => item.id === id);
+    const kind = after && before ? after.owner !== before.owner ? "owner" : after.status === "En aprobación" && before.status !== after.status ? "review" : after.blocked && before.blocked !== after.blocked ? "blocked" : undefined : undefined;
+    const notification = kind && after ? workflowNotification({ ...after, clientSlug: clientOfTask(after)?.slug }, `${id}-${Date.now()}`, new Date().toISOString(), kind) : undefined;
+    dispatch({ type: "replace", tasks: next, notification, toast: { message: localMessage(message), tone, undo: undoable ? state.tasks : undefined } });
   }, [state.tasks]);
 
   const store = useMemo<Store>(() => ({
@@ -175,6 +201,27 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
     toast: state.toast,
     ideas: state.ideas,
     localHydrated: state.hydrated,
+    notifications: state.notifications,
+    markNotificationRead: (id) => {
+      const latest = validPersistedState(readLocalJson<PersistedState | null>(STORE_KEY, null), state);
+      const reminder = upcomingNotifications(latest.tasks, new Date().toISOString()).find((item) => item.id === id);
+      const all = reminder && !latest.notifications.some((item) => item.id === id) ? [...latest.notifications, reminder] : latest.notifications;
+      const next = { ...latest, notifications: all.map((item) => item.id === id ? { ...item, readAt: new Date().toISOString() } : item) };
+      if (writeLocalJson(STORE_KEY, next)) dispatch({ type: "hydrate", state: next });
+    },
+    commitWorkflow: (task, notification, writes) => {
+      const latest = validPersistedState(readLocalJson<PersistedState | null>(STORE_KEY, null), state);
+      const next: PersistedState = { ...latest,
+        tasks: latest.tasks.some((item) => item.id === task.id) ? latest.tasks.map((item) => item.id === task.id ? task : item) : [...latest.tasks, task],
+        notifications: notification && !latest.notifications.some((item) => item.id === notification.id) ? [notification, ...latest.notifications] : latest.notifications,
+      };
+      if (!writeLocalBatch([...writes, { key: STORE_KEY, value: next }])) {
+        dispatch({ type: "toast", toast: { message: "No se pudo guardar el cambio. Revisá el espacio disponible del navegador y reintentá.", tone: "error" } });
+        return false;
+      }
+      dispatch({ type: "hydrate", state: next });
+      return true;
+    },
     servicesOf: (clientSlug) => state.services[clientSlug] ?? [],
     setServices: (clientSlug, services) => {
       const before = state.services[clientSlug] ?? [];
@@ -190,17 +237,21 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
     },
     setIdeaState: (id, ideaState) => dispatch({ type: "ideas", ideas: state.ideas.map((idea) => (idea.id === id ? { ...idea, state: ideaState } : idea)), message: localMessage(`${id}: ${ideaState}`) }),
     setRole: (role) => dispatch({ type: "role", role }),
-    setStatus: (id, status) => update(id, (item) => ({ ...item, status, completedAt: completionDate(status, item.completedAt), archivedAt: status === "Hecho" ? item.archivedAt : undefined, activity: [now(`cambió el estado de ${item.status} a ${status}`), ...item.activity] }), `Estado actualizado: ${status}`, "default", true),
+    setStatus: (id, status) => {
+      if (state.tasks.find((task) => task.id === id)?.workflow) { dispatch({ type: "toast", toast: { message: "Abrí la pieza vinculada para avanzar su revisión y conservar las aprobaciones.", tone: "default" } }); return; }
+      update(id, (item) => ({ ...item, status, completedAt: completionDate(status, item.completedAt), archivedAt: status === "Hecho" ? item.archivedAt : undefined, activity: [now(`cambió el estado de ${item.status} a ${status}`), ...item.activity] }), `Estado actualizado: ${status}`, "default", true); },
     setPriority: (id, prio) => update(id, (item) => ({ ...item, prio, activity: [now(`cambió la prioridad a ${prio}`), ...item.activity] }), "Prioridad actualizada"),
     addComment: (id, text) => update(id, (item) => ({ ...item, comments: [...item.comments, { who: CURRENT_USER.name, when: "Ahora", text }], activity: [now("comentó"), ...item.activity] }), "Comentario publicado"),
     unblock: (id) => update(id, (item) => ({ ...item, blocked: undefined, activity: [now("quitó el bloqueo"), ...item.activity] }), "Tarea desbloqueada", "success", true),
     toggleDone: (id) => {
       const target = state.tasks.find((item) => item.id === id);
       if (!target) return;
+      if (target.workflow) { dispatch({ type: "toast", toast: { message: "Completá la acción desde la pieza vinculada.", tone: "default" } }); return; }
       const done = target.status !== "Hecho";
       update(id, (item) => ({ ...item, status: done ? "Hecho" : "Por hacer", completedAt: done ? item.completedAt ?? new Date().toISOString() : undefined, archivedAt: done ? item.archivedAt : undefined, activity: [now(done ? "marcó la tarea como Hecho" : "reabrió la tarea"), ...item.activity] }), done ? `${target.id} marcada como hecha` : `${target.id} reabierta`, "default", true);
     },
     approve: (id) => {
+      if (state.tasks.find((task) => task.id === id)?.workflow) { dispatch({ type: "toast", toast: { message: "Revisá y aprobá desde la pieza vinculada.", tone: "default" } }); return; }
       const unblocked = state.tasks.filter((item) => item.blocked?.includes(`(${id})`)).map((item) => item.id);
       const next = state.tasks.map((item) => {
         if (item.id === id) return { ...item, status: "Hecho" as const, completedAt: item.completedAt ?? new Date().toISOString(), activity: [now("aprobó la entrega"), ...item.activity] };
@@ -210,14 +261,16 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
       const extra = unblocked.length ? ` ${unblocked.join(", ")} queda desbloqueada.` : "";
       dispatch({ type: "replace", tasks: next, toast: { message: localMessage(`Aprobado.${extra}`), tone: "success", undo: state.tasks } });
     },
-    requestChanges: (id, note) => update(id, (item) => ({
+    requestChanges: (id, note) => {
+      if (state.tasks.find((task) => task.id === id)?.workflow) { dispatch({ type: "toast", toast: { message: "Pedí los ajustes desde la pieza vinculada.", tone: "default" } }); return; }
+      update(id, (item) => ({
       ...item,
       status: "En curso",
       completedAt: undefined,
       archivedAt: undefined,
       comments: note ? [...item.comments, { who: CURRENT_USER.name, when: "Ahora", text: note }] : item.comments,
       activity: [now("pidió cambios"), ...item.activity],
-    }), "Cambios pedidos: la tarea vuelve a En curso", "default", true),
+    }), "Cambios pedidos: la tarea vuelve a En curso", "default", true); },
     createTask: (input) => {
       const id = `T-${state.seq}`;
       const created: OsTask = {
@@ -226,9 +279,9 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
         workItem: input.workItem,
         deliverable: input.deliverable,
         approver: input.approver,
-        status: "Por hacer", desc: input.desc?.trim() || "Sin descripción todavía.", files: [], comments: [], activity: [now("creó la tarea")],
+        status: "Por hacer", desc: input.desc?.trim() || "Sin descripción todavía.", files: [], comments: [], activity: [{ text: `${previewActor(state.role)} creó la tarea`, when: new Date().toISOString() }],
       };
-      dispatch({ type: "replace", tasks: [...state.tasks, created], seq: state.seq + 1, toast: { message: localMessage(`${id} creada en Por hacer`), tone: "default", undo: state.tasks } });
+      dispatch({ type: "replace", tasks: [...state.tasks, created], notification: workflowNotification({ ...created, clientSlug: clientOfTask(created)?.slug }, `${id}-${Date.now()}`, new Date().toISOString(), "assignment"), seq: state.seq + 1, toast: { message: localMessage(`${id} creada en Por hacer`), tone: "default", undo: state.tasks } });
       return id;
     },
     editTask: (id, patch, activity) => update(id, (item) => ({ ...item, ...patch, activity: [now(activity), ...item.activity] }), "Tarea actualizada", "default", true),
@@ -243,8 +296,23 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }
 
+const subscribeHydration = () => () => {};
+const clientHydrated = () => true;
+const serverHydrated = () => false;
+
 export function useOsStore() {
   const store = useContext(StoreContext);
+  // A streamed/Suspense child may hydrate after the provider has loaded storage.
+  // Its first render must still match the server's seed, then reveal local data.
+  const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated);
   if (!store) throw new Error("useOsStore must be used inside OsStoreProvider");
-  return store;
+  return hydrated ? store : {
+    ...store,
+    tasks: osTasks,
+    ideas: seedIdeas,
+    role: "admin" as PreviewRole,
+    notifications: [],
+    localHydrated: false,
+    servicesOf: (slug: string) => osClients.find((client) => client.slug === slug)?.services ?? [],
+  };
 }

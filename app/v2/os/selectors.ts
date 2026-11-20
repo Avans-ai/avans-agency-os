@@ -27,22 +27,22 @@ export function projectProgress(projectSlug: string, tasks: OsTask[]) {
   return Math.round(own.reduce((sum, item) => sum + PROGRESS_WEIGHT[item.status], 0) / own.length * 100);
 }
 
-export function isMine(item: OsTask) {
-  return item.owner === CURRENT_USER.name;
+export function isMine(item: OsTask, actor = CURRENT_USER.name as string) {
+  return item.owner === actor;
 }
-export function waitsForMe(item: OsTask) {
-  return item.status === "En aprobación" && item.approver === CURRENT_USER.name;
+export function waitsForMe(item: OsTask, actor = CURRENT_USER.name as string) {
+  return item.status === "En aprobación" && item.approver === actor;
 }
 
 /** "Mis tareas": own open tasks plus approvals assigned to me that are tracked as a task. */
-export function myOpenWork(tasks: OsTask[]) {
-  return tasks.filter(item => (isMine(item) && item.status !== "Hecho") || (waitsForMe(item) && item.approvalTitle));
+export function myOpenWork(tasks: OsTask[], actor = CURRENT_USER.name as string) {
+  return tasks.filter(item => (isMine(item, actor) && item.status !== "Hecho") || (waitsForMe(item, actor) && item.approvalTitle));
 }
 export function pendingApprovals(tasks: OsTask[]) {
   return tasks.filter(item => item.status === "En aprobación");
 }
-export function myApprovals(tasks: OsTask[]) {
-  return tasks.filter(waitsForMe);
+export function myApprovals(tasks: OsTask[], actor = CURRENT_USER.name as string) {
+  return tasks.filter((item) => waitsForMe(item, actor));
 }
 export function activeBlockers(tasks: OsTask[]) {
   return tasks.filter(item => item.blocked && item.status !== "Hecho");

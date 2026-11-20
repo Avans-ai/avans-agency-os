@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { osProjects, type ClientStatus } from "../os-data";
 import { useOsStore } from "../os-store";
+import { previewActor } from "../preview-roles";
 import { DUE_GROUPS, getClient, myApprovals, myOpenWork, pendingApprovals, projectProgress, STATUS_ORDER, tasksOf, waitsForMe } from "../selectors";
 import { ApprovalRow, MyTaskRow, NewTaskButton } from "../task-blocks";
 import { cx, OSEmptyState, OSStatus, PageHead, Progress } from "../ui";
@@ -72,10 +73,11 @@ export function ProjectsScreen() {
 }
 
 export function ApprovalsScreen() {
-  const { tasks } = useOsStore();
+  const { tasks, role } = useOsStore();
+  const actor = previewActor(role);
   const all = pendingApprovals(tasks);
-  const mine = myApprovals(tasks);
-  const others = all.filter(item => !waitsForMe(item));
+  const mine = myApprovals(tasks, actor);
+  const others = all.filter(item => !waitsForMe(item, actor));
   return (
     <div className={s.page}>
       <PageHead rotulo="Operaciones" title="Aprobaciones" description="Entregas que esperan una decisión interna antes de avanzar o enviarse al cliente. Nada se envía automáticamente." />
@@ -87,16 +89,17 @@ export function ApprovalsScreen() {
         <div className={s.cardHead}><h2 id="agency-approvals">Resto de la agencia</h2><span className={s.cardMeta}>{others.length}</span></div>
         {others.length ? others.map(item => <ApprovalRow key={item.id} item={item} actions="decide" />) : <OSEmptyState icon="chispa" title="Sin otras aprobaciones pendientes" />}
       </section>
-      <p className={s.demoNote}>Aprobar o pedir cambios actualiza la tarea solo en esta sesión (simulado). La persistencia y los permisos por rol quedan pendientes.</p>
+      <p className={s.demoNote}>Las decisiones se guardan en este navegador. Los contenidos se revisan desde su pieza vinculada; autenticación y sincronización multiusuario siguen pendientes.</p>
     </div>
   );
 }
 
 export function MyTasksScreen() {
-  const { tasks } = useOsStore();
+  const { tasks, role } = useOsStore();
+  const actor = previewActor(role);
   const [showDone, setShowDone] = useState(false);
-  const open = myOpenWork(tasks);
-  const done = tasks.filter(item => item.owner === "Nicolás Okro" && item.status === "Hecho");
+  const open = myOpenWork(tasks, actor);
+  const done = tasks.filter(item => item.owner === actor && item.status === "Hecho");
   return (
     <div className={s.page}>
       <PageHead rotulo="Operaciones" title="Mis tareas" description="Tus tareas abiertas en todos los proyectos, ordenadas por vencimiento." actions={<NewTaskButton />} />

@@ -8,6 +8,8 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { writeLocalJson } from "../local-persistence";
 import { CURRENT_USER, type ServiceId } from "../os-data";
+import { useOsStore } from "../os-store";
+import { previewActor } from "../preview-roles";
 import { collectionDef } from "./collections";
 import { DEMO_SEED_DATE, demoSeedsFor } from "./demo-fixtures";
 import type { CollectionDef, ModuleRecord, RecordHistoryEntry } from "./types";
@@ -99,6 +101,8 @@ export type ModuleData = Record<string, ModuleRecord[]>;
 
 /** Colecciones de un cliente y módulo, con altas y ediciones guardadas en este navegador. */
 export function useModuleRecords(clientSlug: string, serviceId: ServiceId, collections: string[]) {
+  const { role } = useOsStore();
+  const actor = previewActor(role);
   const ids = collections.join("|");
   const keys = useMemo(() => ids.split("|").filter(Boolean).map((id) => moduleKey(clientSlug, serviceId, id)), [clientSlug, ids, serviceId]);
   const { raws, hydrated } = useLocalKeys(keys);
@@ -124,28 +128,28 @@ export function useModuleRecords(clientSlug: string, serviceId: ServiceId, colle
       client: clientSlug,
       module: serviceId,
       collection: def.id,
-      user: CURRENT_USER.name,
+      user: actor,
       source: "manual",
       createdAt: at,
       updatedAt: at,
-      history: [...(note ? [{ at, user: CURRENT_USER.name, text: note }] : []), { at, user: CURRENT_USER.name, text: `Creó ${def.singular}` }],
+      history: [...(note ? [{ at, user: actor, text: note }] : []), { at, user: actor, text: `Creó ${def.singular}` }],
       values,
     };
     const ok = writeLocalJson(moduleKey(clientSlug, serviceId, def.id), [record, ...current(def.id)]);
     return ok ? record : null;
-  }, [clientSlug, current, serviceId]);
+  }, [clientSlug, current, serviceId, actor]);
 
   const update = useCallback((collection: string, id: string, patch: Record<string, string>, text: string) => {
     const at = now();
     const next = current(collection).map((record) => record.id === id ? {
       ...record,
-      user: CURRENT_USER.name,
+      user: actor,
       updatedAt: at,
       values: { ...record.values, ...patch },
-      history: [{ at, user: CURRENT_USER.name, text }, ...record.history],
+      history: [{ at, user: actor, text }, ...record.history],
     } : record);
     return writeLocalJson(moduleKey(clientSlug, serviceId, collection), next);
-  }, [clientSlug, current, serviceId]);
+  }, [clientSlug, current, serviceId, actor]);
 
   return { data, hydrated, create, update };
 }

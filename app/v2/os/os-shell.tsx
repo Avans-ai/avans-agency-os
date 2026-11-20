@@ -7,8 +7,10 @@ import { ThemeSync, ThemeToggle } from "../components/theme-toggle";
 import { osAreas, osSettingsItems, type OsNavArea } from "../navigation";
 import { AvansIcon, AvansIsotipo, AvansWordmark } from "./brand";
 import { Glyph } from "./glyphs";
-import { CURRENT_USER, notifications, osClients, osProjects, serviceLabel } from "./os-data";
+import { CURRENT_USER, osClients, osProjects, serviceLabel } from "./os-data";
 import { useOsStore } from "./os-store";
+import { PREVIEW_ROLES, previewActor } from "./preview-roles";
+import { upcomingNotifications } from "./workflow-tasks";
 import { OSToastViewport } from "./overlays";
 import { myApprovals, pendingApprovals } from "./selectors";
 import { cx, OSRestricted, buttonClass } from "./ui";
@@ -146,20 +148,27 @@ function GlobalSearch() {
 }
 
 function Notifications() {
+  const { notifications: saved, role, tasks, localHydrated, markNotificationRead } = useOsStore();
+  const [now, setNow] = useState(() => new Date().toISOString());
+  useEffect(() => { const timer = setInterval(() => setNow(new Date().toISOString()), 60000); return () => clearInterval(timer); }, []);
+  const generated = localHydrated ? [...saved, ...upcomingNotifications(tasks, now).filter((item) => !saved.some((other) => other.id === item.id))].filter((item) => role === "admin" || item.recipient === previewActor(role)) : [];
+  const unread = generated.filter((item) => !item.readAt).length;
+  const notifications = generated.length ? generated.map((item) => ({ id: item.id, text: item.title, href: item.href, when: new Date(item.at).toLocaleString("es-AR"), strong: item.readAt ? "Leída ·" : "", read: Boolean(item.readAt) })) : [];
   const [open, setOpen] = useState(false);
   const ref = useOutsideClose(open, () => setOpen(false));
   return (
     <div className={s.popWrap} ref={ref}>
-      <button type="button" className={s.iconBtn} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(value => !value)} aria-label={`Notificaciones, ${notifications.length} sin leer`}>
+      <button type="button" className={s.iconBtn} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(value => !value)} aria-label={`Notificaciones, ${unread} sin leer`}>
         <Glyph name="bell" size={18} strokeWidth={2} />
-        <span className={s.bellCount} aria-hidden="true">{notifications.length}</span>
+        <span className={s.bellCount} aria-hidden="true">{unread}</span>
       </button>
       {open ? (
         <div className={s.popover} role="dialog" aria-label="Notificaciones">
           <div className={s.popHead}><span>Notificaciones</span><button type="button" className={buttonClass("ghost")} onClick={() => setOpen(false)}>Cerrar</button></div>
           <ul className={s.popList}>
+            {!notifications.length ? <li>Sin notificaciones para tu perfil.</li> : null}
             {notifications.map(item => (
-              <li key={item.text}><Link href={item.href} onClick={() => setOpen(false)}>{item.strong ? <strong>{item.strong} </strong> : null}{item.text}<small>{item.when}</small></Link></li>
+              <li key={item.id}><Link href={item.href} onClick={() => { markNotificationRead(item.id); setOpen(false); }}>{item.strong ? <strong>{item.strong} </strong> : null}{item.text}<small>{item.when}</small></Link></li>
             ))}
           </ul>
           <Link className={s.popFoot} href="/v2/inbox" onClick={() => setOpen(false)}>Abrir bandeja de excepciones</Link>
@@ -173,7 +182,7 @@ function ProfileMenu() {
   const { role, setRole } = useOsStore();
   const [open, setOpen] = useState(false);
   const ref = useOutsideClose(open, () => setOpen(false));
-  const roleLabel = role === "admin" ? CURRENT_USER.role : role === "pm" ? "Vista: PM · Valentina Ríos" : "Vista: Ejecutiva de cuentas";
+  const roleLabel = PREVIEW_ROLES.find((item) => item.id === role)?.label || "Vista previa";
   return (
     <div className={s.popWrap} ref={ref}>
       <button type="button" className={s.profileBtn} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(value => !value)} aria-label={`Perfil: ${CURRENT_USER.name}, ${roleLabel}`}>
@@ -185,9 +194,7 @@ function ProfileMenu() {
           <div className={s.menuSection}>
             <strong>Vista previa de rol</strong>
             <div className={s.segmented} style={{ flexWrap: "wrap" }} role="group" aria-label="Rol simulado">
-              <button type="button" aria-pressed={role === "admin"} onClick={() => setRole("admin")}>Administrador</button>
-              <button type="button" aria-pressed={role === "operativo"} onClick={() => setRole("operativo")}>Ejecutiva de cuentas</button>
-              <button type="button" aria-pressed={role === "pm"} onClick={() => setRole("pm")}>Project Manager · Valentina Ríos</button>
+              {PREVIEW_ROLES.map((item) => <button key={item.id} type="button" aria-pressed={role === item.id} onClick={() => setRole(item.id)}>{item.label}</button>)}
             </div>
             <p>Simulación visual de permisos. El control real se resolverá en el servidor cuando exista autenticación.</p>
           </div>
@@ -247,12 +254,12 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
     return () => observer.disconnect();
   }, []);
 
-  const { tasks, role, notify } = useOsStore();
+  const { tasks, role, notify, setRole } = useOsStore();
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
   const [sheet, setSheet] = useState(false);
   const approvals = pendingApprovals(tasks).length;
-  const mine = myApprovals(tasks).length;
+  const mine = myApprovals(tasks, previewActor(role)).length;
   const restricted = role !== "admin" && RESTRICTED_FOR_OPERATIVE.has(root);
   const restrictedArea = osAreas.find(area => area.slug === root)?.label ?? title;
   const bottom = [
@@ -261,6 +268,10 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
     { href: "/v2/aprobaciones", label: "Aprobaciones", icon: "falla" as const, current: pathname === "/v2/aprobaciones" },
   ];
 
+  if (role === "client" || role === "provider") {
+    const clientSlug = pathname.match(/^\/v2\/clientes\/([^/]+)/)?.[1];
+    return <div className={s.page}><PageRoleBoundary role={role} clientSlug={clientSlug} onReset={() => setRole("admin")} /></div>;
+  }
   return (
     <div className={cx(s.shell, expanded && s.shellExpanded)}>
       <a href="#contenido" className={s.skip}>Saltar al contenido</a>
@@ -283,7 +294,7 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
           <Link href="/v2/configuracion" className={cx(s.settingsLink, root === "configuracion" && s.settingsActive)} aria-current={active === "configuracion" ? "page" : undefined} title="Configuración">
             <AvansIcon name="ajuste" size={20} /><span>Configuración</span>
           </Link>
-          <p className={s.footNote}>Vista: {role === "admin" ? "Administrador" : role === "pm" ? "PM · Valentina Ríos (simulada)" : "Ejecutiva de cuentas (simulada)"}. Finanzas y Gerencia se muestran según rol.</p>
+          <p className={s.footNote}>Vista: {PREVIEW_ROLES.find((item) => item.id === role)?.label}. Finanzas y Gerencia se muestran según rol.</p>
         </div>
       </nav>
 
@@ -345,4 +356,8 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
       <ThemeSync />
     </div>
   );
+}
+
+function PageRoleBoundary({ role, clientSlug, onReset }: { role: string; clientSlug?: string; onReset: () => void }) {
+  return <OSRestricted title={role === "client" ? "Espacio del cliente" : "Espacio del proveedor"} actions={<>{role === "client" && clientSlug && osClients.some((c) => c.slug === clientSlug) ? <Link className={buttonClass("primary")} href={`/v2/portal/${clientSlug}`}>Abrir portal del cliente</Link> : null}<button type="button" className={buttonClass("secondary")} onClick={onReset}>Volver a la vista del equipo</button></>}>La gestión interna no se muestra en este perfil. Esta es una vista previa local; el acceso autenticado y las asignaciones externas todavía están pendientes.</OSRestricted>;
 }

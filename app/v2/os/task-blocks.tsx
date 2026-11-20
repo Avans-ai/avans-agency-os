@@ -20,6 +20,7 @@ import {
   type TaskWorkItem,
 } from "./os-data";
 import { useOsStore } from "./os-store";
+import { previewActor } from "./preview-roles";
 import { OSModal, OSSidePanel } from "./overlays";
 import { dueFull, dueLabel, getClient, getProject, waitsForMe } from "./selectors";
 import { serviceHref } from "./service-workspace-data";
@@ -27,8 +28,8 @@ import { Avatar, Badge, buttonClass, cx, OSDue, OSPriority } from "./ui";
 import s from "./os.module.css";
 import sc from "./screens.module.css";
 
-export function taskHref(item: Pick<OsTask, "id" | "projectSlug">) {
-  return `/v2/proyectos/${item.projectSlug}?task=${item.id}`;
+export function taskHref(item: Pick<OsTask, "id" | "projectSlug" | "workflow">) {
+  return item.workflow?.href || `/v2/proyectos/${item.projectSlug}?task=${item.id}`;
 }
 
 /** Enlace al Kanban del módulo dueño de la tarea, con el panel abierto. */
@@ -46,8 +47,8 @@ export function taskContext(item: OsTask) {
 
 /** Row of "Mis tareas". Checking it marks the task done (or approves it when it waits for me). */
 export function MyTaskRow({ item }: { item: OsTask }) {
-  const { toggleDone, approve } = useOsStore();
-  const approval = waitsForMe(item);
+  const { toggleDone, approve, role } = useOsStore();
+  const approval = waitsForMe(item, previewActor(role));
   const title = approval ? item.approvalTitle ?? `Aprobar ${item.title}` : item.title;
   const { label } = taskContext(item);
   return (
@@ -56,6 +57,7 @@ export function MyTaskRow({ item }: { item: OsTask }) {
         type="checkbox"
         className={sc.check}
         checked={item.status === "Hecho"}
+        disabled={Boolean(item.workflow)}
         onChange={() => (approval ? approve(item.id) : toggleDone(item.id))}
         aria-label={approval ? `Aprobar: ${title}` : `Marcar como hecha: ${title}`}
       />
@@ -75,9 +77,9 @@ export function approvalLabel(item: OsTask) {
 }
 
 export function ApprovalRow({ item, actions = "review", href }: { item: OsTask; actions?: "review" | "decide"; href?: string }) {
-  const { approve, requestChanges } = useOsStore();
+  const { approve, requestChanges, role } = useOsStore();
   const { client } = taskContext(item);
-  const mine = waitsForMe(item);
+  const mine = waitsForMe(item, previewActor(role));
   const urgency = item.dueKind === "late" ? <Badge tone="error"><span aria-hidden="true">■</span>Vencida {item.due === "29 oct" ? "ayer" : item.due}</Badge>
     : item.dueKind === "today" ? <Badge tone="peach"><span aria-hidden="true">▲</span>Vence hoy</Badge>
     : <Badge tone="stone">Vence {item.due}</Badge>;
@@ -90,7 +92,7 @@ export function ApprovalRow({ item, actions = "review", href }: { item: OsTask; 
       </div>
       <div className={sc.approvalActions}>
         {urgency}
-        {actions === "decide" && mine ? (
+        {actions === "decide" && mine && !item.workflow ? (
           <>
             <button type="button" className={buttonClass("secondary", true)} onClick={() => requestChanges(item.id)}>Pedir cambios</button>
             <button type="button" className={buttonClass("primary", true)} onClick={() => approve(item.id)}>Aprobar</button>
@@ -313,12 +315,12 @@ export function TaskSidePanel({
   workItems?: TaskWorkItem[];
   workItemLabel?: string;
 }) {
-  const { setStatus, setPriority, addComment, unblock, approve, requestChanges, editTask, addFileRef } = useOsStore();
+  const { setStatus, setPriority, addComment, unblock, approve, requestChanges, editTask, addFileRef, role } = useOsStore();
   const [draft, setDraft] = useState("");
   const [fileName, setFileName] = useState("");
   const [fileOpen, setFileOpen] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const mine = waitsForMe(item) && !readOnly;
+  const mine = waitsForMe(item, previewActor(role)) && !readOnly && !item.workflow;
   const project = getProject(item.projectSlug);
   const client = project ? getClient(project.clientSlug) : undefined;
   const service = serviceForTask(item);
@@ -351,6 +353,7 @@ export function TaskSidePanel({
     >
       <h2 className={sc.panelTitle} ref={titleRef} tabIndex={-1}>{item.title}</h2>
 
+      {item.workflow ? <p><Link className={buttonClass("primary")} href={item.workflow.href}>Abrir {item.workflow.kind === "content" ? "contenido" : "pedido de diseño"} vinculado</Link></p> : null}
       {archived ? <p className={s.demoNote} style={{ marginTop: -8 }}><Glyph name="archive" size={14} /> Archivada: completada hace más de {TASK_ARCHIVE_AFTER_DAYS} días.</p> : null}
       {readOnly ? <p className={s.demoNote} style={{ marginTop: -8 }}>Solo lectura: tu rol de vista previa no puede modificar este módulo.</p> : null}
 
@@ -371,7 +374,7 @@ export function TaskSidePanel({
       <div className={sc.panelGrid}>
         <label>
           <span className={s.cellSub}>Estado</span>
-          <select className={cx(s.input, s.inputSm)} value={item.status} disabled={readOnly} onChange={event => setStatus(item.id, event.target.value as TaskStatus)}>
+          <select className={cx(s.input, s.inputSm)} value={item.status} disabled={readOnly || Boolean(item.workflow)} onChange={event => setStatus(item.id, event.target.value as TaskStatus)}>
             {TASK_STATUSES.map(status => <option key={status}>{status}</option>)}
           </select>
         </label>
@@ -383,14 +386,14 @@ export function TaskSidePanel({
         </label>
         <label>
           <span className={s.cellSub}>Responsable</span>
-          <select className={cx(s.input, s.inputSm)} value={item.owner} disabled={readOnly} onChange={event => editTask(item.id, { owner: event.target.value }, `asignó la tarea a ${event.target.value}`)}>
+          <select className={cx(s.input, s.inputSm)} value={item.owner} disabled={readOnly || Boolean(item.workflow)} onChange={event => editTask(item.id, { owner: event.target.value }, `asignó la tarea a ${event.target.value}`)}>
             {people.map(person => <option key={person.name}>{person.name}</option>)}
             {people.some(person => person.name === item.owner) ? null : <option>{item.owner}</option>}
           </select>
         </label>
         <label>
           <span className={s.cellSub}>Vencimiento</span>
-          {readOnly || item.status === "Hecho" ? <OSDue label={dueFull(item)} kind={item.dueKind} status={item.status} /> : (
+          {readOnly || item.workflow || item.status === "Hecho" ? <OSDue label={dueFull(item)} kind={item.dueKind} status={item.status} /> : (
             <select className={cx(s.input, s.inputSm)} value={DUE_OPTIONS.some(option => option.due === item.due) ? item.due : ""} onChange={event => changeDue(event.target.value)}>
               {DUE_OPTIONS.some(option => option.due === item.due) ? null : <option value="">{dueFull(item)}</option>}
               {DUE_OPTIONS.map(option => <option key={option.due} value={option.due}>{option.label}</option>)}
@@ -399,7 +402,7 @@ export function TaskSidePanel({
         </label>
         <label>
           <span className={s.cellSub}>Aprueba</span>
-          <select className={cx(s.input, s.inputSm)} value={item.approver ?? ""} disabled={readOnly} onChange={event => editTask(item.id, { approver: event.target.value || undefined }, event.target.value ? `definió a ${event.target.value} como aprobador` : "quitó el aprobador")}>
+          <select className={cx(s.input, s.inputSm)} value={item.approver ?? ""} disabled={readOnly || Boolean(item.workflow)} onChange={event => editTask(item.id, { approver: event.target.value || undefined }, event.target.value ? `definió a ${event.target.value} como aprobador` : "quitó el aprobador")}>
             <option value="">Sin aprobación</option>
             {people.map(person => <option key={person.name} value={person.name}>{person.name}{person.name === CURRENT_USER.name ? " (vos)" : ""}</option>)}
           </select>
@@ -417,7 +420,7 @@ export function TaskSidePanel({
         {workItems.length || item.workItem ? (
           <label style={{ gridColumn: "1 / -1" }}>
             <span className={s.cellSub}>{workItemLabel}</span>
-            {workItems.length && !readOnly ? (
+            {workItems.length && !readOnly && !item.workflow ? (
               <select className={cx(s.input, s.inputSm)} value={item.workItem?.id ?? ""} onChange={event => changeWorkItem(event.target.value)}>
                 <option value="">Sin vincular</option>
                 {workItems.map(entry => <option key={entry.id} value={entry.id}>{entry.label}</option>)}

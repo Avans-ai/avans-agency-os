@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import {
-  assignedClients,
   clientOfTask,
   directorMeta,
   isAssignedClient,
 } from "../director-data";
-import { CURRENT_USER, REFERENCE_DATE_LABEL } from "../os-data";
+import { osClients } from "../os-data";
 import { useOsStore } from "../os-store";
+import { previewActor } from "../preview-roles";
 import { activeBlockers, myApprovals, myOpenWork, projectsNeedingAttention } from "../selectors";
 import { MyTaskRow, taskHref } from "../task-blocks";
 import { OSKpiTile, OSEmptyState, OSStatus, PageHead } from "../ui";
@@ -20,12 +20,13 @@ function plural(count: number, one: string, many: string) {
 }
 
 export function CommandCenter() {
-  const { tasks } = useOsStore();
-  const pending = myOpenWork(tasks).filter((task) => task.status !== "Hecho");
-  const approvals = myApprovals(tasks);
-  const blockers = activeBlockers(tasks).filter((task) => task.owner === CURRENT_USER.name || isAssignedClient(clientOfTask(task)?.slug ?? ""));
-  const projectAlerts = projectsNeedingAttention().filter((project) => isAssignedClient(project.clientSlug));
-  const clients = assignedClients();
+  const { tasks, role } = useOsStore();
+  const actor = previewActor(role);
+  const pending = myOpenWork(tasks, actor).filter((task) => task.status !== "Hecho");
+  const approvals = myApprovals(tasks, actor);
+  const blockers = activeBlockers(tasks).filter((task) => task.owner === actor || isAssignedClient(clientOfTask(task)?.slug ?? "", actor));
+  const projectAlerts = projectsNeedingAttention().filter((project) => isAssignedClient(project.clientSlug, actor));
+  const clients = osClients.filter((client) => isAssignedClient(client.slug, actor) || client.team.some((person) => person.name === actor));
   const attentionCount = approvals.length + blockers.length + projectAlerts.length;
 
   const alerts = [
@@ -38,8 +39,8 @@ export function CommandCenter() {
     <div className={s.page}>
       <PageHead
         rotulo="Inicio · Tablero personal"
-        title={`Buen día, ${CURRENT_USER.firstName}`}
-        description={<>{REFERENCE_DATE_LABEL} · Tenés {plural(pending.length, "tarea pendiente", "tareas pendientes")}, {plural(attentionCount, "tema que requiere atención", "temas que requieren atención")} y {plural(clients.length, "cliente asignado", "clientes asignados")}.</>}
+        title={`Buen día, ${actor.split(" ")[0]}`}
+        description={<>{new Date().toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", weekday: "long", day: "numeric", month: "long" })} · Tenés {plural(pending.length, "tarea pendiente", "tareas pendientes")}, {plural(attentionCount, "tema que requiere atención", "temas que requieren atención")} y {plural(clients.length, "cliente asignado", "clientes asignados")}.</>}
       />
 
       <section className={s.kpis} aria-label="Resumen personal">
@@ -73,7 +74,7 @@ export function CommandCenter() {
               <Link href={`/v2/clientes/${client.slug}`} className={d.homeClient} key={client.slug}>
                 <span className={d.homeClientMark} aria-hidden="true">{client.initials}</span>
                 <span className={d.homeClientMain}><strong>{client.name}</strong><small>{client.services.length} módulos · Próximo hito: {client.nextMilestone.label}</small></span>
-                <span><OSStatus status={client.status} /><span className={s.srOnly}> · Facturación {meta?.billingStatus}</span></span>
+                <span><OSStatus status={client.status} />{role === "admin" ? <span className={s.srOnly}> · Facturación {meta?.billingStatus}</span> : null}</span>
               </Link>
             );
           })}</div> : <OSEmptyState icon="persona" title="No tenés clientes asignados">Cuando te asignen a una cuenta aparecerá en este listado.</OSEmptyState>}
