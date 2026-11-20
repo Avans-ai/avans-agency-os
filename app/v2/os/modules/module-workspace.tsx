@@ -25,7 +25,7 @@ import { useModuleRecords } from "./store";
 import { DeliverablesSection, HistorySection, RecommendationsSection } from "./module-common";
 import { ModuleTaskBoard, useModuleTaskStats } from "./module-task-board";
 import { AudiovisualSummary, GenericSummary, QaSection, ReleasesSection, RisksSection, SitemapSection, StrategySummary, TrackingSection, WebSummary } from "./other-modules";
-import { CampaignsSection, CreativeSection, OptimizationSection, PaidResultsSection, PaidSummary } from "./paid-media";
+import { AdsSection, CampaignsSection, MediaPlanSection, OptimizationSection, PaidHome, PaidResultsSection } from "./paid-media";
 import m from "./modules.module.css";
 
 type Section = { id: string; label: string };
@@ -42,10 +42,11 @@ export function moduleSections(serviceId: ServiceId): Section[] {
   switch (serviceId) {
     case "publicidad-digital":
       return [
-        { id: "resumen", label: "Resumen" },
+        { id: "resumen", label: "Inicio" },
+        { id: "plan", label: "Plan de medios" },
         { id: "campanas", label: "Campañas" },
+        { id: "anuncios", label: "Anuncios y piezas" },
         { id: "tareas", label: "Tareas" },
-        { id: "produccion", label: "Producción creativa" },
         { id: "optimizacion", label: "Optimización" },
         { id: "resultados", label: "Resultados" },
         ...COMMON_TAIL,
@@ -125,11 +126,12 @@ function renderSection(section: string, ctx: Ctx): ReactNode {
 
   switch (serviceId) {
     case "publicidad-digital":
+      if (section === "plan") return <MediaPlanSection client={client} go={go} />;
       if (section === "campanas") return <CampaignsSection client={client} editable={editable} campaignId={params.get("campana")} go={go} />;
-      if (section === "produccion") return <CreativeSection client={client} editable={editable} />;
+      if (section === "anuncios") return <AdsSection client={client} editable={editable} adId={params.get("anuncio")} go={go} />;
       if (section === "optimizacion") return <OptimizationSection client={client} editable={editable} />;
       if (section === "resultados") return <PaidResultsSection client={client} editable={editable} />;
-      return <PaidSummary client={client} go={go} />;
+      return <PaidHome client={client} go={go} />;
     case "contenidos":
       if (section === "planes") return <PlansSection client={client} editable={editable} />;
       if (section === "calendario") return <CalendarSection client={client} editable={editable} />;

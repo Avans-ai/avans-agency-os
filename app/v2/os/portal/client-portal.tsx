@@ -20,6 +20,7 @@ import { OSSidePanel, OSToastViewport } from "../overlays";
 import { buttonClass } from "../ui";
 import { portalCalendarDays, portalDate, portalNoticeKey, portalSharedValues, projectPortalContent, type PortalContent } from "./portal-model";
 import s from "./portal.module.css";
+import { PortalAdsSection } from "../modules/paid-portal";
 
 const collections = ["piezas", "ejes"];
 const channels = ["Instagram", "Facebook", "LinkedIn", "TikTok", "YouTube", "Newsletter", "Blog"];
@@ -188,6 +189,8 @@ function PortalWorkspace({ client, initialRecordId }: { client: OsClient; initia
           : view === "pending" ? pending.length ? <div className={s.groups}>{GROUPS.map(([review, title, hint]) => { const list = pending.filter((item) => item.review === review); return list.length ? <section key={review} className={s.group} aria-label={title}><h2>{title} <span className={s.count}>{list.length}</span></h2><p>{hint}</p><div className={s.cards}>{list.map((item) => <ContentCard key={item.id} item={item} onOpen={open} />)}</div></section> : null; })}</div> : <section className={s.empty}><h2>Estás al día</h2><p>No tenés propuestas ni piezas pendientes de revisión.</p></section>
           : items.length ? <div className={s.cards}>{items.map((item) => <ContentCard key={item.id} item={item} onOpen={open} />)}</div> : <section className={s.empty}><h2>Todavía no hay contenidos compartidos</h2><p>Acá vas a encontrar las propuestas que el equipo te envíe para revisar.</p></section>}
       </>}
+      {/* Publicidad digital: anuncios para aprobar (aislado por cliente, ver modules/paid-portal.tsx). */}
+      <PortalAdsSection client={client} />
     </main>
     <footer className={s.footer}>Avans · Marketing que funciona</footer>
     {active && selectedItem && selectedRecord && <ReviewPanel key={selectedRecord.id} client={client} record={selectedRecord} item={selectedItem} onClose={() => setSelected(null)} />}

@@ -10,111 +10,15 @@ import { serviceWorkspaceById } from "../service-workspace-data";
 import type { CollectionDef, FieldDef } from "./types";
 import { plans, axes, ideas, pieces } from "./content-collections";
 import { designLibraryCollection, designSystemCollection, enhanceDesignRequests } from "./design-collections";
+import { paidCollections, paidLearnings } from "./paid-collections";
 
 export const PEOPLE = people.map((person) => person.name);
 
 const owner = (label = "Responsable"): FieldDef => ({ key: "responsable", label, type: "person", list: true });
 
 /* ───────── Publicidad digital ───────── */
-export const CAMPAIGN_STATUSES = ["Borrador", "En preparación", "Activa", "Pausada", "Finalizada"] as const;
-export const CAMPAIGN_PLATFORMS = ["Meta Ads", "Google Ads", "LinkedIn Ads", "TikTok Ads", "YouTube Ads", "Otra"] as const;
-export const CAMPAIGN_OBJECTIVES = ["Generación de leads", "Alcance y reconocimiento", "Tráfico", "Conversiones", "Ventas ecommerce", "Remarketing"] as const;
-
-const campaigns: CollectionDef = {
-  id: "campanas",
-  label: "Campañas",
-  singular: "campaña",
-  prefix: "CMP",
-  description: "Campañas del cliente con objetivo, plataforma, audiencia, presupuesto, período y responsable.",
-  titleKey: "nombre",
-  statusKey: "estado",
-  ownerKey: "responsable",
-  dateKey: "inicio",
-  linkTasks: true,
-  empty: "Todavía no hay campañas cargadas para este cliente.",
-  fields: [
-    { key: "nombre", label: "Nombre", type: "text", required: true, list: true, placeholder: "Ej.: Lanzamiento · Generación de demanda" },
-    { key: "objetivo", label: "Objetivo", type: "select", options: CAMPAIGN_OBJECTIVES, required: true, list: true },
-    { key: "plataforma", label: "Plataforma", type: "select", options: CAMPAIGN_PLATFORMS, required: true, list: true },
-    { key: "audiencia", label: "Audiencia", type: "textarea", placeholder: "Segmentos, intereses, cargos o listas" },
-    { key: "mensaje", label: "Mensaje principal", type: "textarea", group: "Propuesta", placeholder: "Problema, tensión o beneficio que comunica" },
-    { key: "propuestaCreativa", label: "Propuesta creativa", type: "textarea", group: "Propuesta", placeholder: "Ángulo publicitario, concepto visual y formatos" },
-    { key: "distribucion", label: "Distribución de inversión (orientativa)", type: "textarea", group: "Propuesta" },
-    { key: "presupuesto", label: "Presupuesto del período (ARS)", type: "number", required: true, list: true },
-    { key: "estado", label: "Estado", type: "select", options: CAMPAIGN_STATUSES, required: true, list: true },
-    owner(),
-    { key: "inicio", label: "Inicio", type: "date", required: true },
-    { key: "fin", label: "Fin", type: "date" },
-    { key: "notas", label: "Notas", type: "textarea" },
-  ],
-};
-
-const creatives: CollectionDef = {
-  id: "creatividades",
-  label: "Producción creativa",
-  singular: "pieza creativa",
-  prefix: "CRE",
-  description: "Brief, piezas, copys, versiones, feedback y aprobación de las creatividades de pauta.",
-  titleKey: "pieza",
-  statusKey: "estado",
-  ownerKey: "responsable",
-  approval: { pending: "En aprobación", approved: "Aprobada", changes: "Cambios pedidos" },
-  linkTasks: true,
-  empty: "No hay piezas creativas para pauta todavía.",
-  fields: [
-    { key: "pieza", label: "Pieza", type: "text", required: true, list: true },
-    { key: "campana", label: "Campaña", type: "ref", ref: "campanas", list: true },
-    { key: "formato", label: "Formato", type: "select", options: ["Imagen", "Carrusel", "Video", "Historia", "Texto de búsqueda", "Banner"], list: true },
-    { key: "brief", label: "Brief", type: "textarea" },
-    { key: "copy", label: "Copy", type: "textarea" },
-    { key: "version", label: "Versión", type: "text", list: true, placeholder: "v1" },
-    { key: "estado", label: "Estado", type: "select", options: ["Brief", "En producción", "En revisión", "En aprobación", "Aprobada", "Cambios pedidos"], required: true, list: true },
-    { key: "feedback", label: "Feedback", type: "textarea" },
-    owner(),
-  ],
-};
-
-const optimizations: CollectionDef = {
-  id: "optimizaciones",
-  label: "Optimización",
-  singular: "optimización",
-  prefix: "OPT",
-  description: "Registro de hipótesis y cambios: qué se propuso, qué se hizo, cuándo, quién y qué resultado se esperaba y se observó.",
-  titleKey: "hipotesis",
-  statusKey: "estado",
-  ownerKey: "responsable",
-  dateKey: "fecha",
-  empty: "Todavía no hay optimizaciones registradas.",
-  fields: [
-    { key: "hipotesis", label: "Hipótesis", type: "textarea", required: true, list: true },
-    { key: "campana", label: "Campaña", type: "ref", ref: "campanas", list: true },
-    { key: "cambioPropuesto", label: "Cambio propuesto", type: "textarea", required: true },
-    { key: "cambioRealizado", label: "Cambio realizado", type: "textarea" },
-    { key: "fecha", label: "Fecha", type: "date", list: true },
-    owner(),
-    { key: "resultadoEsperado", label: "Resultado esperado", type: "text", list: true },
-    { key: "resultadoObservado", label: "Resultado observado", type: "text", list: true },
-    { key: "estado", label: "Estado", type: "select", options: ["Propuesta", "Aplicada", "En evaluación", "Validada", "Descartada"], required: true, list: true },
-  ],
-};
-
-const paidLearnings: CollectionDef = {
-  id: "aprendizajes",
-  label: "Aprendizajes",
-  singular: "aprendizaje",
-  prefix: "APR",
-  description: "Lo que funcionó y lo que no, con evidencia y cómo aplicarlo.",
-  titleKey: "aprendizaje",
-  dateKey: "fecha",
-  empty: "Sin aprendizajes registrados.",
-  fields: [
-    { key: "aprendizaje", label: "Aprendizaje", type: "text", required: true, list: true },
-    { key: "evidencia", label: "Evidencia", type: "textarea", list: true },
-    { key: "campana", label: "Campaña", type: "ref", ref: "campanas", list: true },
-    { key: "fecha", label: "Fecha", type: "date", list: true },
-    { key: "aplicar", label: "Cómo aplicarlo", type: "textarea" },
-  ],
-};
+// Definiciones en paid-collections.ts (Funcionalidades 2 · Publicidad digital).
+export { CAMPAIGN_STATUSES, CAMPAIGN_PLATFORMS, CAMPAIGN_OBJECTIVES } from "./paid-collections";
 
 /* ───────── Contenidos ───────── */
 export { PIECE_STATUSES, PIECE_FORMATS, PIECE_CHANNELS } from "./content-collections";
@@ -540,7 +444,7 @@ function brandWork(): CollectionDef {
 }
 
 export const moduleCollections: Record<ServiceId, CollectionDef[]> = {
-  "publicidad-digital": [campaigns, creatives, optimizations, paidLearnings],
+  "publicidad-digital": paidCollections,
   contenidos: [axes, ideas, pieces, plans, contentLearnings],
   estrategia: [priorities, meetings, decisions, risks],
   "desarrollo-web": [webProjects, sitemap, requirements, qa, releases, maintenance],

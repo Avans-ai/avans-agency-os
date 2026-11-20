@@ -8,58 +8,15 @@ import type { ServiceId } from "../os-data";
 import type { DemoSeed } from "./types";
 import { contentDemoSeedsFor } from "./content-demo";
 import { designDemoSeeds } from "./design-demo";
+import { paidDemoSeeds } from "./paid-demo";
 
 type SeedTable = Partial<Record<ServiceId, Record<string, Record<string, DemoSeed[]>>>>;
 
 export const DEMO_SEED_DATE = "2026-10-30T12:00:00.000Z";
 
 export const moduleDemoSeeds: SeedTable = {
-  "publicidad-digital": {
-    campanas: {
-      epsa: [
-        { id: "CMP-EPSA-01", nombre: "Line Up · Generación de demanda", objetivo: "Generación de leads", plataforma: "LinkedIn Ads", audiencia: "Compras y mantenimiento industrial · empresas de más de 50 empleados", presupuesto: "2400000", estado: "Activa", responsable: "Martín Ledesma", inicio: "2026-10-12", fin: "2026-12-15", notas: "Campaña principal del lanzamiento. Formulario conectado al CRM del cliente pendiente de la landing (T-145)." },
-        { id: "CMP-EPSA-02", nombre: "Line Up · Remarketing de visitantes", objetivo: "Remarketing", plataforma: "Meta Ads", audiencia: "Visitantes de la web y del catálogo en los últimos 30 días", presupuesto: "900000", estado: "Activa", responsable: "Martín Ledesma", inicio: "2026-10-19", fin: "2026-12-15", notas: "" },
-        { id: "CMP-EPSA-03", nombre: "Posventa como diferencial", objetivo: "Alcance y reconocimiento", plataforma: "Meta Ads", audiencia: "Jefes de mantenimiento · industria", presupuesto: "600000", estado: "En preparación", responsable: "Valentina Ríos", inicio: "2026-11-16", fin: "2026-12-20", notas: "Surge del benchmark: ningún competidor comunica posventa." },
-        { id: "CMP-EPSA-04", nombre: "Búsqueda · Repuestos y servicio técnico", objetivo: "Tráfico", plataforma: "Google Ads", audiencia: "Búsquedas de repuestos y servicio técnico", presupuesto: "700000", estado: "Pausada", responsable: "Martín Ledesma", inicio: "2026-09-14", fin: "2026-12-31", notas: "Pausada hasta tener la landing de Line Up." },
-      ],
-      aca: [
-        { id: "CMP-ACA-01", nombre: "Captación de socios · Meta", objetivo: "Generación de leads", plataforma: "Meta Ads", audiencia: "Potenciales socios de 30 a 55 años con vehículo", presupuesto: "1800000", estado: "Activa", responsable: "Sofía Ramírez", inicio: "2026-09-01", fin: "2026-12-31", notas: "" },
-        { id: "CMP-ACA-02", nombre: "Búsqueda · Beneficios para socios", objetivo: "Generación de leads", plataforma: "Google Ads", audiencia: "Búsquedas de asistencia, beneficios y seguros", presupuesto: "1500000", estado: "Activa", responsable: "Sofía Ramírez", inicio: "2026-09-01", fin: "2026-12-31", notas: "" },
-        { id: "CMP-ACA-03", nombre: "Turismo de verano", objetivo: "Tráfico", plataforma: "Meta Ads", audiencia: "Socios actuales · familias viajeras", presupuesto: "800000", estado: "Borrador", responsable: "Sofía Ramírez", inicio: "2026-12-01", fin: "2027-02-28", notas: "" },
-      ],
-      "lider-energy": [
-        { id: "CMP-LID-01", nombre: "Captación B2B · Eficiencia energética", objetivo: "Generación de leads", plataforma: "Google Ads", audiencia: "Responsables de energía y plantas industriales", presupuesto: "1200000", estado: "En preparación", responsable: "Martín Ledesma", inicio: "2026-12-01", fin: "2027-03-31", notas: "Se activa después de cerrar medición y CRM." },
-      ],
-    },
-    creatividades: {
-      epsa: [
-        { id: "CRE-EPSA-01", pieza: "Video demostración 15 s · Line Up", campana: "CMP-EPSA-01", formato: "Video", brief: "Mostrar el producto en uso y el diferencial de confiabilidad en los primeros 3 segundos.", copy: "Line Up: la línea que se elige por confiabilidad.", version: "v2", estado: "En aprobación", feedback: "Marketing pidió subtítulos en todo el video.", responsable: "Tomás Aguirre" },
-        { id: "CRE-EPSA-02", pieza: "Carrusel de especificaciones técnicas", campana: "CMP-EPSA-01", formato: "Carrusel", brief: "Comparar especificaciones en lenguaje de compras.", copy: "Cinco datos para comparar antes de comprar.", version: "v3", estado: "Aprobada", feedback: "", responsable: "Tomás Aguirre" },
-        { id: "CRE-EPSA-03", pieza: "Anuncio de posventa", campana: "CMP-EPSA-03", formato: "Imagen", brief: "Respuesta técnica y repuestos como diferencial.", copy: "", version: "v1", estado: "Brief", feedback: "", responsable: "Lucía Benítez" },
-      ],
-      aca: [
-        { id: "CRE-ACA-01", pieza: "Anuncio de beneficios con descuento", campana: "CMP-ACA-01", formato: "Imagen", brief: "Beneficio destacado del mes.", copy: "Sumate y accedé a beneficios desde el primer día.", version: "v2", estado: "Cambios pedidos", feedback: "Actualizar la promoción vencida.", responsable: "Lucía Benítez" },
-        { id: "CRE-ACA-02", pieza: "Textos de anuncios de búsqueda · beneficios", campana: "CMP-ACA-02", formato: "Texto de búsqueda", brief: "Separar por intención: beneficios, asistencia, turismo.", copy: "Asistencia en ruta 24 h · Beneficios para socios", version: "v1", estado: "Aprobada", feedback: "", responsable: "Sofía Ramírez" },
-      ],
-    },
-    optimizaciones: {
-      epsa: [
-        { id: "OPT-EPSA-01", hipotesis: "Separar por cargo mejora la calidad del lead", campana: "CMP-EPSA-01", cambioPropuesto: "Dividir el conjunto en Compras y Mantenimiento con mensajes propios", cambioRealizado: "Conjuntos separados y anuncios adaptados", fecha: "2026-10-26", responsable: "Martín Ledesma", resultadoEsperado: "CPL −15 %", resultadoObservado: "CPL −9 % en la primera semana", estado: "En evaluación" },
-        { id: "OPT-EPSA-02", hipotesis: "La frecuencia alta en remarketing satura a la audiencia", campana: "CMP-EPSA-02", cambioPropuesto: "Limitar la frecuencia a 3 impresiones por semana", cambioRealizado: "", fecha: "2026-11-02", responsable: "Martín Ledesma", resultadoEsperado: "CTR estable con menor costo", resultadoObservado: "", estado: "Propuesta" },
-      ],
-      aca: [
-        { id: "OPT-ACA-01", hipotesis: "Los mensajes compiten entre públicos", campana: "CMP-ACA-02", cambioPropuesto: "Separar grupos de anuncios por intención", cambioRealizado: "Tres grupos: beneficios, asistencia y turismo", fecha: "2026-10-20", responsable: "Sofía Ramírez", resultadoEsperado: "CPL −10 %", resultadoObservado: "CPL −12 %", estado: "Validada" },
-      ],
-    },
-    aprendizajes: {
-      epsa: [
-        { id: "APR-EPSA-01", aprendizaje: "Los videos cortos de producto duplican el CTR", evidencia: "Comparación de formatos de julio (demo)", campana: "CMP-EPSA-01", fecha: "2026-07-31", aplicar: "Priorizar video de 15 s en la etapa de descubrimiento." },
-      ],
-      aca: [
-        { id: "APR-ACA-01", aprendizaje: "Las búsquedas de asistencia convierten mejor de noche", evidencia: "Distribución horaria de conversiones de octubre (demo)", campana: "CMP-ACA-02", fecha: "2026-10-28", aplicar: "Ajustar pujas por franja horaria." },
-      ],
-    },
-  },
+  // Publicidad digital (campañas, planes, pedidos de anuncio, landing y atención): paid-demo.ts.
+  "publicidad-digital": paidDemoSeeds,
   contenidos: {
     ejes: {
       epsa: [
