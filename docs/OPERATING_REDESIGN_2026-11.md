@@ -96,3 +96,23 @@ Detalle técnico en `docs/AI_ASSISTANT.md`.
 - Recomendaciones vigentes del módulo (manuales, demo y hallazgos de Benchmark que lo impactan) aparecen como punto de partida, rotuladas por origen; usarlas no las marca como ejecutadas. Las ideas parecidas a trabajo existente muestran «Esta idea es similar a una iniciativa existente» con enlace (se abre en otra pestaña para no perder el borrador).
 - **Sin proveedor configurado** (estado actual de esta preview): «Asistente IA pendiente de conexión»; no se muestran ideas de IA simuladas.
 - Trazabilidad: `avans-os:preview:v1:client:<slug>:assistant:<serviceId>` guarda cada sugerencia con cliente, módulo, acción, usuario, fecha, origen, proveedor y modelo, estado, campos aplicados, cambios y el registro creado; el registro guarda en su historial qué sugerencias usó. Local a este navegador.
+
+## Iteración 3 — Navegación del cliente, Diseño de marca y Contenidos (20/11/2026)
+
+### Navegación
+- Navegación principal del cliente: **Inicio | Tareas | Gestión y estrategia** (`app/v2/os/screens/client-operation-nav.tsx`).
+- Cabecera compacta: logo, nombre, estado, antigüedad, burbuja, responsable y equipo. Sin canales ni accesos estratégicos.
+- **Inicio**: dashboard operativo (resumen de módulos con acceso a su espacio, pendientes, bloqueos, aprobaciones, próxima acción, alertas y «Actividad relevante»). «+ Agregar módulo de servicio» para perfiles autorizados.
+- **Tareas**: vista transversal sin cambios; el Kanban principal sigue dentro de cada módulo.
+- **Gestión y estrategia** (`?view=gestion`, `client-management-hub.tsx`): cuenta y canales (sitio web, redes, Meta Ads, Google Ads, LinkedIn, e-commerce, CRM, otras; edición y alta según permisos, clave existente `client:<slug>:channels` con tipo opcional), accesos a Ficha, Benchmark, Plan, Reportes y Documentos con su estado, y actualizaciones recientes del conocimiento. Subnavegación propia; las URLs anteriores (`?view=ficha`, etc.) abren dentro de Gestión.
+- Módulos: la navegación del cliente queda arriba con el módulo actual indicado; «Cambiar módulo» es un menú compacto. Un módulo inactivo (o en apoyo a Contenidos) ofrece «Activar como demostración» a administrador/PM asignado, sin tocar el alcance contratado.
+
+### Diseño de marca y Contenidos
+Detalle en `docs/BRAND_DESIGN_WORKFLOW.md` y `docs/CONTENT_OPERATIONS_2026-11.md`. Cada módulo separa **Operación mensual**, **Lineamientos del servicio** y su repositorio (**Biblioteca de marca** / **Banco de ideas**). Datos de demostración completos para ACA, rotulados y reiniciables sin tocar registros manuales. Una sola entidad de contenido y una sola de pieza, relacionadas por `contenidoId`/`pedidoId`; una tarea por contenido y por pedido.
+
+### Integración
+- Las semillas demo de Diseño suman su escenario propio a lo derivado de Contenidos sin duplicar pedidos de un mismo contenido.
+- `setServices` persiste en el acto para que un módulo recién activado no restaure la lista anterior de servicios.
+
+### QA de la iteración
+`npm ci`, `npm run lint` (0 errores), `npm run typecheck`, `npm run build` (289 páginas) y suite Playwright completa: **199/199**. Recorridos: navegación y Gestión (`client-navigation-browser`), Diseño (`design-brand-browser`, `design-workspace-browser`, `design-operation-model`), Contenidos y portal (`content-qa-browser`, `content-workflow-*`, `content-demo-model`, `portal-*`, `workflow-integration-*`), regresión del resto de las suites.

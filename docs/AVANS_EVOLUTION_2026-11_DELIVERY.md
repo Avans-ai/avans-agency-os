@@ -1,5 +1,7 @@
 # Avans OS · evolución funcional de Ficha, Diseño y Contenidos
 
+> **Actualización 20/11/2026 (iteración 3):** la navegación del cliente, Diseño de marca y Contenidos se ampliaron después de esta entrega (estado Preproducción, áreas Lineamientos / Operación / Biblioteca o Banco de ideas, demo completa de ACA). Ver `OPERATING_REDESIGN_2026-11.md`, `BRAND_DESIGN_WORKFLOW.md` y `CONTENT_OPERATIONS_2026-11.md`; el conteo vigente de pruebas es 199.
+
 Fecha: 20/11/2026. Repositorio: `Avans-ai/avans-agency-os`. Rama exclusiva: `feat/avans-os-ajustes-reunion-2026-11-03`. PR existente: [#17](https://github.com/Avans-ai/avans-agency-os/pull/17), a conservar en draft.
 
 **Estado: implementación y QA local completos; 175/175 pruebas aprobadas.** El estado remoto del commit final se registra en el PR #17 después del push. El código inspeccionado parte de `3c4a24ba61d6e9de2efd3d41c10fdd7ad4df6622`. No se declara validación del cliente ni de Dirección.
