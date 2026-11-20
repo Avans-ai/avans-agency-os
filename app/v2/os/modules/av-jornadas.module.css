@@ -144,6 +144,7 @@
 .visibility[data-v="client"]{background:var(--av-teal-100);color:var(--av-teal-400)}
 .commentForm{display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:8px;align-items:end}
 .commentForm .field:first-child{grid-column:1/-1}
+.commentForm>button{justify-self:start}
 
 /* Archivo secundario */
 .tabs{display:flex;flex-wrap:wrap;gap:2px;padding:10px 16px;border-bottom:1px solid var(--av-border)}

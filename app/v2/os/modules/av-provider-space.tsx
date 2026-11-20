@@ -61,10 +61,13 @@ function ProviderJornadaCard({ client, record, view, providerId, providerName, c
       ) : null}
       {view.comments.length ? <ul className={a.comments} aria-label="Comentarios con el equipo">{view.comments.map((item) => <li key={item.id}><small>{item.actor} · {formatDateTime(item.at)}</small><p>{item.text}</p></li>)}</ul> : null}
       {view.state !== "Cerrada" && view.state !== "Cancelada" ? (
-        <form className={a.commentForm} onSubmit={send}>
-          <label className={a.field}><span>Mensaje al equipo</span><textarea rows={2} value={comment} onChange={(event) => setComment(event.target.value)} /></label>
-          <button type="submit" className={buttonClass("secondary", true)}>Enviar mensaje</button>
-        </form>
+        <details className={a.more}>
+          <summary>Escribir al equipo</summary>
+          <form className={a.commentForm} onSubmit={send}>
+            <label className={a.field}><span>Mensaje al equipo</span><textarea rows={2} value={comment} onChange={(event) => setComment(event.target.value)} /></label>
+            <button type="submit" className={buttonClass("secondary", true)}>Enviar mensaje</button>
+          </form>
+        </details>
       ) : null}
     </li>
   );
