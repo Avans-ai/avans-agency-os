@@ -82,7 +82,7 @@ export function DesignRequestForm({ client, initial, title, onSubmit, onClose, e
   const toggle = (id: string) => change("recursosDS", (linked.includes(id) ? linked.filter((x) => x !== id) : [...linked, id]).join(","));
   const text = (key: string, label: string, required = false, type = "text") => <label key={key}><span>{label}</span><input type={type} required={required} maxLength={300} value={v[key] || ""} onChange={(e) => change(key, e.target.value)} /></label>;
   const area = (key: string, label: string) => <label key={key} data-wide><span>{label}</span><textarea rows={2} maxLength={3000} value={v[key] || ""} onChange={(e) => change(key, e.target.value)} /></label>;
-  const select = (key: string, label: string, options: readonly (string | { id: string; label: string })[]) => <label key={key}><span>{label}</span><select value={v[key] || ""} onChange={(e) => change(key, e.target.value)}><option value="">Elegir…</option>{options.map((o) => typeof o === "string" ? <option key={o}>{o}</option> : <option key={o.id} value={o.id}>{o.label}</option>)}</select></label>;
+  const select = (key: string, label: string, options: readonly (string | { id: string; label: string })[]) => <label key={key}><span>{label}</span><select aria-label={label} value={v[key] || ""} onChange={(e) => change(key, e.target.value)}><option value="">Elegir…</option>{options.map((o) => typeof o === "string" ? <option key={o}>{o}</option> : <option key={o.id} value={o.id}>{o.label}</option>)}</select></label>;
   function submit(e: FormEvent) { e.preventDefault(); onSubmit(v); }
   const pickable = system.filter((r) => ["Logo", "Color", "Tipografía", "Recurso gráfico", "Componente", "Moodboard"].includes(r.values.tipo) && r.values.subtipo !== "Uso incorrecto");
   return <OSSidePanel label={title} heading={<h2 className={d.panelTitle}>{title}</h2>} onClose={onClose} wide persistentFooter footer={<><button type="button" className={buttonClass("ghost")} onClick={onClose}>Cancelar</button><button type="submit" form="design-request-form" className={buttonClass("primary")}>{initial.nombre ? "Guardar pedido" : "Crear pedido y tarea"}</button></>}>
@@ -97,8 +97,8 @@ export function DesignRequestForm({ client, initial, title, onSubmit, onClose, e
         {pickable.length ? <div className={d.pick} role="group" aria-label="Recursos del Design System">{pickable.map((r) => <button type="button" key={r.id} aria-pressed={linked.includes(r.id)} onClick={() => toggle(r.id)} title={r.values.nombre}><span className={d.pickThumb}><AssetPreview values={r.values} t={tokens} /></span><small>{r.values.nombre}</small></button>)}</div> : <p className={d.muted}>El Design System todavía no tiene recursos para vincular.</p>}
       </fieldset>
       <fieldset><legend>Asignación</legend><div className={d.fields}>
-        <label><span>Responsable</span><select value={v.responsable || ""} onChange={(e) => change("responsable", e.target.value)}><option value="">Sin asignar</option>{PEOPLE.map((p) => <option key={p}>{p}</option>)}</select></label>
-        <label><span>Revisor</span><select value={v.revisor || ""} onChange={(e) => change("revisor", e.target.value)}><option value="">Sin asignar</option>{PEOPLE.map((p) => <option key={p}>{p}</option>)}</select></label>
+        <label><span>Responsable</span><select aria-label="Responsable" value={v.responsable || ""} onChange={(e) => change("responsable", e.target.value)}><option value="">Sin asignar</option>{PEOPLE.map((p) => <option key={p}>{p}</option>)}</select></label>
+        <label><span>Revisor</span><select aria-label="Revisor" value={v.revisor || ""} onChange={(e) => change("revisor", e.target.value)}><option value="">Sin asignar</option>{PEOPLE.map((p) => <option key={p}>{p}</option>)}</select></label>
         {text("fechaObjetivo", "Fecha objetivo", false, "date")}
       </div></fieldset>
       <p className={d.muted}>Al crear el pedido se genera una sola tarea para el responsable, con el brief y los recursos vinculados. Guardado en este navegador.</p>
@@ -215,8 +215,8 @@ export function DesignOperationSection({ client, editable }: Props) {
       <DesignDemoBanner client={client} editable={editable} />
       <Panel title="Producción del mes" id="design-operation" description="Piezas en curso de todos los orígenes. Las aprobadas y entregadas pasan solas a la Biblioteca de marca." actions={<div className={d.viewToggle} role="group" aria-label="Vista de la operación"><button type="button" aria-pressed={view === "kanban"} onClick={() => setView("kanban")}><Glyph name="kanban" size={15} /> Kanban</button><button type="button" aria-pressed={view === "lista"} onClick={() => setView("lista")}><Glyph name="list" size={15} /> Lista</button></div>}>
         <div className={d.toolbar}>
-          <label><span>Origen</span><select value={origin} onChange={(e) => setOrigin(e.target.value)}><option value="">Todos</option>{DESIGN_ORIGINS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</select></label>
-          <label><span>Responsable</span><select value={owner} onChange={(e) => setOwner(e.target.value)}><option value="">Todos</option>{owners.map((o) => <option key={o}>{o}</option>)}</select></label>
+          <label><span>Origen</span><select aria-label="Filtrar por origen" value={origin} onChange={(e) => setOrigin(e.target.value)}><option value="">Todos</option>{DESIGN_ORIGINS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</select></label>
+          <label><span>Responsable</span><select aria-label="Filtrar por responsable" value={owner} onChange={(e) => setOwner(e.target.value)}><option value="">Todos</option>{owners.map((o) => <option key={o}>{o}</option>)}</select></label>
           <label><span>Buscar</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nombre de la pieza" /></label>
           {view === "lista" ? <div className={d.counters} aria-label="Piezas por estado">{DESIGN_STAGES.map((s) => <span key={s} title={s}>{s} <b>{staged.filter((x) => x.stage === s).length}</b></span>)}</div> : null}
         </div>

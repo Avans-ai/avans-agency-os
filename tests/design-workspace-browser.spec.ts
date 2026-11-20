@@ -11,7 +11,7 @@ async function activateDesign(page: Page, client = "epsa") {
   await dialog.getByRole("checkbox", { name: /Confirmo que los cambios/ }).check();
   await dialog.getByRole("button", { name: /^Guardar 1 cambio/ }).click();
   await expect(dialog).toHaveCount(0);
-  await page.goto(`/v2/clientes/${client}/diseno-marca?seccion=sistema`);
+  await page.goto(`/v2/clientes/${client}/diseno-marca?area=lineamientos`);
   await expect(page.getByRole("heading", { name: "Design System", exact: true })).toBeVisible();
 }
 async function stored(page: Page, collection: string, client = "epsa") {
@@ -37,6 +37,7 @@ test("design system, request and single task, immutable library versions, guidel
   await page.getByRole("button", { name: "Agregar recurso de marca" }).click();
   editor = page.getByRole("dialog", { name: "Editar recurso de marca" });
   await editor.getByLabel("Nombre", { exact: true }).fill("Logo de prueba");
+  await editor.getByRole("combobox", { name: "Tipo", exact: true }).selectOption("Logo");
   await editor.getByLabel("Cargar imagen").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==", "base64") });
   await expect(editor.getByRole("button", { name: "Guardar recurso" })).toBeEnabled();
   await editor.getByRole("button", { name: "Guardar recurso" }).click();
@@ -48,6 +49,7 @@ test("design system, request and single task, immutable library versions, guidel
   await page.screenshot({ path: "/tmp/avans-design-mobile.png", fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
 
+  await page.getByRole("navigation", { name: "Áreas de Diseño de marca" }).getByRole("link", { name: "Operación mensual" }).click();
   await page.getByRole("navigation", { name: "Secciones de Diseño de marca" }).getByRole("link", { name: "Pedidos de diseño" }).click();
   await page.getByRole("button", { name: "Nuevo pedido de diseño" }).click();
   const requestDialog = page.getByRole("dialog", { name: "Nuevo pedido de diseño" });
@@ -63,7 +65,7 @@ test("design system, request and single task, immutable library versions, guidel
   expect(tasks.filter((t: { workItem?: { id: string } }) => t.workItem?.id === request.id)).toHaveLength(1);
   await page.keyboard.press("Escape");
 
-  await page.getByRole("navigation", { name: "Secciones de Diseño de marca" }).getByRole("link", { name: "Biblioteca de piezas" }).click();
+  await page.getByRole("navigation", { name: "Secciones de Diseño de marca" }).getByRole("link", { name: "Biblioteca de marca" }).click();
   await page.getByRole("button", { name: "Agregar pieza a biblioteca" }).click();
   editor = page.getByRole("dialog", { name: "Agregar pieza a biblioteca" });
   await editor.getByLabel("Nombre", { exact: true }).fill("Brochure QA");
@@ -99,6 +101,7 @@ test("design system, request and single task, immutable library versions, guidel
 
 test("design request and task roll back together on storage failure and retry keeps a single task", async ({ page }) => {
   await activateDesign(page);
+  await page.getByRole("navigation", { name: "Áreas de Diseño de marca" }).getByRole("link", { name: "Operación mensual" }).click();
   await page.getByRole("navigation", { name: "Secciones de Diseño de marca" }).getByRole("link", { name: "Pedidos de diseño" }).click();
   await page.getByRole("button", { name: "Nuevo pedido de diseño" }).click();
   const dialog = page.getByRole("dialog", { name: "Nuevo pedido de diseño" });

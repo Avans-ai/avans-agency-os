@@ -117,7 +117,7 @@ export function AssetEditor({ initial, library, onSave, onClose, requests, t }: 
   const subtypes = subtypesFor(v.tipo);
   function field(key: string, label: string, options?: readonly string[], wide = false, required = false) {
     return <label key={key} data-wide={wide}><span>{label}</span>{options
-      ? <select value={v[key] || ""} onChange={(e) => change(key, e.target.value)}><option value="">Elegir…</option>{options.map((o) => <option key={o}>{o}</option>)}</select>
+      ? <select aria-label={label} value={v[key] || ""} onChange={(e) => change(key, e.target.value)}><option value="">Elegir…</option>{options.map((o) => <option key={o}>{o}</option>)}</select>
       : wide ? <textarea rows={2} maxLength={3000} required={required} value={v[key] || ""} onChange={(e) => change(key, e.target.value)} />
       : <input required={key === "nombre" || required} value={v[key] || ""} maxLength={300} onChange={(e) => change(key, e.target.value)} />}</label>;
   }
@@ -149,21 +149,21 @@ export function AssetEditor({ initial, library, onSave, onClose, requests, t }: 
       {error ? <p role="alert" className={d.formError}>{error}</p> : null}
       <div className={d.fields}>
         {field("nombre", "Nombre")}
-        {library ? field("categoria", "Categoría", DESIGN_CATEGORIES) : <label><span>Tipo</span><select value={v.tipo} onChange={(e) => set((before) => ({ ...before, tipo: e.target.value, subtipo: "" }))}>{DESIGN_KINDS.map((o) => <option key={o}>{o}</option>)}</select></label>}
+        {library ? field("categoria", "Categoría", DESIGN_CATEGORIES) : <label><span>Tipo</span><select aria-label="Tipo" value={v.tipo} onChange={(e) => set((before) => ({ ...before, tipo: e.target.value, subtipo: "" }))}>{DESIGN_KINDS.map((o) => <option key={o}>{o}</option>)}</select></label>}
         {!library && v.tipo === "Color" ? <><label><span>Color</span><input aria-label="Selector de color" type="color" value={validHex(v.valor) ? v.valor : "#ff897a"} onChange={(e) => change("valor", e.target.value)} /></label>{field("valor", "Hex")}{field("grupo", "Grupo", subtypes)}</> : null}
         {!library && v.tipo !== "Color" && subtypes.length ? field("subtipo", v.tipo === "Tipografía" ? "Jerarquía" : v.tipo === "Logo" ? "Variante" : "Clase", subtypes) : null}
         {!library && v.tipo === "Tipografía" ? <>{field("valor", "Familia tipográfica")}{field("variante", "Peso / variante")}{field("tamano", "Tamaño / interlineado")}<p className={d.muted} data-wide>Figtree y Syne están disponibles en la app; otras familias usan la fuente instalada en este equipo, sin descargas externas.</p></> : null}
         {!library ? field("funcion", v.tipo === "Tono" ? "Descripción o ejemplo" : "Función / jerarquía", undefined, v.tipo === "Tono") : null}
         {!library && v.tipo === "Moodboard" ? <>{field("descripcion", "Descripción", undefined, true)}{field("justificacion", "Justificación", undefined, true)}</> : null}
         {!library && showUses ? <>{field("usos", "Usos correctos", undefined, true)}{field("evitar", "Usos incorrectos", undefined, true)}</> : null}
-        {!library && ["Logo", "Recurso gráfico", "Moodboard", "Aplicación"].includes(v.tipo) ? <label><span>Visual generado</span><select value={v.arte || ""} onChange={(e) => change("arte", e.target.value)}>{ART_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</select></label> : null}
+        {!library && ["Logo", "Recurso gráfico", "Moodboard", "Aplicación"].includes(v.tipo) ? <label><span>Visual generado</span><select aria-label="Visual generado" value={v.arte || ""} onChange={(e) => change("arte", e.target.value)}>{ART_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</select></label> : null}
         {v.tipo !== "Color" || library ? <>
           <label data-wide><span>Archivo o enlace</span><input type="url" value={v.archivo?.startsWith("data:") ? "" : v.archivo || ""} onChange={(e) => change("archivo", e.target.value)} placeholder={v.archivo?.startsWith("data:") ? "Imagen guardada; pegá una URL para reemplazarla" : "https://…"} /></label>
           <label data-wide><span>Cargar imagen</span><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => void upload(e.target.files?.[0])} /></label>
         </> : null}
         {library ? <>{field("responsable", "Responsable", PEOPLE)}<label><span>Fecha</span><input type="date" value={v.fecha || ""} onChange={(e) => change("fecha", e.target.value)} /></label>
-          <label><span>Servicio de origen</span><select value={v.servicioOrigen || ""} onChange={(e) => change("servicioOrigen", e.target.value)}><option value="">Elegir…</option>{[...DESIGN_ORIGINS, { id: "diseno-marca", label: "Diseño de marca" }].map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</select></label>
-          <label><span>Pedido relacionado</span><select value={v.pedidoId || ""} onChange={(e) => { const request = requests.find((r) => r.id === e.target.value); set((before) => ({ ...before, pedidoId: request?.id || "", contenidoId: request?.values.contenidoId || "", campanaId: request?.values.campanaId || "", servicioOrigen: request?.values.servicioOrigen || before.servicioOrigen || "" })); }}><option value="">Sin pedido</option>{requests.map((r) => <option key={r.id} value={r.id}>{r.values.nombre}</option>)}</select></label>{field("descripcion", "Descripción", undefined, true)}</> : null}
+          <label><span>Servicio de origen</span><select aria-label="Servicio de origen" value={v.servicioOrigen || ""} onChange={(e) => change("servicioOrigen", e.target.value)}><option value="">Elegir…</option>{[...DESIGN_ORIGINS, { id: "diseno-marca", label: "Diseño de marca" }].map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</select></label>
+          <label><span>Pedido relacionado</span><select aria-label="Pedido relacionado" value={v.pedidoId || ""} onChange={(e) => { const request = requests.find((r) => r.id === e.target.value); set((before) => ({ ...before, pedidoId: request?.id || "", contenidoId: request?.values.contenidoId || "", campanaId: request?.values.campanaId || "", servicioOrigen: request?.values.servicioOrigen || before.servicioOrigen || "" })); }}><option value="">Sin pedido</option>{requests.map((r) => <option key={r.id} value={r.id}>{r.values.nombre}</option>)}</select></label>{field("descripcion", "Descripción", undefined, true)}</> : null}
         {library && v.contenidoId ? <p className={d.muted} data-wide>El estado se actualiza desde el flujo de aprobación del contenido. Las nuevas versiones se guardan como borrador.</p> : field("estado", "Estado", library ? LIBRARY_STATES : ["Borrador", "Aprobado", "Requiere revisión"])}
       </div>
       <p className={d.muted}>Imágenes de hasta 1 MB guardadas en este navegador. Los archivos externos permanecen en su plataforma de origen.</p>
