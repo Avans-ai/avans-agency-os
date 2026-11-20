@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: "list",
   outputDir: "test-results",
   use: {
-    baseURL: `http://127.0.0.1:${port}`,
+    baseURL: `http://localhost:${port}`,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
@@ -20,6 +20,7 @@ export default defineConfig({
     {
       name: "domain",
       testMatch: [
+        "*-model.spec.ts",
         "discovery-model.spec.ts",
         "knowledge-model.spec.ts",
         "google-workspace.spec.ts",
@@ -32,6 +33,7 @@ export default defineConfig({
     {
       name: "browser",
       testMatch: [
+        "*-browser.spec.ts",
         "discovery-browser.spec.ts",
         "knowledge-browser.spec.ts",
         "intake-presentation-browser.spec.ts",
@@ -46,7 +48,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `npm run start -- -p ${port}`,
-    url: `http://127.0.0.1:${port}/v2`,
+    url: `http://localhost:${port}/v2`,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
