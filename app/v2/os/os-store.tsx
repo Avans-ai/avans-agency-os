@@ -43,6 +43,7 @@ const localMessage = (message: string) => `${message} · guardado en este navega
 
 function seedState(): State {
   return {
+    // Datos de demostración de Contenidos: un navegador nuevo empieza con la tarea de cada contenido demo.
     tasks: withContentDemoTasks(osTasks, false),
     seq: 150,
     role: "admin",
@@ -63,8 +64,7 @@ function validPersistedState(value: PersistedState | null, fallback: State): Per
   return {
     // Migración compatible (misma clave): las tareas guardadas antes de `serviceId` lo reciben
     // desde serviceForTask. No se descarta ni se reescribe ningún otro dato.
-    // Datos de demostración de Contenidos: se agrega la tarea de cada contenido demo presente (sin duplicar).
-    tasks: withContentDemoTasks(value.tasks.map(withTaskService)),
+    tasks: value.tasks.map(withTaskService),
     seq: Number.isFinite(value.seq) ? value.seq : fallback.seq,
     role: PREVIEW_ROLES.some((item) => item.id === value.role) ? value.role : "admin",
     notifications: Array.isArray(value.notifications) ? value.notifications : [],

@@ -19,7 +19,7 @@ import { collectionDef } from "./collections";
 import { axes, channelGroup, ideas, plans, PIECE_CHANNELS } from "./content-collections";
 import { ContentDetail, ContentEditor, contentTitleKey } from "./content-detail";
 import { useContentGuidelines } from "./content-guidelines";
-import { AxisTag, ChannelChip, ContentDemoBanner, MetricoolNote, StageDots, StagePill, Thumb, axisTone, stateCount, useContentThumbs } from "./content-ui";
+import { AxisTag, ChannelChip, ContentDemoBanner, useContentDemoTasks, MetricoolNote, StageDots, StagePill, Thumb, axisTone, stateCount, useContentThumbs } from "./content-ui";
 import { CONTENT_FLOW, CONTENT_STATES, clientRequests, contentFlowStep, contentState, ideaToContentValues, safeContentUrl, type ContentState } from "./content-workflow";
 import { TaskHealthStrip } from "./module-common";
 import { Panel, StatusBadge } from "./module-ui";
@@ -51,6 +51,7 @@ function planPieces(records: ModuleRecord[], plan?: ModuleRecord) {
 
 /* ───────── Resumen ───────── */
 export function ContentSummary({ client, go }: { client: OsClient; go: (section: string, extra?: Record<string, string>) => void }) {
+  useContentDemoTasks(client);
   const { data } = useModuleRecords(client.slug, SERVICE, CONTENT_REFS);
   const { role } = useOsStore();
   const thumbs = useContentThumbs(client);
@@ -99,6 +100,7 @@ function PlanSnapshot({ plan, records, axes: axisList }: { plan: ModuleRecord; r
 
 /* ───────── Planificación mensual ───────── */
 export function PlansSection({ client, editable }: { client: OsClient; editable: boolean }) {
+  useContentDemoTasks(client);
   const { notify, role } = useOsStore();
   const params = useSearchParams();
   const canPlan = editable && PLANNERS.includes(role);
@@ -192,6 +194,7 @@ export function AxesSection({ client, editable }: { client: OsClient; editable: 
 
 /* ───────── Contenidos: lista y Kanban ───────── */
 export function PiecesSection({ client, editable }: { client: OsClient; editable: boolean }) {
+  useContentDemoTasks(client);
   const { notify, role } = useOsStore();
   const canPlan = editable && PLANNERS.includes(role);
   const params = useSearchParams();
@@ -234,6 +237,7 @@ export function PiecesSection({ client, editable }: { client: OsClient; editable
 
 /* ───────── Calendario ───────── */
 export function CalendarSection({ client, editable }: { client: OsClient; editable: boolean }) {
+  useContentDemoTasks(client);
   const { role } = useOsStore();
   const canPlan = editable && PLANNERS.includes(role);
   const { data } = useModuleRecords(client.slug, SERVICE, CONTENT_REFS);

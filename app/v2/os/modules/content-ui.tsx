@@ -3,12 +3,12 @@
 /* Piezas visuales compartidas de Contenidos: canal, eje, etapa, miniatura, flujo y avisos. */
 /* Las miniaturas son data URI o URLs de imagen ya validadas; no pasan por el optimizador. */
 /* eslint-disable @next/next/no-img-element */
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import { buttonClass } from "../ui";
 import { CONTENT_DEMO_LABEL } from "./content-demo";
-import { hasContentDemo } from "./content-demo-tasks";
+import { hasContentDemo, withContentDemoTasks } from "./content-demo-tasks";
 import { contentThumbnail } from "./content-design";
 import { CONTENT_FLOW, MONDAY_STATE, contentFlowStep, contentState, type ContentState } from "./content-workflow";
 import { channelGroup } from "./content-collections";
@@ -58,6 +58,16 @@ export function useContentThumbs(client: OsClient) {
     const map = new Map(ids.map((id) => [id, contentThumbnail(library, id)]));
     return (id: string) => map.get(id) || "";
   }, [data.biblioteca]);
+}
+/** Agrega (una vez y sin duplicar) la tarea de cada contenido demo presente al abrir Contenidos. */
+export function useContentDemoTasks(client: OsClient) {
+  const store = useOsStore();
+  const { data } = useModuleRecords(client.slug, "contenidos", ["piezas"]);
+  const pieces = data.piezas;
+  useEffect(() => {
+    if (!store.localHydrated || !hasContentDemo(client.slug) || !pieces?.some((record) => record.source === "demo")) return;
+    if (withContentDemoTasks(store.tasks).length !== store.tasks.length) store.commitTasks((tasks) => withContentDemoTasks(tasks), []);
+  }, [client.slug, pieces, store]);
 }
 export function MetricoolNote() {
   return <div className={c.integration} role="note"><strong><i className={c.offDot} aria-hidden="true" />Metricool no conectado</strong><span>El calendario muestra los contenidos guardados en Avans. No hay sincronización ni programación automática: «Programado» registra lo que el equipo programó en su plataforma.</span></div>;

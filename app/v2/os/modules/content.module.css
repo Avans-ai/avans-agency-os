@@ -1,5 +1,5 @@
 /* Contenidos · tokens Avans, esquinas rectas, más gráfico que texto. */
-.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.srOnly { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .muted { color: var(--av-text-muted); font-size: 12px; }
 .empty { padding: 22px; font-size: 12px; color: var(--av-text-muted); margin: 0; }
 .eyebrow { font-size: 10px; color: var(--av-text-muted); text-transform: uppercase; letter-spacing: .06em; }
@@ -14,7 +14,7 @@
 .check input { width: auto !important; }
 
 /* Canal, eje, etapa */
-.channel { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; white-space: nowrap; }
+.channel { position: relative; display: inline-flex; align-items: center; gap: 6px; font-size: 11px; white-space: nowrap; }
 .channel b { display: inline-grid; place-items: center; width: 20px; height: 18px; font-size: 9px; letter-spacing: .02em; font-weight: 700; color: var(--av-white); background: var(--av-cocoa); flex: none; }
 .channel[data-channel="Instagram"] b { background: var(--av-coral-300); color: var(--av-cocoa); }
 .channel[data-channel="LinkedIn"] b { background: var(--av-teal-400); }
@@ -114,7 +114,7 @@
 .monthTabs button span::first-letter, .calNavigation strong::first-letter { text-transform: uppercase; }
 .monthTabs button small { font-size: 10px; color: var(--av-text-muted); }
 .monthTabs button[aria-pressed="true"] { border-bottom-color: var(--av-coral-300); background: var(--av-bg); }
-.planDetail { display: grid; gap: 18px; padding: 20px; min-width: 0; }
+.planDetail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 20px; min-width: 0; }
 .planHead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .planHead > div:first-child { display: grid; gap: 6px; justify-items: start; }
 .planHead h3 { margin: 0; font-size: 22px; }
@@ -348,7 +348,7 @@
   .calendarScroll[data-mode="mes"] .monthDay { min-height: 0; border-right: none; grid-template-columns: 64px minmax(0, 1fr); padding: 8px 12px; }
   .calendarScroll[data-mode="mes"] .monthDay > .calendarItem { grid-column: 2; }
   .calendarScroll[data-mode="mes"] .monthDay[data-empty="true"], .calendarScroll[data-mode="mes"] .monthDay[data-outside="true"] { display: none; }
-  .calendarScroll[data-mode="mes"] .dayNumber { flex-direction: column; justify-content: flex-start; font-size: 14px; font-weight: 600; grid-row: 1 / span 9; }
+  .calendarScroll[data-mode="mes"] .dayNumber { flex-direction: column; justify-content: flex-start; font-size: 14px; font-weight: 600; grid-row: 1; }
   .mobileOnly { display: inline; font-weight: 400; font-size: 11px; color: var(--av-text-muted); }
   .planDetail, .axisCards[data-wide] { padding: 12px; }
   .guides { padding: 12px; }

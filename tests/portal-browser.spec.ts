@@ -46,7 +46,7 @@ test("client portal shares idea and copy, persists comments, attachments and pre
   await expect(panel.getByRole("button", { name: "Descargar catalogo.txt" })).toBeVisible();
   await expect(panel).not.toContainText("PRIVATE");
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("avans-os:preview:v1:client:epsa:module:contenidos:piezas")!).value.find((item: { id: string }) => item.id === "PORTAL-PUBLIC"));
-  expect(stored.values.estado).toBe("Producción de diseño");
+  expect(stored.values.estado).toBe("Preproducción");
   expect(JSON.parse(stored.values.contentTransitions).at(-1).action).toBe("approve-preliminary");
   await page.goto("/v2/portal/aca");
   await expect(page.locator("body")).not.toContainText("Propuesta del portal");
