@@ -18,7 +18,7 @@ import { CollectionView, RecordForm, RecordPanel } from "./collection-view";
 import { collectionDef } from "./collections";
 import { axes, channelGroup, ideas, plans, PIECE_CHANNELS } from "./content-collections";
 import { ContentDetail, ContentEditor, contentTitleKey } from "./content-detail";
-import { useContentGuidelines } from "./content-guidelines";
+import { contentRules, useContentGuidelines } from "./content-guidelines";
 import { AxisTag, ChannelChip, ContentDemoBanner, useContentDemoTasks, MetricoolNote, StageDots, StagePill, Thumb, axisTone, stateCount, useContentThumbs } from "./content-ui";
 import { CONTENT_FLOW, CONTENT_STATES, clientRequests, contentFlowStep, contentState, ideaToContentValues, safeContentUrl, type ContentState } from "./content-workflow";
 import { TaskHealthStrip } from "./module-common";
@@ -56,6 +56,9 @@ export function ContentSummary({ client, go }: { client: OsClient; go: (section:
   const { role } = useOsStore();
   const thumbs = useContentThumbs(client);
   const guidelines = useContentGuidelines(client);
+  const { k } = useKnowledge(client);
+  const planItems = (k.plan.modules.contenidos || []).length;
+  const rules = contentRules(k);
   const records = data.piezas || [];
   const pending = records.filter((record) => /Revisión|Aprobación/.test(contentState(record)));
   const waitingClient = stateCount(records, ["Revisión preliminar del cliente", "Aprobación final del cliente", "Información del cliente"]);
@@ -78,7 +81,7 @@ export function ContentSummary({ client, go }: { client: OsClient; go: (section:
       </Panel>
     </div>
     <div className={c.triad}>
-      <article className={c.triadCard}><span className={c.eyebrow}>A · Lineamientos del servicio</span><h3>{guidelines.values.tono ? "Tono, canales y frecuencia" : "Marco editorial"}</h3><p>{guidelines.values.tono || "Definí objetivos, tono, canales, frecuencia, formatos y Do's & Don'ts."}</p>{guidelines.values.frecuencia ? <p className={c.muted}>{guidelines.values.frecuencia}</p> : null}<Link className={s.link} href={`/v2/clientes/${client.slug}/contenido?area=lineamientos`}>Ver lineamientos</Link></article>
+      <article className={c.triadCard}><span className={c.eyebrow}>A · Plan de contenidos</span><h3>{planItems ? `${planItems} definiciones en el Plan` : "Consulta del Plan de Marketing"}</h3><p>{rules.length ? `${rules.filter((rule) => rule.type === "Siempre").length} do's y ${rules.filter((rule) => rule.type === "Nunca").length} don'ts de Contenidos.` : guidelines.values.tono || "Ejes, do's & don'ts y KPIs de Contenidos se definen en el Plan de Marketing."}</p><Link className={s.link} href={`/v2/clientes/${client.slug}/contenido?area=lineamientos`}>Ver plan de contenidos</Link></article>
       <article className={c.triadCard}><span className={c.eyebrow}>B · Operación mensual</span><h3>{waitingClient} esperan al cliente</h3><div className={c.miniStats}><span><strong>{stateCount(records, ["Preproducción"])}</strong> en preproducción</span><span><strong>{stateCount(records, ["Producción de diseño", "Revisión interna del diseño"])}</strong> en diseño</span><span><strong>{stateCount(records, ["Aprobado", "Programado"])}</strong> listos o programados</span></div><button className={s.link} onClick={() => go("calendario")}>Abrir calendario →</button></article>
       <article className={c.triadCard}><span className={c.eyebrow}>C · Banco de ideas</span><h3>{ideasList.filter((idea) => !["Descartada", "Convertida en pieza"].includes(idea.values.estado)).length} ideas abiertas</h3><ul className={c.plainList}>{ideasList.filter((idea) => !["Descartada", "Convertida en pieza"].includes(idea.values.estado)).slice(0, 3).map((idea) => <li key={idea.id}>{idea.values.idea}</li>)}</ul><button className={s.link} onClick={() => go("ideas")}>Abrir banco de ideas →</button></article>
     </div>

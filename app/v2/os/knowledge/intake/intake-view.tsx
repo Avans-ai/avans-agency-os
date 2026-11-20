@@ -336,6 +336,13 @@ export function IntakeView({
       </div>
       <details className={`${m.card} ${m.intakeHero}`} id="company-intake">
         <summary>Cargar información de la empresa</summary>
+        {!editable ? (
+          <p className={m.notice} role="note">
+            Solo el PM de la cuenta puede cargar documentos. Tu rol puede
+            consultar lo que ya se cargó. Permisos visuales: todavía no se
+            aplican en servidor.
+          </p>
+        ) : null}
         <p>
           Reuní el material disponible. El contenido extraído queda en este
           navegador; los originales no están almacenados ni sincronizados.

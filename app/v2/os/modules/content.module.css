@@ -354,3 +354,20 @@
   .guides { padding: 12px; }
 }
 .ideaCard > a, .ideaCard > .axisTag { align-self: flex-start; }
+
+/* Plan de contenidos (consulta) y revisión de lineamientos sin IA */
+.planList { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 13px; line-height: 1.45; }
+.planList li { display: grid; gap: 2px; padding-left: 10px; border-left: 2px solid var(--av-teal-200); }
+.planList em { font-style: normal; color: var(--av-text-muted); }
+.planList small { color: var(--av-text-muted); font-size: 11px; }
+.inlineLink { color: var(--av-link); }
+.serviceMore > summary { cursor: pointer; font-size: 13px; font-weight: 600; padding: 10px 0; color: var(--av-link); }
+.serviceMore[open] > summary { margin-bottom: 8px; }
+.guideCheck { display: grid; gap: 10px; padding: 14px 16px; border: 1px solid var(--av-coral-300); background: var(--av-coral-100); }
+.guideCheck h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.guideCheck ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; line-height: 1.45; }
+.guideCheck li { display: grid; gap: 2px; padding-left: 10px; border-left: 3px solid var(--av-coral-400); }
+.guideCheck li[data-severity="dont"] { border-left-color: var(--av-warning); }
+.guideCheck small { color: var(--av-text-muted); font-size: 12px; }
+.guideActions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.guideActions em { font-style: normal; font-size: 12px; color: var(--av-text-muted); }

@@ -27,6 +27,7 @@ import {
   sourceTypes,
   sourceLabels,
   type KnowledgeSource,
+  type KnowledgeState,
   type MeetingArtifact,
 } from "./types";
 import { versionChange } from "./state";
@@ -403,6 +404,8 @@ export function DocumentsView({ client }: { client: OsClient }) {
   const [contact, setContact] = useState("");
   const [assignment, setAssignment] = useState<Record<string, string>>({});
   const available = osClients.filter((c) => canEditDiscovery(role, c));
+  const canUpload = canEditDiscovery(role, client);
+  const uploadBlocked = canUpload ? undefined : "Solo el PM de la cuenta puede cargar documentos";
   async function importArtifact(meeting: MeetingArtifact) {
     if (!editable) return false;
     const base = osClients.map((c) => ({
@@ -538,6 +541,7 @@ export function DocumentsView({ client }: { client: OsClient }) {
         <div className={m.actions}>
           <button
             disabled={!editable}
+            title={uploadBlocked}
             className={buttonClass("primary", true)}
             onClick={() => setEditing(newSource(client.slug, context()))}
           >
@@ -545,6 +549,7 @@ export function DocumentsView({ client }: { client: OsClient }) {
           </button>
           <button
             disabled={!editable}
+            title={uploadBlocked}
             className={buttonClass("secondary", true)}
             onClick={() => setManual(true)}
           >
@@ -552,7 +557,15 @@ export function DocumentsView({ client }: { client: OsClient }) {
           </button>
         </div>
       </div>
+      {!canUpload ? (
+        <p className={m.notice} role="note" aria-label="Permisos de carga">
+          <strong>Solo el PM de la cuenta puede cargar documentos.</strong>{" "}
+          Tu rol puede consultar y abrir el historial de documentos. Los
+          permisos son visuales: todavía no se aplican en servidor.
+        </p>
+      ) : null}
       <LocalNotice invalid={invalid} />
+      <UploadHistory k={k} canManage={editable} clientName={client.name} />
       <div className={m.notice}>
         <strong>Google Workspace no conectado</strong>
         <p>
@@ -879,5 +892,64 @@ export function DocumentsView({ client }: { client: OsClient }) {
         />
       ) : null}
     </div>
+  );
+}
+
+/** Historial de todos los documentos y fuentes cargados (debajo de la carga), para revisar, consultar y abrir. */
+function UploadHistory({ k, canManage, clientName }: { k: KnowledgeState; canManage: boolean; clientName: string }) {
+  const [all, setAll] = useState(false);
+  const list = k.sources
+    .filter((source) => sourceVisible(source, canManage))
+    .sort((a, b) => (b.importedAt || "").localeCompare(a.importedAt || ""));
+  const shown = all ? list : list.slice(0, 6);
+  const when = (value: string) => {
+    const date = new Date(value);
+    return value && !Number.isNaN(date.getTime()) ? date.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" }) : "Fecha sin registrar";
+  };
+  return (
+    <section className={m.uploadHistory} aria-labelledby="upload-history-title">
+      <div className={m.head}>
+        <div>
+          <h3 id="upload-history-title">Historial de documentos cargados</h3>
+          <p>{list.length} {list.length === 1 ? "documento" : "documentos"} de {clientName}, del más reciente al más antiguo.</p>
+        </div>
+      </div>
+      {list.length ? (
+        <ol className={m.uploadList}>
+          {shown.map((source) => (
+            <li key={source.id}>
+              <div>
+                <strong>{source.title || "Sin título"}</strong>
+                <small>
+                  {sourceLabels[source.type]}
+                  {source.demo ? " · DEMO" : ""} · {when(source.importedAt)} ·{" "}
+                  {source.importedBy || source.owner || "Sin autor"}
+                </small>
+              </div>
+              <span className={m.badge}>{source.validationStatus}</span>
+              <span className={m.uploadOpen}>
+                {/^https?:\/\//.test(source.externalUrl) ? (
+                  <ExternalLink url={source.externalUrl} label="Abrir" />
+                ) : source.rawText ? (
+                  <details>
+                    <summary>Ver contenido</summary>
+                    <pre className={m.pre}>{source.rawText.slice(0, 4000)}</pre>
+                  </details>
+                ) : (
+                  <small>Sin archivo ni texto conservado</small>
+                )}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className={m.empty}>Todavía no se cargaron documentos.</p>
+      )}
+      {list.length > 6 ? (
+        <button type="button" className={buttonClass("ghost", true)} onClick={() => setAll((value) => !value)}>
+          {all ? "Ver menos" : `Ver los ${list.length}`}
+        </button>
+      ) : null}
+    </section>
   );
 }

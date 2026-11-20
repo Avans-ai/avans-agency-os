@@ -11,12 +11,24 @@ import { resetContentDemo } from "./content-demo-tasks";
 import { upsertContentDesignRequest } from "./content-design";
 import { addContentComment, applyContentAction, clientRequests, clientRequestValues, contentComments, contentState, contentTransitions, PREPRODUCTION_FIELDS, recordContentChange, type ContentAction, type ContentRole } from "./content-workflow";
 import { createDesignVersion } from "./design-model";
+import { buildGuidelineOverride, GUIDELINE_OVERRIDE_FIELD, guidelineOverrides, type GuidelineWarning } from "./content-guideline-check";
 import { moduleKey, seedRecords } from "./store";
 import type { ModuleRecord } from "./types";
 
-export type ContentOperationOptions = { comment?: string; actor?: string; role?: ContentRole; patch?: Record<string, string> };
+export type ContentOperationOptions = { comment?: string; actor?: string; role?: ContentRole; patch?: Record<string, string>; /** Advertencias de lineamientos que el Content decidió ignorar: quedan en el historial. */ guidelineOverride?: GuidelineWarning[] };
 export type ContentCommentOptions = { text: string; actor?: string; role?: ContentRole; visibility: "client" | "internal"; attachmentUrl?: string; attachmentName?: string; attachmentId?: string; requestId?: string };
 const PREPRODUCTION_STATES = ["Preproducción", "Producción de diseño", "Información del cliente"];
+function parseOverride(raw?: string): GuidelineWarning[] {
+  if (!raw) return [];
+  try { const value: unknown = JSON.parse(raw); return Array.isArray(value) ? value as GuidelineWarning[] : []; } catch { return []; }
+}
+/** Registra que el Content siguió adelante pese a las advertencias de lineamientos (sin IA). */
+function withGuidelineOverride(record: ModuleRecord, warnings: GuidelineWarning[], actor: string, at: string, stage: string): ModuleRecord {
+  const previous = guidelineOverrides(record.values.guidelineChecks);
+  const entry = buildGuidelineOverride(warnings, actor, at, stage, previous);
+  const terms = warnings.map((warning) => `«${warning.term}» (${warning.sourceLabel})`).join(", ");
+  return { ...record, values: { ...record.values, guidelineChecks: JSON.stringify([...previous, entry]) }, history: [{ at, user: actor, text: `${stage} con advertencias de lineamientos: ${terms}` }, ...record.history] };
+}
 export function useContentOperations(client: OsClient) {
   const store = useOsStore();
   const role: ContentRole | undefined = store.role === "operativo" ? "content" : ["admin", "pm", "content", "designer", "client"].includes(store.role) ? store.role as ContentRole : undefined;
@@ -78,6 +90,7 @@ export function useContentOperations(client: OsClient) {
       const transitions = contentTransitions(next);
       transitions[transitions.length - 1].responsible = contentOwner(client, next);
       next = { ...next, values: { ...next.values, contentTransitions: JSON.stringify(transitions) } };
+      if (options.guidelineOverride?.length) next = withGuidelineOverride(next, options.guidelineOverride, actor, next.updatedAt, `Enviar a revisión · ${transitions[transitions.length - 1].to}`);
       const task = buildContentTask(client, next, tasks, actor, next.updatedAt);
       return save(next, records, task, `${client.slug}-${record.id}-${transitions[transitions.length - 1].id}`, effectiveRole === "client" ? "client-response" : action === "request-changes" ? "changes" : action.startsWith("approve") ? "approval" : action === "request-information" ? "blocked" : "review");
     } catch (error) { store.notify(error instanceof Error ? error.message : "No se pudo completar la transición.", "error"); return false; }
@@ -128,17 +141,19 @@ export function useContentOperations(client: OsClient) {
         tasks: readLocalJson<{ tasks: OsTask[] }>("workspace", { tasks: store.tasks }).tasks,
       };
       const at = new Date().toISOString(), actor = previewActor(store.role);
-      const protectedKeys = new Set(["estado", "clientSnapshot", "contentTransitions", "contentComments", "contentChanges", "preliminaryApprovedAt", "finalApprovedAt", "returnState", "informationReturnState", "tareaId", "demo"]);
+      const override = parseOverride(values[GUIDELINE_OVERRIDE_FIELD]);
+      const protectedKeys = new Set(["estado", "clientSnapshot", "contentTransitions", "contentComments", "contentChanges", "preliminaryApprovedAt", "finalApprovedAt", "returnState", "informationReturnState", "tareaId", "demo", "guidelineChecks", GUIDELINE_OVERRIDE_FIELD]);
       const patch = Object.fromEntries(Object.entries(values).filter(([key]) => !protectedKeys.has(key)));
       for (const [field, collection] of [["eje", "ejes"], ["plan", "planes"]]) {
         if (patch[field] && !read("contenidos", collection).some((item) => item.id === patch[field] && item.client === client.slug)) throw new Error(`La referencia de ${field} no pertenece a este cliente.`);
       }
       const merged = { ...previous?.values, ...patch, estado: previous ? contentState(previous) : "Borrador" };
-      const record: ModuleRecord = { ...previous,
+      let record: ModuleRecord = { ...previous,
         id: previous?.id || `PZA-${crypto.randomUUID()}`, client: client.slug, module: "contenidos", collection: "piezas", source: previous?.source || "manual", createdAt: previous?.createdAt || at, updatedAt: at, user: actor,
         values: previous ? recordContentChange(previous, merged, actor, at) : merged,
         history: [{ at, user: actor, text: previous ? "Actualizó la propuesta de contenido" : "Creó el borrador de contenido" }, ...(previous?.history || [])],
       };
+      if (override.length) record = withGuidelineOverride(record, override, actor, at, "Guardar borrador");
       record.values.tareaId = contentTaskId(client.slug, record, data.tasks);
       const task = buildContentTask(client, record, data.tasks, actor, at);
       const oldTask = data.tasks.find((item) => item.id === task.id);

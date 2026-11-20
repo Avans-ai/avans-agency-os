@@ -13,6 +13,7 @@ import s from "../os.module.css";
 import sc from "../screens.module.css";
 import { ContentReportView, MonthlyReportView, PaidReportView, WeeklyReportView } from "./report-views";
 import { useClientReports } from "./use-report-data";
+import { ReportReviewPanel } from "./report-review";
 import r from "./reports.module.css";
 
 type ReportId = "semanal" | "mensual" | "publicidad" | "contenidos";
@@ -51,7 +52,7 @@ export function ClientReports({ client }: { client: OsClient }) {
       <div className={s.pageHead}>
         <div>
           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 500 }}>Reportes</h2>
-          <p>Reportes de ejemplo completos construidos desde las tareas y los objetos de los módulos activos, complementados con métricas de demostración rotuladas.</p>
+          <p>Reportes semanales y devoluciones mensuales. Cada responsable revisa su parte (LT, Content y PM); con todo revisado, el PM exporta y prepara el envío por mail. Se construyen desde las tareas y los objetos de los módulos activos, con métricas de demostración rotuladas.</p>
         </div>
       </div>
 
@@ -65,6 +66,8 @@ export function ClientReports({ client }: { client: OsClient }) {
           ))}
         </div>
 
+        {selected === "semanal" ? <ReportReviewPanel key={`semanal-${client.slug}`} client={client} kind="semanal" report={weekly} activeServices={activeServices} /> : null}
+        {selected === "mensual" ? <ReportReviewPanel key={`mensual-${client.slug}`} client={client} kind="mensual" report={monthly} activeServices={activeServices} /> : null}
         {selected === "semanal" ? <WeeklyReportView report={weekly} clientSlug={client.slug} onModuleChange={setModuleFilter} /> : null}
         {selected === "mensual" ? <MonthlyReportView report={monthly} clientSlug={client.slug} /> : null}
         {selected === "publicidad" ? <PaidReportView report={paid} clientSlug={client.slug} /> : null}

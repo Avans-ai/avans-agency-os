@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import { getProfileFile } from "../knowledge/profile-files";
@@ -11,7 +11,9 @@ import { buttonClass } from "../ui";
 import s from "../os.module.css";
 import { PIECE_CHANNELS, PIECE_FORMATS } from "./content-collections";
 import { AxisTag, ChannelChip, StageStepper, Thumb, useContentThumbs } from "./content-ui";
-import { CLIENT_REQUEST_TYPES, CONTENT_STATES, MONDAY_STATE, PREPRODUCTION_FIELDS, REVIEW_KIND_LABEL, VIDEO_FORMATS, clientRequestValues, clientRequests, contentChanges, contentComments, contentState, contentTransitions, contentVersionLabel, getContentActions, preproductionChecklist, safeContentUrl, validContentDate, type ClientRequest, type ContentRole, type ContentState } from "./content-workflow";
+import { CLIENT_REQUEST_TYPES, CONTENT_STATES, MONDAY_STATE, PREPRODUCTION_FIELDS, REVIEW_KIND_LABEL, VIDEO_FORMATS, clientRequestValues, clientRequests, contentChanges, contentComments, contentState, contentTransitions, contentVersionLabel, getContentActions, isDesignReview, preproductionChecklist, safeContentUrl, validContentDate, type ClientRequest, type ContentAction, type ContentRole, type ContentState } from "./content-workflow";
+import { checkContentGuidelines, GUIDELINE_AI_PENDING, GUIDELINE_OVERRIDE_FIELD, GUIDELINE_SOURCE_LABEL, guidelineOverrides, type GuidelineCheck } from "./content-guideline-check";
+import { useGuidelineCheckSources } from "./content-guidelines";
 import { formatDateTime, StatusBadge } from "./module-ui";
 import { useModuleRecords, type ModuleData } from "./store";
 import type { ModuleRecord } from "./types";
@@ -30,7 +32,9 @@ export function ContentEditor({ client, initial, refs, title = "Nuevo contenido"
   const [values, setValues] = useState<Record<string, string>>(() => ({ responsable: client.team.find((member) => member.role.includes("Contenidos"))?.name || "", revisor: client.owner, disenador: client.team.find((member) => member.role.includes("Diseño"))?.name || "", clienteResponsable: client.contacts[0]?.name || "", ...initial }));
   const [requests, setRequests] = useState<ClientRequest[]>(() => clientRequests(initial).map((item) => item.id === "REQ-LEGACY" ? { ...item, id: newRequest(0).id } : item));
   const [error, setError] = useState("");
-  const set = (key: string) => (event: { target: { value: string } }) => setValues((current) => ({ ...current, [key]: event.target.value }));
+  const guideSources = useGuidelineCheckSources(client);
+  const [review, setReview] = useState<GuidelineCheck | null>(null);
+  const set = (key: string) => (event: { target: { value: string } }) => { setReview(null); setValues((current) => ({ ...current, [key]: event.target.value })); };
   const field = (key: string, label: string, kind: "text" | "textarea" | "date" = "text", wide = false, placeholder?: string) => <div className={c.formField} data-wide={wide || kind === "textarea" || undefined}><label htmlFor={`content-${key}`}>{label}</label>{kind === "textarea" ? <textarea id={`content-${key}`} className={s.input} rows={3} maxLength={1500} value={values[key] || ""} onChange={set(key)} placeholder={placeholder} /> : <input id={`content-${key}`} className={s.input} type={kind} value={values[key] || ""} onChange={set(key)} placeholder={placeholder} maxLength={200} />}</div>;
   const select = (key: string, label: string, options: readonly { value: string; label: string }[], empty = "Elegir…") => <div className={c.formField}><label htmlFor={`content-${key}`}>{label}</label><select id={`content-${key}`} className={s.input} value={values[key] || ""} onChange={set(key)}><option value="">{empty}</option>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>;
   const opts = (list: readonly string[]) => list.map((value) => ({ value, label: value }));
@@ -41,11 +45,24 @@ export function ContentEditor({ client, initial, refs, title = "Nuevo contenido"
     if (values.hora && !/^([01]\d|2[0-3]):[0-5]\d$/.test(values.hora)) { setError("El horario debe tener el formato HH:MM."); return; }
     if (values.referencia && !safeContentUrl(values.referencia)) { setError("La URL de referencia debe empezar con http o https."); return; }
     setError("");
-    onSave({ ...Object.fromEntries(Object.entries(values).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value])), ...clientRequestValues(requests) });
+    const clean = cleanValues();
+    // Revisión de lineamientos sin IA: glosario de la Ficha y don'ts de Contenidos.
+    const check = checkContentGuidelines(clean, guideSources);
+    if (check.warnings.length) { setReview(check); return; }
+    onSave(clean);
+  }
+  function cleanValues() {
+    return { ...Object.fromEntries(Object.entries(values).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value])), ...clientRequestValues(requests) };
+  }
+  function adjustByHand() {
+    const field = review?.warnings[0]?.field;
+    setReview(null);
+    if (field) setTimeout(() => document.getElementById(`content-${field}`)?.focus(), 0);
   }
   return <OSModal title={title} titleId="content-editor-title" onClose={onClose} footer={<><button className={buttonClass("ghost")} onClick={onClose}>Cancelar</button><button type="submit" form="content-editor-form" className={buttonClass("primary")}>Guardar borrador</button></>}>
     <form id="content-editor-form" className={c.editor} onSubmit={submit} noValidate>
       {error ? <p role="alert" className={s.fieldError}>{error}</p> : null}
+      {review ? <GuidelineReview check={review} actionLabel="Guardar igual" onProceed={() => { const warnings = review.warnings; setReview(null); onSave({ ...cleanValues(), [GUIDELINE_OVERRIDE_FIELD]: JSON.stringify(warnings) }); }} onAdjust={adjustByHand} /> : null}
       <fieldset><legend>Propuesta</legend>
         {field("titulo", "Título *", "text", true)}
         {select("plan", "Plan mensual", (refs.planes || []).map((item) => ({ value: item.id, label: item.values.nombre || item.id })), "Sin vincular")}
@@ -134,6 +151,18 @@ export function ContentDetail({ client, record, editable, onClose }: { client: O
   const checklist = preproductionChecklist(record.values);
   const lastRequest = [...contentTransitions(record)].reverse().find((entry) => entry.action === "request-changes" || entry.action === "request-information");
   const taskId = record.values.tareaId || `CONTENT-${client.slug}-${record.id}`;
+  const guideSources = useGuidelineCheckSources(client);
+  const [pendingCheck, setPendingCheck] = useState<{ action: ContentAction; check: GuidelineCheck } | null>(null);
+  function runAction(action: ContentAction, override?: GuidelineCheck) {
+    // Antes de enviar la propuesta a revisión del PM, se revisa contra los lineamientos (sin IA).
+    if (!override && (action === "submit" || (action === "resubmit" && !isDesignReview(record)))) {
+      const check = checkContentGuidelines(record.values, guideSources);
+      if (check.warnings.length) { setPendingCheck({ action, check }); return; }
+    }
+    setPendingCheck(null);
+    const patch: Record<string, string> = action === "schedule" ? { fecha: date, hora: time, enlaceMetricool: schedulingUrl } : { archivoDiseno: designUrl, version };
+    if (operations.transition(record, action, { comment, patch, guidelineOverride: override?.warnings })) setComment("");
+  }
 
   return <>
     <OSSidePanel label={`Contenido: ${record.values.titulo}`} heading={<><h2>{record.values.titulo}</h2><div className={c.headMeta}><StatusBadge status={state} /><span className={c.muted}>{contentVersionLabel(record)}</span>{record.source === "demo" ? <span className={c.demoTag}>Demo</span> : null}</div></>} onClose={onClose} wide>
@@ -146,7 +175,8 @@ export function ContentDetail({ client, record, editable, onClose }: { client: O
           {designAction && editable ? <div className={c.fieldGrid}><label>Enlace a la versión de diseño<input className={s.input} type="url" value={designUrl} onChange={(event) => setDesignUrl(event.target.value)} placeholder="https://…" /></label><label>Versión del diseño<input className={s.input} value={version} onChange={(event) => setVersion(event.target.value)} /></label></div> : null}
           {state === "Aprobado" && editable ? <div className={c.fieldGrid}><label>Fecha de programación<input className={s.input} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label>Hora de programación<input className={s.input} type="time" value={time} onChange={(event) => setTime(event.target.value)} /></label><label data-wide="true">Enlace de programación (opcional)<input className={s.input} type="url" value={schedulingUrl} onChange={(event) => setSchedulingUrl(event.target.value)} /></label></div> : null}
           {editable ? <div className={c.commentBox}><label>Comentario o devolución<textarea className={s.input} rows={2} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Indicá ajustes, información o decisiones…" /></label><details className={c.more}><summary>Visibilidad y material</summary><div className={c.fieldGrid}><label>Visibilidad del comentario<select className={s.input} value={visibility} onChange={(event) => setVisibility(event.target.value as "internal" | "client")}><option value="internal">Solo equipo interno</option><option value="client">Compartido con el cliente</option></select></label><label>Enlace a material (opcional)<input className={s.input} type="url" value={attachment} onChange={(event) => setAttachment(event.target.value)} /></label></div></details>
-            <div className={c.actionRow}>{actions.map((action) => <button key={action.id} className={buttonClass(action.id === "request-changes" || action.id === "request-information" ? "secondary" : "primary", true)} onClick={() => { const patch: Record<string, string> = action.id === "schedule" ? { fecha: date, hora: time, enlaceMetricool: schedulingUrl } : { archivoDiseno: designUrl, version }; if (operations.transition(record, action.id, { comment, patch })) setComment(""); }}>{action.label}</button>)}<button className={buttonClass("ghost", true)} disabled={!comment.trim() && !attachment} onClick={() => { if (operations.comment(record, { text: comment, visibility, attachmentUrl: attachment || undefined })) { setComment(""); setAttachment(""); } }}>Guardar comentario</button></div></div> : <p className={c.muted}>Vista de consulta: tu rol no modifica este contenido.</p>}
+            {pendingCheck ? <GuidelineReview check={pendingCheck.check} actionLabel="Enviar igual" onProceed={() => runAction(pendingCheck.action, pendingCheck.check)} onAdjust={() => { setPendingCheck(null); if (canEdit) setEditing(record); }} adjustLabel={canEdit ? "Ajustar a mano" : "Cancelar"} /> : null}
+            <div className={c.actionRow}>{actions.map((action) => <button key={action.id} className={buttonClass(action.id === "request-changes" || action.id === "request-information" ? "secondary" : "primary", true)} onClick={() => runAction(action.id)}>{action.label}</button>)}<button className={buttonClass("ghost", true)} disabled={!comment.trim() && !attachment} onClick={() => { if (operations.comment(record, { text: comment, visibility, attachmentUrl: attachment || undefined })) { setComment(""); setAttachment(""); } }}>Guardar comentario</button></div></div> : <p className={c.muted}>Vista de consulta: tu rol no modifica este contenido.</p>}
         </section>
         <div className={c.linkRow}>{canEdit ? <button className={buttonClass("secondary", true)} onClick={() => setEditing(record)}>Editar propuesta</button> : null}<Link className={s.link} href={`/v2/clientes/${client.slug}/contenido?seccion=tareas&task=${taskId}`}>Ver tarea vinculada</Link>{designRequest ? <Link className={s.link} href={`/v2/clientes/${client.slug}/diseno-marca?seccion=trabajos&registro=${designRequest.id}`}>Abrir pedido de diseño</Link> : null}<Link className={s.link} href={`/v2/clientes/${client.slug}/contenido?area=lineamientos`}>Consultar lineamientos</Link></div>
         <div className={c.tabs} role="group" aria-label="Secciones del contenido">{([["propuesta", "Propuesta"], ["preproduccion", "Preproducción"], ["revisiones", `Revisiones · ${comments.length}`], ["historial", "Historial"]] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>)}</div>
@@ -204,10 +234,29 @@ function ReviewsTab({ client, record, notify }: { client: OsClient; record: Modu
 }
 
 function HistoryTab({ record }: { record: ModuleRecord }) {
-  type Entry = { id: string; at: string; title: string; meta: string; note?: string; kind: "transition" | "change" };
+  type Entry = { id: string; at: string; title: string; meta: string; note?: string; kind: "transition" | "change" | "guideline" };
   const entries: Entry[] = [
     ...contentTransitions(record).map((event) => ({ id: event.id, at: event.at, kind: "transition" as const, title: `${event.from} → ${event.to}`, meta: `${event.actor} · ${formatDateTime(event.at)} · ${event.version || ""} · Monday: ${MONDAY_STATE[(CONTENT_STATES as readonly string[]).includes(event.to) ? event.to : "Borrador"]} · responsable ${event.responsible} · ${event.taskId}`, note: event.comment })),
     ...contentChanges(record).map((change) => ({ id: change.id, at: change.at, kind: "change" as const, title: `Cambió ${change.fields.join(", ")}`, meta: `${change.actor} · ${formatDateTime(change.at)} · ${change.version}${change.requestedBy ? ` · a pedido de ${change.requestedBy}` : ""}`, note: change.request })),
+    ...guidelineOverrides(record.values.guidelineChecks).map((entry) => ({ id: entry.id, at: entry.at, kind: "guideline" as const, title: `Advertencias de lineamientos · ${entry.decision}`, meta: `${entry.actor} · ${formatDateTime(entry.at)} · ${entry.stage}`, note: entry.warnings.map((warning) => `${warning.message} (${warning.field}) · ${GUIDELINE_SOURCE_LABEL[warning.source]}`).join("\n") })),
   ].sort((a, b) => b.at.localeCompare(a.at));
   return <section aria-label="Historial del contenido">{entries.length ? <ol className={c.timeline}>{entries.map((entry) => <li key={entry.id} data-kind={entry.kind}><strong>{entry.title}</strong><span>{entry.meta}</span>{entry.note ? <p>{entry.note}</p> : null}</li>)}</ol> : <p className={s.cellSub}>Las próximas transiciones quedarán registradas con usuario, responsable y tarea.</p>}<details><summary>Actividad anterior y ediciones</summary>{record.history.map((entry, index) => <p key={`${entry.at}-${index}`} className={s.demoNote}>{entry.user} · {formatDateTime(entry.at)} · {entry.text}</p>)}</details></section>;
+}
+
+/** Advertencias de la revisión de lineamientos (sin IA). El Content decide: seguir igual (queda registrado) o ajustar a mano. */
+function GuidelineReview({ check, actionLabel, onProceed, onAdjust, adjustLabel = "Ajustar a mano" }: { check: GuidelineCheck; actionLabel: string; onProceed: () => void; onAdjust: () => void; adjustLabel?: string }) {
+  // Aparece donde el usuario no está mirando (arriba del formulario): se lleva a la vista.
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => { ref.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" }); }, [check]);
+  return <section ref={ref} className={c.guideCheck} aria-label="Revisión de lineamientos" aria-live="polite" data-wide="true">
+    <h3>Revisión de lineamientos · {check.warnings.length} {check.warnings.length === 1 ? "advertencia" : "advertencias"}</h3>
+    <ul>{check.warnings.map((warning) => <li key={warning.id} data-severity={warning.severity}><span>{warning.message} · {warning.sourceLabel}</span><small>En {warning.fieldLabel.toLowerCase()}</small></li>)}</ul>
+    {check.suggestions.map((item) => <small key={item}>{item}</small>)}
+    <div className={c.guideActions}>
+      <button type="button" className={buttonClass("secondary", true)} onClick={onAdjust}>{adjustLabel}</button>
+      <button type="button" className={buttonClass("primary", true)} onClick={onProceed}>{actionLabel}</button>
+      <button type="button" className={buttonClass("ghost", true)} disabled title={GUIDELINE_AI_PENDING}>Ajustar con IA</button>
+      <em>{GUIDELINE_AI_PENDING} Si seguís igual, la decisión queda en el historial.</em>
+    </div>
+  </section>;
 }

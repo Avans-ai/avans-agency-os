@@ -59,7 +59,7 @@
 .conclusion span{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--av-coral-200);padding-top:3px}
 .conclusion p{margin:0;font-size:15px;line-height:1.55}
 
-.tableScroll{overflow-x:auto;max-width:100%}
+.tableScroll{overflow-x:auto;max-width:100%;position:relative}
 .dataTable{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
 .dataTable th,.dataTable td{padding:9px 10px;border-bottom:1px solid var(--av-border);text-align:left;white-space:nowrap}
 .dataTable thead th{background:var(--av-bg-sunken);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
@@ -113,4 +113,43 @@
 @media print{
   .picker,.docTools{display:none}
   .doc{border:0}
+}
+
+/* Circuito de revisión por responsable */
+.review{background:var(--av-bg-raised);border:1px solid var(--av-border);display:flex;flex-direction:column;min-width:0}
+.reviewHead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px 20px;padding:16px 20px;border-bottom:1px solid var(--av-border)}
+.reviewHead h3{margin:0;font-size:17px;font-weight:600}
+.reviewHead p{margin:4px 0 0;font-size:13px;color:var(--av-text-muted);max-width:620px;line-height:1.45}
+.reviewProgress{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:13px}
+.reviewProgress strong{font-size:18px;font-variant-numeric:tabular-nums}
+.progressTrack{display:block;width:140px;height:8px;background:var(--av-bg-sunken)}
+.progressTrack i{display:block;height:100%;background:var(--av-teal-300)}
+.parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:1px;background:var(--av-border);border-bottom:1px solid var(--av-border)}
+.part{background:var(--av-bg-raised);padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0;box-shadow:inset 0 3px 0 var(--av-stone)}
+.part[data-status="Revisada"]{box-shadow:inset 0 3px 0 var(--av-teal-300)}
+.part[data-status="Requiere ajustes"]{box-shadow:inset 0 3px 0 var(--av-error)}
+.partHead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.roleChip{display:inline-flex;padding:2px 7px;font-size:11px;font-weight:600;letter-spacing:.04em;background:var(--av-cocoa);color:var(--av-paper)}
+.partTitle{font-size:15px;font-weight:600}
+.partDetail{font-size:12px;color:var(--av-text-muted);line-height:1.4}
+.partOwner{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.partComment{margin:0;font-size:13px;line-height:1.45;padding:6px 8px;background:var(--av-bg-sunken)}
+.partForm{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.partForm textarea{width:100%;min-width:0;resize:vertical}
+.partActions{display:flex;flex-wrap:wrap;gap:6px}
+.reviewActions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 20px;border-bottom:1px solid var(--av-border)}
+.reviewNote{font-size:13px;color:var(--av-text-muted);margin:0}
+.reviewNote strong{color:var(--av-text);font-weight:500}
+.emailDraft{display:flex;flex-direction:column;gap:10px;padding:14px 20px;border-bottom:1px solid var(--av-border);background:var(--av-bg)}
+.emailDraft dl{margin:0;display:grid;gap:4px;font-size:13px}
+.emailDraft dl div{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px}
+.emailDraft dt{color:var(--av-text-muted)}
+.emailDraft dd{margin:0;overflow-wrap:anywhere}
+.emailDraft textarea{width:100%;min-width:0;font-size:13px;line-height:1.5}
+.reviewFoot{padding:10px 20px;font-size:12px;color:var(--av-text-muted);display:flex;flex-direction:column;gap:6px;line-height:1.45}
+.reviewFoot summary{cursor:pointer;color:var(--av-link)}
+.reviewFoot ul{margin:6px 0 0;padding-left:16px}
+@media (max-width:767px){
+  .reviewHead,.reviewActions,.emailDraft,.reviewFoot{padding-left:16px;padding-right:16px}
+  .progressTrack{width:100px}
 }

@@ -1,0 +1,61 @@
+/* «Tareas» del cliente: tablero agrupado por persona o módulo, lista ordenable y procedimientos periódicos.
+ * Sistema Avans: tokens --av-*, cantos vivos, coral escaso. */
+.controls{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 16px;padding:12px 16px;border-bottom:1px solid var(--av-border)}
+.segmented{display:inline-flex;border:1px solid var(--av-border-strong);background:var(--av-bg-raised);max-width:100%}
+.segmented button{border:0;border-left:1px solid var(--av-border-strong);background:transparent;color:var(--av-text);font:inherit;font-size:13px;padding:8px 12px;min-height:38px;cursor:pointer;white-space:nowrap}
+.segmented button:first-child{border-left:0}
+.segmented button[aria-pressed="true"]{background:var(--av-cocoa);color:var(--av-paper)}
+.segmented button:focus-visible{outline:2px solid var(--av-focus);outline-offset:-2px}
+.controlGroup{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--av-text-muted);min-width:0}
+.sort{min-height:38px;border:1px solid var(--av-border-strong);background:var(--av-bg-raised);color:var(--av-text);font:inherit;font-size:14px;padding:0 10px;border-radius:0}
+.filtersToggle summary{cursor:pointer;font-size:13px;color:var(--av-link);padding:10px 16px}
+.filtersToggle[open] summary{padding-bottom:4px}
+.filtersBody{padding:4px 16px 14px}
+
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:12px;padding:14px 16px;align-items:start}
+.column{border:1px solid var(--av-border);background:var(--av-bg);display:flex;flex-direction:column;min-width:0}
+.colHead{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;align-items:center;padding:12px 14px 10px;background:var(--av-bg-raised);border-bottom:1px solid var(--av-border)}
+.colHead h3{margin:0;font-size:15px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.colHead small{display:block;font-size:12px;color:var(--av-text-muted);line-height:1.35}
+.colStats{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.stat{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;font-size:11px;background:var(--av-bg-sunken);color:var(--av-text);white-space:nowrap}
+.stat strong{font-weight:600;font-variant-numeric:tabular-nums}
+.stat[data-tone="error"]{background:var(--av-error-soft);color:var(--av-error)}
+.stat[data-tone="accent"]{background:var(--av-coral-100);color:var(--av-accent-ink)}
+.load{grid-column:1/-1;display:flex;height:6px;background:var(--av-bg-sunken);margin-top:6px}
+.load i{display:block;height:100%}
+.load i[data-status="Por hacer"]{background:var(--av-stone)}
+.load i[data-status="En curso"]{background:var(--av-teal-300)}
+.load i[data-status="En aprobación"]{background:var(--av-coral-300)}
+.load i[data-status="Hecho"]{background:var(--av-cocoa)}
+.colLink{grid-column:1/-1;font-size:12px}
+.cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.card{display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-top:1px solid var(--av-border);background:var(--av-bg-raised);min-width:0}
+.cards li:first-child.card{border-top:0}
+.card[data-done="true"]{opacity:.62}
+.card[data-late="true"]{box-shadow:inset 3px 0 0 var(--av-error)}
+.cardTitle{font-size:14px;font-weight:500;line-height:1.35;color:var(--av-text);text-decoration:none;overflow-wrap:anywhere}
+.cardTitle:hover{color:var(--av-link);text-decoration:underline}
+.cardMeta{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:12px;color:var(--av-text-muted)}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:1px 6px;font-size:11px;border:1px solid var(--av-border);background:var(--av-bg);color:var(--av-text);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.chip[data-kind="procedure"]{border-color:var(--av-coral-200);color:var(--av-accent-ink);background:var(--av-coral-100)}
+.chip[data-kind="auto"]{border-color:var(--av-teal-200);background:var(--av-teal-100)}
+.more{padding:8px 14px;font-size:12px;color:var(--av-text-muted);border-top:1px solid var(--av-border);background:var(--av-bg-raised)}
+.emptyCol{padding:12px 14px;font-size:13px;color:var(--av-text-muted)}
+
+.procedures{display:flex;flex-direction:column}
+.procRow{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:10px 16px;border-top:1px solid var(--av-border);font-size:13px}
+.procRow:first-child{border-top:0}
+.procRow strong{display:block;font-weight:500;font-size:14px;line-height:1.35}
+.procRow small{display:block;color:var(--av-text-muted);font-size:12px;line-height:1.4}
+.procState{display:flex;flex-direction:column;align-items:flex-end;gap:3px;text-align:right}
+.demoTag{align-self:center;display:inline-flex;padding:2px 7px;font-size:10px;font-weight:600;letter-spacing:.04em;background:var(--av-coral-100);color:var(--av-accent-ink);text-transform:uppercase}
+
+@media (max-width:767px){
+  .controls{padding:12px}
+  .board{padding:12px;gap:10px}
+  .segmented{width:100%}
+  .segmented button{flex:1 1 0;padding:8px 6px}
+  .procRow{grid-template-columns:minmax(0,1fr);padding:10px 12px}
+  .procState{align-items:flex-start;text-align:left}
+}
