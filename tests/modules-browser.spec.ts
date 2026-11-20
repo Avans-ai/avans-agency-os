@@ -225,11 +225,31 @@ test("contenidos, estrategia, web and audiovisual workspaces show their own obje
     await expect(contentNav.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
   }
   await contentNav.getByRole("link", { name: "Calendario" }).click();
-  await expect(page.getByRole("grid", { name: /Calendario editorial · Noviembre de 2026/ })).toBeVisible();
+  await expect(page.getByRole("grid", { name: /Calendario editorial · noviembre de 2026/i })).toBeVisible();
   await page.getByRole("button", { name: /Teaser del lanzamiento Line Up/ }).click();
-  const panel = page.getByRole("dialog", { name: /pieza: Teaser del lanzamiento Line Up/ });
-  await panel.getByRole("button", { name: "Aprobar" }).click();
-  await expect(panel.getByText("Programada").first()).toBeVisible();
+  const panel = page.getByRole("dialog", { name: "Contenido: Teaser del lanzamiento Line Up", exact: true });
+  // A legacy approval stays an approval, never an implicit scheduled publication.
+  await expect(panel.getByText("Aprobación final del cliente", { exact: true }).first()).toBeVisible();
+  await expect(panel.getByText("Algo nuevo llega a la línea técnica.", { exact: true })).toBeVisible();
+  await panel.getByRole("button", { name: "Aprobar pieza final", exact: true }).click();
+  await expect(page.getByText("La pieza necesita un enlace al diseño final.", { exact: true })).toBeVisible();
+  await panel.getByLabel("Comentario o devolución").fill("Adjuntar la versión final del diseño");
+  await panel.getByRole("button", { name: "Solicitar ajustes", exact: true }).click();
+  await panel.getByLabel("Enlace a la versión de diseño").fill("https://example.com/line-up-v3.pdf");
+  await panel.getByLabel("Versión del diseño").fill("v3");
+  await panel.getByRole("button", { name: "Reenviar a revisión", exact: true }).click();
+  await expect(panel.getByText("Revisión interna del diseño", { exact: true }).first()).toBeVisible();
+  await panel.getByRole("button", { name: "Solicitar aprobación final", exact: true }).click();
+  await panel.getByRole("button", { name: "Aprobar pieza final", exact: true }).click();
+  await expect(panel.getByText("Aprobado", { exact: true }).first()).toBeVisible();
+  await expect(panel.getByText("Programado", { exact: true })).toHaveCount(0);
+  await panel.getByLabel("Fecha de programación").fill("2026-11-26");
+  await panel.getByLabel("Hora de programación").fill("10:30");
+  await panel.getByRole("button", { name: "Marcar programado", exact: true }).click();
+  await expect(panel.getByText("Programado", { exact: true }).first()).toBeVisible();
+  const persistedPiece = await page.evaluate(() => JSON.parse(localStorage.getItem("avans-os:preview:v1:client:epsa:module:contenidos:piezas")!).value.find((record: { id: string }) => record.id === "PZA-EPSA-01"));
+  expect(persistedPiece.values).toMatchObject({ copy: "Algo nuevo llega a la línea técnica.", estado: "Programado", version: "v3", archivoDiseno: "https://example.com/line-up-v3.pdf" });
+  expect(JSON.parse(persistedPiece.values.contentTransitions).map((entry: { to: string }) => entry.to)).toEqual(["Ajustes", "Revisión interna del diseño", "Aprobación final del cliente", "Aprobado", "Programado"]);
   await page.keyboard.press("Escape");
   await page.getByRole("group", { name: "Vista del calendario" }).getByRole("button", { name: "Semana" }).click();
   await expect(page.getByText(/Semana del/)).toBeVisible();

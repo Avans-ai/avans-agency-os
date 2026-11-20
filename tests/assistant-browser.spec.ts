@@ -185,8 +185,33 @@ test("provider errors and unconfigured generation never block the form", async (
   await expect(page.getByRole("button", { name: "Campaña manual sin IA" })).toBeVisible();
 });
 
+test("content creation stays manual while AI is deferred and saves its linked task", async ({ page }) => {
+  let assistantCalls = 0;
+  page.on("request", (request) => {
+    if (request.url().includes("/api/assistant/")) assistantCalls += 1;
+  });
+  await page.goto("/v2/clientes/aca/contenido?seccion=piezas");
+  await page.getByRole("button", { name: "Nuevo contenido", exact: true }).click();
+  const panel = page.getByRole("dialog", { name: "Nuevo contenido", exact: true });
+  await expect(panel.getByRole("complementary")).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: /Generar ideas|Aplicar sugerencia/ })).toHaveCount(0);
+  await panel.getByLabel("Título", { exact: false }).fill("Contenido manual con trazabilidad");
+  await panel.getByLabel("Copy preliminar").fill("Texto escrito por el equipo sin generación automática.");
+  await panel.getByLabel("Canal", { exact: true }).selectOption("Instagram");
+  await panel.getByLabel("Formato", { exact: true }).selectOption("Carrusel");
+  await panel.getByLabel("Fecha prevista").fill("2026-12-04");
+  await panel.getByRole("button", { name: "Guardar borrador", exact: true }).click();
+  await expect(panel).toHaveCount(0);
+  const records = await local(page, "client:aca:module:contenidos:piezas");
+  const created = records.find((record: { values: Record<string, string> }) => record.values.titulo === "Contenido manual con trazabilidad");
+  expect(created.source).toBe("manual");
+  expect(created.values).toMatchObject({ estado: "Borrador", copy: "Texto escrito por el equipo sin generación automática." });
+  const workspace = await local(page, "workspace");
+  expect(workspace.tasks.filter((task: { workItem?: { id: string } }) => task.workItem?.id === created.id)).toHaveLength(1);
+  expect(assistantCalls).toBe(0);
+});
+
 for (const flow of [
-  { name: "content piece", url: "/v2/clientes/aca/contenido?seccion=piezas", button: "Nueva pieza", title: "Asistente IA · Ideas para este contenido", rec: "Convertir preguntas frecuentes en piezas", titleLabel: /^Pieza/, fill: async (form: ReturnType<Page["locator"]>) => { await form.getByLabel(/^Formato/).selectOption("Carrusel"); await form.getByLabel(/^Canal/).selectOption("Instagram"); await form.getByLabel(/^Fecha de publicación/).fill("2026-12-04"); }, key: "client:aca:module:contenidos:piezas", field: "titulo" },
   { name: "audiovisual production", url: "/v2/clientes/edinovo/audiovisuales?seccion=producciones", button: "Nueva producción", title: "Asistente IA · Ideas para esta producción", rec: "Cerrar guiones antes de reprogramar rodaje", titleLabel: /^Producción/, fill: async (form: ReturnType<Page["locator"]>) => { await form.getByLabel(/^Formato/).selectOption("Cápsula"); }, key: "client:edinovo:module:audiovisuales:producciones", field: "titulo" },
   { name: "strategic initiative", url: "/v2/clientes/epsa/estrategia?seccion=planificacion", button: "Nueva iniciativa", title: "Asistente IA · Ideas para esta iniciativa", rec: "Alinear aprobaciones del comité antes del lanzamiento", titleLabel: /^Iniciativa/, fill: async (form: ReturnType<Page["locator"]>) => { await form.getByLabel(/^Horizonte/).selectOption("Este mes"); }, key: "client:epsa:module:estrategia:prioridades", field: "iniciativa" },
   { name: "web project", url: "/v2/clientes/grupo-portland/desarrollo-web?seccion=proyectos", button: "Nuevo proyecto web", title: "Asistente IA · Ideas para este proyecto web", rec: "Publicar staging con contenido marcado", titleLabel: /^Proyecto/, fill: async (form: ReturnType<Page["locator"]>) => { await form.getByLabel(/^Tipo/).selectOption("Landing"); }, key: "client:grupo-portland:module:desarrollo-web:proyectos", field: "nombre" },
@@ -211,7 +236,7 @@ for (const flow of [
   });
 }
 
-test("Diseño de marca gets its own assistant once the module is active; modules without an AI process get none", async ({ page }) => {
+test("Diseño de marca preserves its optional assistant and saves a request with one task; modules without an AI process get none", async ({ page }) => {
   await page.goto("/v2/clientes/aca?view=plan");
   await page.getByRole("button", { name: "Gestionar módulos", exact: true }).click();
   const dialog = page.getByRole("dialog");
@@ -220,11 +245,20 @@ test("Diseño de marca gets its own assistant once the module is active; modules
   await item.getByRole("button", { name: "Demostración", exact: true }).click();
   await dialog.getByRole("button", { name: /^Guardar \d+ cambio/ }).click();
   await page.goto("/v2/clientes/aca/diseno-marca?seccion=trabajos");
-  await page.getByRole("button", { name: "Nueva pieza de marca" }).first().click();
-  const panel = page.getByRole("dialog", { name: "Nueva pieza de marca" });
+  await page.getByRole("button", { name: "Pedido con asistente" }).click();
+  const panel = page.getByRole("dialog", { name: "Nuevo pedido", exact: true });
   await expect(panel.getByRole("complementary", { name: "Asistente IA · Ideas para esta pieza" })).toBeVisible();
   for (const label of ["Concepto visual", "Lineamientos de marca", "Recursos disponibles", "Consideraciones de diseño"]) await expect(panel.locator("form").getByLabel(label)).toBeVisible();
-  await panel.getByRole("button", { name: "Cancelar" }).click();
+  await expect(panel.getByText("Asistente IA pendiente de conexión")).toBeVisible();
+  await panel.locator("form").getByLabel(/^Pieza de marca/).fill("Pedido desde asistente QA");
+  await panel.getByRole("button", { name: "Guardar en este navegador" }).click();
+  await expect(panel).toHaveCount(0);
+  const requests = await local(page, "client:aca:module:diseno-marca:trabajos");
+  const request = requests.find((record: { values: Record<string, string> }) => record.values.nombre === "Pedido desde asistente QA");
+  expect(request.source).toBe("manual");
+  const workspace = await local(page, "workspace");
+  expect(workspace.tasks.filter((task: { workItem?: { id: string } }) => task.workItem?.id === request.id)).toHaveLength(1);
+  await page.keyboard.press("Escape");
 
   await page.goto("/v2/clientes/lider-energy/crm?seccion=trabajos");
   await page.getByRole("button", { name: /^Nueva implementación/ }).first().click();

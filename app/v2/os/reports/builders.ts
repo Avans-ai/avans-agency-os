@@ -398,7 +398,7 @@ export type ContentReport = {
   sources: ReportSource[];
 };
 
-const PRODUCED = new Set(["En producción", "En revisión", "En aprobación", "Cambios pedidos", "Programada", "Publicada"]);
+const PRODUCED = new Set(["En producción", "En revisión", "En aprobación", "Cambios pedidos", "Programada", "Publicada", "Producción de diseño", "Revisión interna del diseño", "Aprobación final del cliente", "Aprobado", "Programado"]);
 
 export function buildContentReport(input: {
   clientName: string;
@@ -435,7 +435,7 @@ export function buildContentReport(input: {
   const themes = groupBy((piece) => axisName(piece.axisId));
   const statusCounts = new Map<string, number>();
   input.pieces.forEach((piece) => statusCounts.set(piece.status, (statusCounts.get(piece.status) ?? 0) + 1));
-  const pendingApproval = input.pieces.filter((piece) => piece.status === "En aprobación").length;
+  const pendingApproval = input.pieces.filter((piece) => ["En aprobación", "Revisión preliminar del cliente", "Aprobación final del cliente"].includes(piece.status)).length;
 
   const kpi = (label: string, current: number, previous: number | undefined, format: (value: number) => string, origin: SourceOrigin = "demo"): ReportKpi => ({
     label,

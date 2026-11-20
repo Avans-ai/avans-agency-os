@@ -12,8 +12,8 @@ export function SourceTag({ source }: { source: RecordSource }) {
 }
 
 const ERROR = ["Bloquead", "Falla", "Revertida", "Abierto", "Vencid", "Atención", "Demorado"];
-const PEACH = ["aprobación", "Revisión", "En revisión", "Cambios pedidos", "En evaluación", "Acta pendiente", "Por confirmar", "Mitigando", "Reprogramado", "Propuesta", "Revisar", "Pendiente del cliente"];
-const COOL = ["Activ", "Aprobad", "Publicad", "Validad", "Realizad", "Cumplid", "Entregad", "Lista", "Tomada", "Confirmad", "Cerrad", "Programada", "Resuelta", "Convertida", "Priorizada", "Cargado", "Al día"];
+const PEACH = ["Ajustes", "Información del cliente", "aprobación", "Revisión", "En revisión", "Cambios pedidos", "En evaluación", "Acta pendiente", "Por confirmar", "Mitigando", "Reprogramado", "Propuesta", "Revisar", "Pendiente del cliente"];
+const COOL = ["Activ", "Aprobad", "Publicad", "Validad", "Realizad", "Cumplid", "Entregad", "Lista", "Tomada", "Confirmad", "Cerrad", "Programad", "Resuelta", "Convertida", "Priorizada", "Cargado", "Al día"];
 const INFO = ["En curso", "En producción", "En desarrollo", "En diseño", "Planificad", "En edición", "Brief", "Nueva", "Programada", "En preparación", "Aplicada", "Borrador", "En redacción", "Idea"];
 
 export function statusTone(status: string) {

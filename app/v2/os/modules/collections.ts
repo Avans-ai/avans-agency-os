@@ -2,11 +2,14 @@
  * Solo se modelan procesos que ya estaban definidos en el código o en los documentos:
  * - Publicidad digital, Contenidos, Estrategia, Desarrollo web y Audiovisuales tienen
  *   objetos específicos (pedido explícito de la reunión del 3 nov y DEFAULT_SCOPE).
- * - CRM, IA y automatizaciones, Diseño de marca, Soluciones gráficas y Mercado Libre usan
+ * - Diseño de marca incorpora pedidos, Design System y biblioteca versionada.
+ * - CRM, IA y automatizaciones, Soluciones gráficas y Mercado Libre usan
  *   un único objeto genérico cuyas etapas son las ya definidas en service-workspace-data.ts. */
 import { people, serviceCatalog, type ServiceId } from "../os-data";
 import { serviceWorkspaceById } from "../service-workspace-data";
 import type { CollectionDef, FieldDef } from "./types";
+import { plans, axes, ideas, pieces } from "./content-collections";
+import { designLibraryCollection, designSystemCollection, enhanceDesignRequests } from "./design-collections";
 
 export const PEOPLE = people.map((person) => person.name);
 
@@ -114,78 +117,7 @@ const paidLearnings: CollectionDef = {
 };
 
 /* ───────── Contenidos ───────── */
-export const PIECE_STATUSES = ["Idea", "Brief", "En producción", "En revisión", "En aprobación", "Cambios pedidos", "Programada", "Publicada"] as const;
-export const PIECE_FORMATS = ["Carrusel", "Reel", "Video corto", "Post estático", "Historia", "Artículo", "Newsletter", "Documento LinkedIn"] as const;
-export const PIECE_CHANNELS = ["Instagram", "LinkedIn", "Facebook", "YouTube", "TikTok", "Web", "Email"] as const;
-
-const axes: CollectionDef = {
-  id: "ejes",
-  label: "Ejes temáticos",
-  singular: "eje temático",
-  prefix: "EJE",
-  description: "Territorios editoriales vinculados a perfiles y objetivos.",
-  titleKey: "nombre",
-  statusKey: "estado",
-  empty: "No hay ejes temáticos definidos.",
-  fields: [
-    { key: "nombre", label: "Eje", type: "text", required: true, list: true },
-    { key: "descripcion", label: "Descripción", type: "textarea", list: true },
-    { key: "perfil", label: "Perfil o audiencia", type: "text", list: true },
-    { key: "participacion", label: "Participación objetivo (%)", type: "number", list: true },
-    { key: "estado", label: "Estado", type: "select", options: ["Activo", "En revisión", "Pausado"], required: true, list: true },
-  ],
-};
-
-const ideas: CollectionDef = {
-  id: "ideas",
-  label: "Ideas",
-  singular: "idea",
-  prefix: "IDE",
-  description: "Banco de ideas antes de convertirse en brief o pieza.",
-  titleKey: "idea",
-  statusKey: "estado",
-  empty: "Todavía no hay ideas cargadas.",
-  fields: [
-    { key: "idea", label: "Idea", type: "text", required: true, list: true },
-    { key: "eje", label: "Eje", type: "ref", ref: "ejes", list: true },
-    { key: "origen", label: "Origen", type: "select", options: ["Reunión", "Benchmark", "Resultados", "Cliente", "Equipo", "Tendencia"], list: true },
-    { key: "detalle", label: "Detalle", type: "textarea" },
-    { key: "estado", label: "Estado", type: "select", options: ["Nueva", "En evaluación", "Aprobada", "Descartada", "Convertida en pieza"], required: true, list: true },
-  ],
-};
-
-const pieces: CollectionDef = {
-  id: "piezas",
-  label: "Piezas",
-  singular: "pieza",
-  prefix: "PZA",
-  description: "Producción editorial: brief, copy, formato, canal, versión, feedback, aprobación y publicación.",
-  titleKey: "titulo",
-  statusKey: "estado",
-  ownerKey: "responsable",
-  dateKey: "fecha",
-  approval: { pending: "En aprobación", approved: "Programada", changes: "Cambios pedidos" },
-  linkTasks: true,
-  empty: "No hay piezas en producción.",
-  fields: [
-    { key: "titulo", label: "Pieza", type: "text", required: true, list: true },
-    { key: "eje", label: "Eje", type: "ref", ref: "ejes", list: true },
-    { key: "formato", label: "Formato", type: "select", options: PIECE_FORMATS, required: true, list: true },
-    { key: "canal", label: "Canal", type: "select", options: PIECE_CHANNELS, required: true, list: true },
-    { key: "fecha", label: "Fecha de publicación", type: "date", required: true, list: true },
-    { key: "estado", label: "Estado", type: "select", options: PIECE_STATUSES, required: true, list: true },
-    owner(),
-    { key: "brief", label: "Brief", type: "textarea" },
-    { key: "icp", label: "ICP o segmento", type: "text", group: "Propuesta" },
-    { key: "mensaje", label: "Mensaje", type: "textarea", group: "Propuesta" },
-    { key: "conceptoVisual", label: "Concepto visual", type: "textarea", group: "Propuesta" },
-    { key: "cta", label: "CTA", type: "text", group: "Propuesta" },
-    { key: "copy", label: "Copy", type: "textarea" },
-    { key: "version", label: "Versión", type: "text", placeholder: "v1" },
-    { key: "feedback", label: "Feedback", type: "textarea" },
-    { key: "enlace", label: "Enlace de publicación", type: "text", placeholder: "Se completa al publicar" },
-  ],
-};
+export { PIECE_STATUSES, PIECE_FORMATS, PIECE_CHANNELS } from "./content-collections";
 
 const contentLearnings: CollectionDef = {
   ...paidLearnings,
@@ -609,13 +541,13 @@ function brandWork(): CollectionDef {
 
 export const moduleCollections: Record<ServiceId, CollectionDef[]> = {
   "publicidad-digital": [campaigns, creatives, optimizations, paidLearnings],
-  contenidos: [axes, ideas, pieces, contentLearnings],
+  contenidos: [axes, ideas, pieces, plans, contentLearnings],
   estrategia: [priorities, meetings, decisions, risks],
   "desarrollo-web": [webProjects, sitemap, requirements, qa, releases, maintenance],
   audiovisuales: [productions, scripts, shoots, cuts, deliveries],
   crm: [genericWork("crm")],
   "ia-automatizaciones": [genericWork("ia-automatizaciones")],
-  "diseno-marca": [brandWork()],
+  "diseno-marca": [enhanceDesignRequests(brandWork()), designSystemCollection, designLibraryCollection],
   "soluciones-graficas": [genericWork("soluciones-graficas")],
   "mercado-libre": [genericWork("mercado-libre")],
 };
