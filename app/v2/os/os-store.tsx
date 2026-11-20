@@ -129,7 +129,7 @@ type Store = {
   markNotificationRead: (id: string) => void;
   commitWorkflow: (task: OsTask, notification: WorkflowNotification | undefined, writes: LocalWrite[]) => boolean;
   /** Reemplaza tareas y registros locales en un solo guardado (p. ej. reiniciar datos de demostración). */
-  commitTasks: (update: (tasks: OsTask[]) => OsTask[], writes: LocalWrite[]) => boolean;
+  commitTasks: (update: (tasks: OsTask[]) => OsTask[], writes: LocalWrite[], notifications?: WorkflowNotification[]) => boolean;
   servicesOf: (clientSlug: string) => ServiceId[];
   setServices: (clientSlug: string, services: ServiceId[]) => void;
   addIdea: (clientSlug: string, title: string, detail: string) => void;
@@ -226,9 +226,11 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "hydrate", state: next });
       return true;
     },
-    commitTasks: (update, writes) => {
+    commitTasks: (update, writes, notifications = []) => {
       const latest = validPersistedState(readLocalJson<PersistedState | null>(STORE_KEY, null), state);
-      const next: PersistedState = { ...latest, tasks: update(latest.tasks) };
+      // Avisos opcionales (p. ej. asignación de tareas generadas): nunca se duplican por id.
+      const fresh = notifications.filter((item, index) => !latest.notifications.some((other) => other.id === item.id) && notifications.findIndex((other) => other.id === item.id) === index);
+      const next: PersistedState = { ...latest, tasks: update(latest.tasks), notifications: fresh.length ? [...fresh, ...latest.notifications] : latest.notifications };
       if (!writeLocalBatch([...writes, { key: STORE_KEY, value: next }])) {
         dispatch({ type: "toast", toast: { message: "No se pudo guardar el cambio. Revisá el espacio disponible del navegador y reintentá.", tone: "error" } });
         return false;

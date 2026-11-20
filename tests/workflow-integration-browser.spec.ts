@@ -80,6 +80,7 @@ test("review updates one central task, notification opens the content, role revi
   expect(saved.aca).toEqual(before.aca);
 
   await page.goto("/v2/clientes/epsa/tareas");
+  await page.getByRole("group", { name: "Ver tareas" }).getByRole("button", { name: "Lista", exact: true }).click();
   await expect(page.getByRole("table", { name: "Tareas de EPSA / Line Up" }).locator(`tr[data-task-id="${tasks[0].id}"]`)).toHaveCount(1);
   await page.reload();
   saved = await readWorkflow(page);

@@ -157,6 +157,8 @@ test("module Kanban shows only its own tasks; a task created in a module is the 
   expect(matches[0]).toMatchObject({ id, serviceId: "publicidad-digital", deliverable: "Optimización", workItem: { id: "CMP-EPSA-01" } });
 
   await page.goto("/v2/clientes/epsa/tareas");
+  // La vista por defecto agrupa por persona: la tabla vive en la vista «Lista».
+  await page.getByRole("group", { name: "Ver tareas" }).getByRole("button", { name: "Lista", exact: true }).click();
   const rows = page.getByRole("table", { name: "Tareas de EPSA / Line Up" }).locator(`tr[data-task-id="${id}"]`);
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText("Publicidad digital");
