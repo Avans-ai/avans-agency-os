@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { ProfileLibrary } from "../knowledge/profile-library";
+import { ProfileProducts } from "../knowledge/profile-products";
+import { ProfileGlossary } from "../knowledge/profile-glossary";
 import { BenchmarkView } from "../knowledge/benchmark-view";
 import { PlanView } from "../knowledge/plan-view";
 import { DocumentsView } from "../knowledge/documents-view";
@@ -8,7 +11,7 @@ import { MarketingDiscoveryView } from "./marketing-discovery";
 import { AddServiceModuleButton } from "./service-modules-dialog";
 import { GeneratePresentationButton } from "../knowledge/presentation/presentation-studio";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { QuestionnaireView } from "../knowledge/questionnaire-view";
 import { useOsStore } from "../os-store";
 import { canManageClient } from "../director-data";
@@ -79,15 +82,20 @@ export function ClientManagementContent({
 function ClientSheet({ client }: { client: OsClient }) {
   const params = useSearchParams();
   const router = useRouter();
-  const [tab, setTabState] = useState<"scope" | "business">(
-    params.get("ficha") === "discovery" ? "business" : "scope",
-  );
+  const sheetTabs = [
+    { id: "scope", param: "alcance", label: "Alcance del servicio" },
+    { id: "business", param: "discovery", label: "Discovery del negocio" },
+    { id: "materials", param: "materiales", label: "Materiales" },
+    { id: "products", param: "productos", label: "Productos y servicios" },
+    { id: "glossary", param: "glosario", label: "Glosario" },
+  ] as const;
+  type SheetTab = typeof sheetTabs[number]["id"];
+  const tab: SheetTab = sheetTabs.find(item => item.param === params.get("ficha"))?.id ?? "scope";
   const scope = scopeForClient(client);
-  function setTab(next: "scope" | "business") {
-    setTabState(next);
+  function setTab(next: SheetTab) {
     const url = new URL(window.location.href);
-    url.searchParams.set("ficha", next === "business" ? "discovery" : "alcance");
-    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    url.searchParams.set("ficha", sheetTabs.find(item => item.id === next)!.param);
+    router.replace(`${url.pathname}${url.search}`, { scroll: false });
   }
   // Earlier links pointed to the questionnaire as the first Discovery chapter.
   useEffect(() => {
@@ -102,8 +110,7 @@ function ClientSheet({ client }: { client: OsClient }) {
             Ficha del cliente
           </h2>
           <p>
-            Alcance contratado e información estructurada del negocio según el
-            modelo de Discovery.
+            Conocimiento del negocio, materiales, productos y voz de marca.
           </p>
         </div>
         <div className={s.actions}>
@@ -119,41 +126,15 @@ function ClientSheet({ client }: { client: OsClient }) {
         onKeyDown={(event) => {
           if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
             event.preventDefault();
-            const next =
-              event.key === "Home"
-                ? "scope"
-                : event.key === "End"
-                  ? "business"
-                  : tab === "scope"
-                    ? "business"
-                    : "scope";
+            const index = sheetTabs.findIndex(item => item.id === tab);
+            const target = event.key === "Home" ? 0 : event.key === "End" ? sheetTabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + sheetTabs.length) % sheetTabs.length;
+            const next = sheetTabs[target].id;
             setTab(next);
             document.getElementById(`sheet-tab-${next}`)?.focus();
           }
         }}
       >
-        <button
-          type="button"
-          role="tab"
-          id="sheet-tab-scope"
-          aria-controls="sheet-panel"
-          tabIndex={tab === "scope" ? 0 : -1}
-          aria-selected={tab === "scope"}
-          onClick={() => setTab("scope")}
-        >
-          Alcance del servicio
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="sheet-tab-business"
-          aria-controls="sheet-panel"
-          tabIndex={tab === "business" ? 0 : -1}
-          aria-selected={tab === "business"}
-          onClick={() => setTab("business")}
-        >
-          Discovery del negocio
-        </button>
+        {sheetTabs.map(item => <button key={item.id} type="button" role="tab" id={`sheet-tab-${item.id}`} aria-controls="sheet-panel" tabIndex={tab === item.id ? 0 : -1} aria-selected={tab === item.id} onClick={() => setTab(item.id)}>{item.label}</button>)}
       </div>
 
       <div
@@ -201,7 +182,7 @@ function ClientSheet({ client }: { client: OsClient }) {
               contractual.
             </p>
           </>
-        ) : (
+        ) : tab === "materials" ? <ProfileLibrary client={client} /> : tab === "products" ? <ProfileProducts client={client} /> : tab === "glossary" ? <ProfileGlossary client={client} /> : (
           <MarketingDiscoveryView
             key={client.slug}
             client={client}

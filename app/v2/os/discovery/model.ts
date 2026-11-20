@@ -1,3 +1,4 @@
+import type { OfferingProfile } from "../knowledge/profile-model";
 import {
   entityFields,
   fields,
@@ -34,7 +35,7 @@ type FromFields<F extends readonly Field[]> = {
 export type CompanyProfile = FromFields<typeof fields.companyProfile>;
 export type RelevantFact = FromFields<typeof fields.relevantFacts>;
 export type BusinessUnit = FromFields<typeof fields.businessUnits>;
-export type Offering = FromFields<typeof fields.offerings>;
+export type Offering = FromFields<typeof fields.offerings> & { profile?: OfferingProfile };
 export type SalesStage = FromFields<typeof fields.stages>;
 export type SalesProcess = FromFields<typeof fields.salesProcess> & {
   stages: SalesStage[];

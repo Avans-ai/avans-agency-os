@@ -1,3 +1,4 @@
+import type { BrandGlossary } from "./profile-model";
 import type { MarketingDiscovery, DiscoveryStatus } from "../discovery/model";
 import type { ServiceId } from "../os-data";
 import type { KnowledgeValue } from "./blueprints";
@@ -209,6 +210,7 @@ export type MarketingPlan = {
   modules: Partial<Record<ServiceId, KnowledgeItem[]>>;
 };
 export type KnowledgeState = {
+  brandGlossary?: BrandGlossary;
   answerSuggestions?: QuestionnaireAnswerSuggestion[];
   presentationExports?: PresentationExport[];
   version: 1;
