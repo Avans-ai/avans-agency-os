@@ -52,7 +52,7 @@ export function PortalAdsSection({ client }: { client: OsClient }) {
   const requested = params.get("anuncio");
   return <section className={p.portalAds} aria-label="Anuncios para aprobar">
     <h2>Anuncios para aprobar <span className={p.chip} data-tone="accent">{pending.length}</span></h2>
-    <p className={p.muted}>Piezas de tus campañas de publicidad digital, ya validadas por el equipo. Vista previa local: sin acceso autenticado.</p>
+    <p className={p.muted}>Piezas de tus campañas de publicidad digital, ya validadas por el equipo. Tu respuesta queda registrada en este navegador.</p>
     {pending.length ? <div className={p.cards}>{pending.map((ad) => <PortalAd key={`${ad.id}-${ad.updatedAt}`} client={client} ad={ad} campaignName={campaignName(ad)} initiallyOpen={requested === ad.id} />)}</div> : <p className={p.small}>No tenés anuncios pendientes de aprobación.</p>}
     {circulating.length ? <p className={p.small}>En circulación: {circulating.map((ad) => ad.values.nombre).join(" · ")}</p> : null}
   </section>;

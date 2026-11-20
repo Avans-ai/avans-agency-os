@@ -111,7 +111,8 @@ test("module definitions only use stages already defined for generic services", 
     expect(moduleCollections[id]).toHaveLength(1);
     expect(moduleCollections[id][0].fields.find((field) => field.key === "etapa")?.options?.length).toBeGreaterThan(0);
   }
-  expect(moduleCollections["publicidad-digital"].map((def) => def.id)).toEqual(["campanas", "creatividades", "optimizaciones", "aprendizajes"]);
+  // Funcionalidades 2: «anuncios» (pedidos de anuncio, landing y atención) se suma sin quitar colecciones.
+  expect(moduleCollections["publicidad-digital"].map((def) => def.id)).toEqual(["campanas", "anuncios", "creatividades", "optimizaciones", "aprendizajes"]);
   expect(moduleCollections["diseno-marca"].map((def) => def.id)).toEqual(["trabajos", "sistema", "biblioteca"]);
   expect(moduleCollections["diseno-marca"][0].fields.find((field) => field.key === "etapa")?.options).toEqual(["Brief", "Exploración", "Diseño", "Revisión", "Entrega"]);
 });
