@@ -192,7 +192,9 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
   const definition = serviceCatalog.find((item) => item.id === serviceId);
   const editable = canEditService(role, client.slug, serviceId);
   const sections = moduleSections(serviceId).filter((section) => !supportDesign || ["trabajos", "biblioteca", "tareas", "historial"].includes(section.id));
-  const requested = params.get("seccion") === "pedidos" && serviceId === "diseno-marca" ? "trabajos" : params.get("seccion");
+  // Compatibilidad de enlaces anteriores: «pedidos» de Diseño y «produccion» (creatividades) de Publicidad digital.
+  const legacy = params.get("seccion");
+  const requested = legacy === "pedidos" && serviceId === "diseno-marca" ? "trabajos" : legacy === "produccion" && serviceId === "publicidad-digital" ? "anuncios" : legacy;
   const guidelines = params.get("area") === "lineamientos";
   const taskParam = params.get("task");
   const current = sections.some((section) => section.id === requested) ? requested! : taskParam ? "tareas" : supportDesign ? "trabajos" : "resumen";
