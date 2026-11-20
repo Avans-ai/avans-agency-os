@@ -31,6 +31,7 @@ test("design system, request and single task, immutable library versions, guidel
   await editor.getByRole("button", { name: "Guardar recurso" }).click();
   await expect(editor).toHaveCount(0);
   await expect(page.getByText("#ff897a", { exact: true }).first()).toBeVisible();
+  await expect(page).toHaveURL(/parte=color/);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Coral de pruebas" })).toBeVisible();
   expect((await stored(page, "sistema"))[0].values.valor).toBe("#ff897a");
@@ -41,6 +42,9 @@ test("design system, request and single task, immutable library versions, guidel
   await editor.getByLabel("Cargar imagen").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==", "base64") });
   await expect(editor.getByRole("button", { name: "Guardar recurso" })).toBeEnabled();
   await editor.getByRole("button", { name: "Guardar recurso" }).click();
+  await expect(editor).toHaveCount(0);
+  // Al guardar, el documento abre la parte del tipo de recurso (Identidad para logos).
+  await expect(page).toHaveURL(/parte=identidad/);
   await page.reload();
   await expect(page.getByRole("img", { name: "Logo de prueba" })).toBeVisible();
   await page.screenshot({ path: "/tmp/avans-design-desktop.png", fullPage: true });
