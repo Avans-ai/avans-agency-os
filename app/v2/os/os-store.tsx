@@ -13,6 +13,7 @@ import { clientOfTask, serviceForTask, withTaskService } from "./director-data";
 
 import { PREVIEW_ROLES, previewActor, type PreviewRole } from "./preview-roles";
 import { upcomingNotifications, workflowNotification, type WorkflowNotification, type LocalWrite } from "./workflow-tasks";
+import { withContentDemoTasks } from "./modules/content-demo-tasks";
 export type { PreviewRole } from "./preview-roles";
 export type Toast = { id: number; message: string; tone: "default" | "success" | "error"; undo?: OsTask[] };
 
@@ -42,7 +43,7 @@ const localMessage = (message: string) => `${message} · guardado en este navega
 
 function seedState(): State {
   return {
-    tasks: osTasks,
+    tasks: withContentDemoTasks(osTasks, false),
     seq: 150,
     role: "admin",
     toast: null,
@@ -62,7 +63,8 @@ function validPersistedState(value: PersistedState | null, fallback: State): Per
   return {
     // Migración compatible (misma clave): las tareas guardadas antes de `serviceId` lo reciben
     // desde serviceForTask. No se descarta ni se reescribe ningún otro dato.
-    tasks: value.tasks.map(withTaskService),
+    // Datos de demostración de Contenidos: se agrega la tarea de cada contenido demo presente (sin duplicar).
+    tasks: withContentDemoTasks(value.tasks.map(withTaskService)),
     seq: Number.isFinite(value.seq) ? value.seq : fallback.seq,
     role: PREVIEW_ROLES.some((item) => item.id === value.role) ? value.role : "admin",
     notifications: Array.isArray(value.notifications) ? value.notifications : [],
@@ -126,6 +128,8 @@ type Store = {
   notifications: WorkflowNotification[];
   markNotificationRead: (id: string) => void;
   commitWorkflow: (task: OsTask, notification: WorkflowNotification | undefined, writes: LocalWrite[]) => boolean;
+  /** Reemplaza tareas y registros locales en un solo guardado (p. ej. reiniciar datos de demostración). */
+  commitTasks: (update: (tasks: OsTask[]) => OsTask[], writes: LocalWrite[]) => boolean;
   servicesOf: (clientSlug: string) => ServiceId[];
   setServices: (clientSlug: string, services: ServiceId[]) => void;
   addIdea: (clientSlug: string, title: string, detail: string) => void;
@@ -215,6 +219,16 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
         tasks: latest.tasks.some((item) => item.id === task.id) ? latest.tasks.map((item) => item.id === task.id ? task : item) : [...latest.tasks, task],
         notifications: notification && !latest.notifications.some((item) => item.id === notification.id) ? [notification, ...latest.notifications] : latest.notifications,
       };
+      if (!writeLocalBatch([...writes, { key: STORE_KEY, value: next }])) {
+        dispatch({ type: "toast", toast: { message: "No se pudo guardar el cambio. Revisá el espacio disponible del navegador y reintentá.", tone: "error" } });
+        return false;
+      }
+      dispatch({ type: "hydrate", state: next });
+      return true;
+    },
+    commitTasks: (update, writes) => {
+      const latest = validPersistedState(readLocalJson<PersistedState | null>(STORE_KEY, null), state);
+      const next: PersistedState = { ...latest, tasks: update(latest.tasks) };
       if (!writeLocalBatch([...writes, { key: STORE_KEY, value: next }])) {
         dispatch({ type: "toast", toast: { message: "No se pudo guardar el cambio. Revisá el espacio disponible del navegador y reintentá.", tone: "error" } });
         return false;
