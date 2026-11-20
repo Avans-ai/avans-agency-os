@@ -271,7 +271,7 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
 
       <nav className={m.sectionNav} aria-label={`Áreas de ${service.label}`}>
         <Link className={m.sectionTab} aria-current={!guidelines && !inRepository ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?seccion=${inRepository ? operationSections[0]?.id ?? "resumen" : current}`} scroll={false}>Operación mensual</Link>
-        <Link className={m.sectionTab} aria-current={guidelines ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?area=lineamientos`} scroll={false}>Lineamientos del servicio</Link>
+        <Link className={m.sectionTab} aria-current={guidelines ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?area=lineamientos`} scroll={false}>{serviceId === "contenidos" ? "Plan de contenidos" : "Lineamientos del servicio"}</Link>
         {repository ? <Link className={m.sectionTab} aria-current={inRepository ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?seccion=${repository.id}`} scroll={false}>{repository.label}</Link> : null}
       </nav>
 
