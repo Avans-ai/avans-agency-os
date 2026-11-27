@@ -1,21 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { osClients, osTasks, type OsTask } from "../app/v2/os/os-data";
 import { serviceForTask, withTaskService, isArchivedTask, tasksForService } from "../app/v2/os/director-data";
-import {
-  buildContentReport,
-  buildMonthlyReport,
-  buildPaidMediaReport,
-  buildWeeklyReport,
-  totalsOf,
-} from "../app/v2/os/reports/builders";
-import {
-  contentDemoMetrics,
-  contentDemoSeries,
-  monthlyDemo,
-  PAID_WEEKS,
-  paidDemoMetrics,
-  weeklyDemo,
-} from "../app/v2/os/reports/demo-fixtures";
+import { buildContentReport, buildPaidMediaReport, buildReportSnapshot, totalsOf } from "../app/v2/os/reports/builders";
+import { contentDemoMetrics, contentDemoSeries, PAID_WEEKS, paidDemoMetrics } from "../app/v2/os/reports/demo-fixtures";
+import { projectInput } from "../app/v2/os/metrics/input";
+import { weekPeriod, monthPeriod } from "../app/v2/os/metrics/period";
+import { seedMetricsInput } from "./metrics-fixtures";
 import { moduleDemoSeeds } from "../app/v2/os/modules/demo-fixtures";
 import { moduleCollections } from "../app/v2/os/modules/collections";
 
@@ -49,22 +39,20 @@ test("tasks per module are isolated per client and the 30-day archive rule appli
   expect(isArchivedTask({ ...archived, completedAt: new Date().toISOString() })).toBe(false);
 });
 
-test("weekly report derives tasks, honours the module filter and labels demo sources", () => {
-  const all = buildWeeklyReport({ client: epsa, activeServices: epsa.services, tasks: osTasks, period: "S45", owner: epsa.owner, demo: weeklyDemo.epsa, attention: [], recommendations: [] });
-  expect(all.services.map((row) => row.serviceId)).toEqual(epsa.services);
-  expect(all.blockers.map((line) => line.taskId)).toContain("T-144");
-  expect(all.approvals.map((line) => line.taskId)).toContain("T-142");
-  expect(all.sources.some((source) => source.origin === "demo")).toBe(true);
-  expect(all.sources.find((source) => source.origin === "integracion")?.status).toBe("No conectada");
+test("weekly report derives tasks per module, honours the selected services and labels demo sources", () => {
+  const narrative = { conclusions: "", recommendations: "", nextSteps: "" };
+  const metrics = projectInput(seedMetricsInput("epsa"), epsa.services);
+  const all = buildReportSnapshot({ client: epsa, report: { type: "semanal", period: weekPeriod("2026-11-23"), services: epsa.services, narrative }, metrics, asOf: "2026-11-27", generatedAt: "2026-11-27T12:00:00.000Z", generatedBy: "x", version: 1, review: [], inputDigest: "d" });
+  expect(all.sections.map((section) => section.serviceId)).toEqual(epsa.services);
+  const attention = all.sections.flatMap((section) => section.attention.map((item) => item.id));
+  expect(attention).toContain("task-T-144");
+  expect(all.origins.demo).toBeGreaterThan(0);
+  expect(all.sections.find((section) => section.serviceId === "publicidad-digital")!.notes.join(" ")).toMatch(/no están conectados/);
 
-  const paid = buildWeeklyReport({ client: epsa, activeServices: epsa.services, moduleFilter: "publicidad-digital", tasks: osTasks, period: "S45", owner: epsa.owner, demo: weeklyDemo.epsa, attention: [], recommendations: [] });
-  expect(paid.services.map((row) => row.serviceId)).toEqual(["publicidad-digital"]);
-  expect(paid.blockers).toHaveLength(0);
-  expect(paid.nextSteps.every((line) => line.serviceId === "publicidad-digital")).toBe(true);
-  expect(paid.deliverablesLate.every((line) => line.serviceId === "publicidad-digital")).toBe(true);
-
-  // A module that is not active never leaks into the report (T-145 is Desarrollo web).
-  expect(all.nextSteps.map((line) => line.taskId)).not.toContain("T-145");
+  const paid = buildReportSnapshot({ client: epsa, report: { type: "servicio", period: monthPeriod("2026-11"), services: ["publicidad-digital"], narrative }, metrics: projectInput(seedMetricsInput("epsa"), ["publicidad-digital"]), asOf: "2026-11-27", generatedAt: "2026-11-27T12:00:00.000Z", generatedBy: "x", version: 1, review: [], inputDigest: "d" });
+  expect(paid.sections.map((section) => section.serviceId)).toEqual(["publicidad-digital"]);
+  // A module that is not included never leaks into the report (T-145 is Desarrollo web).
+  expect(JSON.stringify(all)).not.toContain("T-145");
 });
 
 test("paid media report computes CTR, CPC, CPL, comparison and ROAS only for ecommerce", () => {
@@ -101,9 +89,9 @@ test("content and monthly reports read module objects and keep demo metrics labe
   expect(content.formats[0].label).toBe("Documento LinkedIn");
   expect(content.themes.map((theme) => theme.label)).toContain("Servicio posventa");
 
-  const monthly = buildMonthlyReport({ client: aca, activeServices: aca.services, tasks: osTasks, demo: monthlyDemo.aca, content, recommendations: [], period: "Octubre 2026", previousPeriod: "Septiembre 2026", owner: aca.owner });
-  expect(monthly.results.map((result) => result.serviceId)).toEqual(aca.services);
-  expect(monthly.results.flatMap((result) => result.indicators).some((indicator) => indicator.origin === "tareas")).toBe(true);
+  const monthly = buildReportSnapshot({ client: aca, report: { type: "mensual", period: monthPeriod("2026-10"), services: aca.services, narrative: { conclusions: "", recommendations: "", nextSteps: "" } }, metrics: projectInput(seedMetricsInput("aca"), aca.services), asOf: "2026-11-27", generatedAt: "2026-11-27T12:00:00.000Z", generatedBy: "x", version: 1, review: [], inputDigest: "d" });
+  expect(monthly.sections.map((section) => section.serviceId)).toEqual(aca.services);
+  expect(monthly.sections.flatMap((section) => section.results).some((metric) => metric.origin === "demo")).toBe(true);
 });
 
 test("module definitions only use stages already defined for generic services", () => {

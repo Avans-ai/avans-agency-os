@@ -7,8 +7,8 @@ import { canEditService, canManageClient } from "../director-data";
 import type { OsClient, ServiceId } from "../os-data";
 import type { PreviewRole } from "../preview-roles";
 
-export type ReviewKind = "semanal" | "mensual";
-export const REVIEW_KIND_LABEL: Record<ReviewKind, string> = { semanal: "Reporte semanal operativo", mensual: "Reporte mensual de resultados" };
+export type ReviewKind = "semanal" | "mensual" | "servicio";
+export const REVIEW_KIND_LABEL: Record<ReviewKind, string> = { semanal: "Reporte semanal operativo", mensual: "Reporte mensual de resultados", servicio: "Reporte específico de servicio" };
 export type PartRole = "pm" | "technical" | "content";
 export const PART_ROLE_LABEL: Record<PartRole, string> = { pm: "PM", technical: "LT · Líder técnico", content: "Content" };
 export type PartId = "resumen" | "publicidad" | "contenidos";
@@ -22,7 +22,7 @@ export type ReportReviewsState = { version: 1; reports: Record<string, ReportRev
 export const EMPTY_REVIEWS: ReportReviewsState = { version: 1, reports: {} };
 export const reportReviewsKey = (clientSlug: string) => `client:${clientSlug}:report-reviews`;
 export const reviewId = (kind: ReviewKind, period: string) => `${kind}:${period}`;
-export const AI_DRAFTS_PENDING = "Borradores con IA: pendientes de conexión. Hoy el reporte se arma con las tareas guardadas y datos de demostración rotulados.";
+export const AI_DRAFTS_PENDING = "Borradores con IA: pendientes de conexión. Las conclusiones, recomendaciones y próximos pasos los escribe el equipo; los indicadores salen de los módulos.";
 export const EMAIL_NOT_CONNECTED = "Gmail / SMTP no conectado: el OS no envía el mail. Copiá el borrador, adjuntá el archivo exportado y envialo desde tu correo.";
 
 /** Lectura tolerante: cualquier formato inesperado se trata como vacío sin romper la vista. */

@@ -1,6 +1,5 @@
 "use client";
 
-import { serviceLabel, type ServiceId } from "../os-data";
 import { Badge } from "../ui";
 import s from "../os.module.css";
 import {
@@ -8,153 +7,11 @@ import {
   formatNumber,
   formatPercent,
   type ContentReport,
-  type MonthlyReport,
   type PaidReport,
-  type WeeklyReport,
 } from "./builders";
-import { BarChart, DeltaChart, LineChart } from "./charts";
+import { BarChart, LineChart } from "./charts";
 import { Conclusion, DemoBand, Delta, KpiStrip, LineList, OriginTag, ReportDoc, ReportSection, SourcesList } from "./report-parts";
 import r from "./reports.module.css";
-
-function stateTone(state: string) {
-  if (state === "Atención" || state === "En riesgo") return "error" as const;
-  if (state === "Revisión" || state === "En curso") return "peach" as const;
-  if (state === "Al día" || state === "Cumplido") return "cool" as const;
-  return "stone" as const;
-}
-
-export function WeeklyReportView({
-  report,
-  clientSlug,
-  onModuleChange,
-}: {
-  report: WeeklyReport;
-  clientSlug: string;
-  onModuleChange: (value: ServiceId | "todos") => void;
-}) {
-  return (
-    <ReportDoc
-      label={report.title}
-      eyebrow={`Reporte semanal · ${report.clientName}`}
-      title={report.title}
-      meta={<><span>Cliente <strong>{report.clientName}</strong></span><span>Período <strong>{report.period}</strong></span><span>Responsable <strong>{report.owner}</strong></span><span>Alcance <strong>{report.moduleFilter === "todos" ? "Todos los módulos activos" : serviceLabel(report.moduleFilter)}</strong></span></>}
-      tools={(
-        <label className={s.field} style={{ minWidth: 220 }}>
-          <span>Filtrar por módulo</span>
-          <select className={`${s.input} ${s.inputSm}`} value={report.moduleFilter} onChange={(event) => onModuleChange(event.target.value as ServiceId | "todos")} aria-label="Filtrar reporte semanal por módulo">
-            <option value="todos">Todos los módulos activos</option>
-            {report.modules.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-          </select>
-        </label>
-      )}
-    >
-      <DemoBand />
-      <KpiStrip kpis={report.kpis} label="Indicadores de la semana" />
-      <ReportSection title="Resumen ejecutivo" id="weekly-summary">
-        <ul className={r.summary}>{report.summary.map((item) => <li key={item}>{item}</li>)}</ul>
-      </ReportSection>
-      <ReportSection title="Servicios activos" description="Estado derivado de las tareas de cada módulo" id="weekly-services">
-        <div className={r.grid2}>
-          <div className={r.tableScroll}>
-            <table className={r.dataTable}>
-              <caption className={s.srOnly}>Estado de los servicios activos</caption>
-              <thead><tr><th scope="col">Módulo</th><th scope="col" className={r.num}>Abiertas</th><th scope="col" className={r.num}>Hechas</th><th scope="col" className={r.num}>Bloqueos</th><th scope="col" className={r.num}>Aprobación</th><th scope="col">Estado</th></tr></thead>
-              <tbody>{report.services.map((row) => <tr key={row.serviceId}><th scope="row">{row.label}</th><td className={r.num}>{row.open}</td><td className={r.num}>{row.done}</td><td className={r.num}>{row.blocked}</td><td className={r.num}>{row.approvals}</td><td><Badge tone={stateTone(row.state)}>{row.state}</Badge></td></tr>)}</tbody>
-            </table>
-          </div>
-          <BarChart title="Tareas hechas vs. abiertas por módulo" data={report.chart} primaryLabel="Hechas" secondaryLabel="Abiertas" />
-        </div>
-      </ReportSection>
-      <ReportSection title="Trabajo de la semana" id="weekly-work">
-        <div className={r.grid3}>
-          <LineList title="Tareas realizadas" lines={report.tasksDone} empty="Sin tareas cerradas en el alcance." clientSlug={clientSlug} />
-          <LineList title="Entregables completados" lines={report.deliverablesDone} empty="Sin entregables completados." clientSlug={clientSlug} />
-          <LineList title="Entregables demorados" lines={report.deliverablesLate} empty="Sin entregables demorados." clientSlug={clientSlug} />
-        </div>
-      </ReportSection>
-      <ReportSection title="Bloqueos, aprobaciones y alertas" id="weekly-risks">
-        <div className={r.grid3}>
-          <LineList title="Bloqueos" lines={report.blockers} empty="Sin bloqueos activos." clientSlug={clientSlug} />
-          <LineList title="Aprobaciones pendientes" lines={report.approvals} empty="Nada espera aprobación." clientSlug={clientSlug} />
-          <LineList title="Alertas" lines={report.alerts} empty="Sin alertas." clientSlug={clientSlug} />
-        </div>
-      </ReportSection>
-      <ReportSection title="Próximos pasos y acciones sugeridas" id="weekly-next">
-        <div className={r.grid3}>
-          <LineList title="Próximos pasos" lines={report.nextSteps} empty="Sin vencimientos en los próximos 7 días." clientSlug={clientSlug} />
-          <LineList title="Acciones sugeridas" lines={report.actions} empty="Sin acciones sugeridas." clientSlug={clientSlug} />
-          <LineList title="Recomendaciones" lines={report.recommendations} empty="Sin recomendaciones abiertas." clientSlug={clientSlug} />
-        </div>
-      </ReportSection>
-      <Conclusion>{report.conclusion}</Conclusion>
-      <ReportSection title="Fuentes" id="weekly-sources"><SourcesList sources={report.sources} /></ReportSection>
-    </ReportDoc>
-  );
-}
-
-export function MonthlyReportView({ report, clientSlug }: { report: MonthlyReport; clientSlug: string }) {
-  return (
-    <ReportDoc
-      label={report.title}
-      eyebrow={`Reporte mensual · ${report.clientName}`}
-      title={report.title}
-      meta={<><span>Cliente <strong>{report.clientName}</strong></span><span>Período <strong>{report.period}</strong></span><span>Comparado con <strong>{report.previousPeriod}</strong></span><span>Responsable <strong>{report.owner}</strong></span></>}
-    >
-      <DemoBand />
-      <KpiStrip kpis={report.kpis} label="Indicadores del mes" />
-      <ReportSection title="Resumen ejecutivo del mes" id="monthly-summary">
-        <ul className={r.summary}>{report.summary.map((item) => <li key={item}>{item}</li>)}</ul>
-      </ReportSection>
-      <ReportSection title="Objetivos del cliente" id="monthly-objectives">
-        <div>
-          {report.objectives.map((item) => (
-            <div className={r.objective} key={item.objective}>
-              <strong>{item.objective}</strong>
-              <Badge tone={stateTone(item.status)}>{item.status}</Badge>
-              <small>{item.indicator} · meta {item.target} · actual {item.current}</small>
-            </div>
-          ))}
-        </div>
-      </ReportSection>
-      <ReportSection title="Resultados por módulo" description={`Comparativa con ${report.previousPeriod}`} id="monthly-results">
-        <div className={r.tableScroll}>
-          <table className={r.dataTable}>
-            <caption className={s.srOnly}>Indicadores por módulo</caption>
-            <thead><tr><th scope="col">Módulo</th><th scope="col">Indicador</th><th scope="col" className={r.num}>{report.period}</th><th scope="col" className={r.num}>{report.previousPeriod}</th><th scope="col">Variación</th><th scope="col">Fuente</th></tr></thead>
-            <tbody>
-              {report.results.flatMap((result) => result.indicators.map((indicator, index) => (
-                <tr key={`${result.serviceId}-${indicator.label}`}>
-                  {index === 0 ? <th scope="rowgroup" rowSpan={result.indicators.length}>{result.label}</th> : null}
-                  <td>{indicator.label}</td>
-                  <td className={r.num}>{indicator.unit === "ARS" ? formatMoneyShort(indicator.current) : `${formatNumber(indicator.current, indicator.unit === "%" ? 1 : 0)}${indicator.unit === "%" ? " %" : ""}`}</td>
-                  <td className={r.num}>{indicator.origin === "tareas" ? "—" : indicator.unit === "ARS" ? formatMoneyShort(indicator.previous) : `${formatNumber(indicator.previous, indicator.unit === "%" ? 1 : 0)}${indicator.unit === "%" ? " %" : ""}`}</td>
-                  <td>{indicator.delta !== undefined ? <Delta value={indicator.delta} better={indicator.better} /> : "—"}</td>
-                  <td><OriginTag origin={indicator.origin} /></td>
-                </tr>
-              )))}
-            </tbody>
-          </table>
-        </div>
-        {report.comparison.length ? <DeltaChart title="Variación frente al período anterior" data={report.comparison} /> : null}
-      </ReportSection>
-      <ReportSection title="Actividades realizadas" id="monthly-activities">
-        <LineList title="Actividades" lines={report.activities} empty="Sin actividades registradas." clientSlug={clientSlug} />
-      </ReportSection>
-      <ReportSection title="Aprendizajes, oportunidades y recomendaciones" id="monthly-learnings">
-        <div className={r.grid3}>
-          <div className={r.block}><h5>Principales aprendizajes <em>{report.learnings.length}</em></h5><ul className={r.summary}>{report.learnings.map((item) => <li key={item}>{item}</li>)}</ul></div>
-          <div className={r.block}><h5>Oportunidades <em>{report.opportunities.length}</em></h5><ul className={r.summary}>{report.opportunities.map((item) => <li key={item}>{item}</li>)}</ul></div>
-          <LineList title="Recomendaciones" lines={report.recommendations} empty="Sin recomendaciones." clientSlug={clientSlug} />
-        </div>
-      </ReportSection>
-      <ReportSection title="Próximas acciones" id="monthly-next">
-        <LineList title="Prioridades del próximo mes" lines={report.nextActions} empty="Sin acciones prioritarias abiertas." clientSlug={clientSlug} />
-      </ReportSection>
-      <Conclusion>{report.conclusion}</Conclusion>
-      <ReportSection title="Fuentes" id="monthly-sources"><SourcesList sources={report.sources} /></ReportSection>
-    </ReportDoc>
-  );
-}
 
 export function PaidReportView({ report, clientSlug, embedded = false }: { report: PaidReport; clientSlug: string; embedded?: boolean }) {
   const top = report.campaigns.filter((row) => row.current && row.current.leads > 0).sort((a, b) => a.current!.cpl - b.current!.cpl);
