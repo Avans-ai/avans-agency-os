@@ -216,13 +216,13 @@ test("glossary check warns citing the source before saving a draft and before se
   expect(errors).toEqual([]);
 });
 
-test("report review per part by responsible → export only when all reviewed → download → email draft", async ({ page }) => {
+test("report review per part by responsible → generate only when all reviewed → PDF → email draft without sending", async ({ page }) => {
   const errors = errorsOf(page);
   await page.goto("/v2/clientes/epsa?view=reportes");
-  const review = page.getByRole("region", { name: "Circuito de revisión · Reporte semanal operativo" });
+  await page.getByRole("button", { name: "Crear reporte" }).click();
+  await page.getByRole("navigation", { name: "Pasos del reporte" }).getByRole("button", { name: /^Paso 7/ }).click();
+  const review = page.getByRole("region", { name: "Circuito de revisión · Reporte mensual de resultados" });
   await expect(review).toContainText("0/3");
-  await expect(review.getByRole("button", { name: "Exportar" })).toBeDisabled();
-  await expect(review.getByRole("button", { name: "Preparar envío por mail" })).toBeDisabled();
   await expect(review).toContainText("Borradores con IA: pendientes de conexión");
 
   await setRole(page, "Content Manager");
@@ -242,39 +242,32 @@ test("report review per part by responsible → export only when all reviewed �
   await expect(review).toContainText("2/3");
 
   await setRole(page, "Project Manager · Valentina Ríos");
-  await expect(review.getByRole("button", { name: "Exportar" })).toBeDisabled();
   await review.getByRole("button", { name: "Marcar revisada: Resumen y Estrategia" }).click();
   await expect(review).toContainText("3/3");
-  await expect(review).toContainText("Listo para exportar");
-  const [download] = await Promise.all([page.waitForEvent("download"), review.getByRole("button", { name: "Exportar" }).click()]);
-  expect(download.suggestedFilename()).toBe("reporte-semanal-epsa-semana-45-2-al-8-de-noviembre-de-2026.html");
-  const html = readFileSync((await download.path())!, "utf8");
-  expect(html).toContain("Reporte semanal operativo");
-  expect(html).toContain("Revisada por Martín Ledesma");
-  expect(html).toContain("Alcance y piezas revisados");
+  await expect(review).toContainText("Listo para generar");
+  await page.getByRole("navigation", { name: "Pasos del reporte" }).getByRole("button", { name: /^Paso 9/ }).click();
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: /^Generar PDF de la versión 1/ }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^reporte-mensual-epsa-.*-v1\.pdf$/);
+  expect(readFileSync((await download.path())!).subarray(0, 5).toString()).toBe("%PDF-");
 
-  await review.getByRole("button", { name: "Preparar envío por mail" }).click();
-  const email = review.getByRole("region", { name: "Borrador del mail al cliente" });
+  await page.getByRole("button", { name: "Preparar borrador de mail" }).click();
+  const email = page.getByRole("region", { name: "Borrador del mail al cliente" });
   await expect(email).toContainText("Gmail / SMTP no conectado");
   await expect(email).toContainText("Carolina Méndez");
-  await expect(email).toContainText("Reporte semanal operativo · EPSA / Line Up");
+  await expect(email).toContainText("Reporte mensual de resultados · EPSA / Line Up");
   await expect(email.getByLabel("Cuerpo del mail")).toHaveValue(/Hola Carolina:/);
 
   const stored = await page.evaluate((prefix) => JSON.parse(localStorage.getItem(`${prefix}client:epsa:report-reviews`)!).value, KEY);
-  const record = stored.reports["semanal:Semana 45 · 2 al 8 de noviembre de 2026"];
-  expect(Object.values(record.parts).map((part) => (part as { status: string }).status)).toEqual(["Revisada", "Revisada", "Revisada"]);
-  expect(record.exportedBy).toBe("Valentina Ríos");
-  expect(record.emailPreparedBy).toBe("Valentina Ríos");
-  expect(record.history.length).toBeGreaterThanOrEqual(6);
-
-  await page.reload();
-  await expect(page.getByRole("region", { name: "Circuito de revisión · Reporte semanal operativo" })).toContainText("3/3");
-  await page.getByRole("group", { name: "Elegir reporte" }).getByRole("button", { name: /Mensual de resultados/ }).click();
-  await expect(page.getByRole("region", { name: "Circuito de revisión · Reporte mensual de resultados" })).toContainText("0/3");
+  const record = Object.values(stored.reports)[0] as { parts: Record<string, { status: string; by: string }>; history: unknown[] };
+  expect(Object.values(record.parts).map((part) => part.status)).toEqual(["Revisada", "Revisada", "Revisada"]);
+  expect(record.parts.publicidad.by).toBe("Martín Ledesma");
+  const reports = await page.evaluate((prefix) => JSON.parse(localStorage.getItem(`${prefix}client:epsa:reports:v1`)!).value, KEY);
+  expect(reports.reports[0].versions[0]).toMatchObject({ version: 1, generatedBy: "Valentina Ríos" });
+  expect(reports.reports[0].versions[0].snapshot.review.map((line: { status: string }) => line.status)).toEqual(["Revisada", "Revisada", "Revisada"]);
   await noOverflow(page);
-  // Aislamiento: ACA tiene su propio circuito.
+  // Aislamiento: ACA tiene sus propios reportes.
   await page.goto("/v2/clientes/aca?view=reportes");
-  await expect(page.getByRole("region", { name: "Circuito de revisión · Reporte semanal operativo" })).toContainText("0/3");
+  await expect(page.getByText("Todavía no se generó ningún reporte para ACA.")).toBeVisible();
   expect(errors).toEqual([]);
 });
 

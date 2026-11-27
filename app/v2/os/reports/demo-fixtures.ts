@@ -14,6 +14,12 @@ export const REPORT_REFERENCE = {
 
 /** Ocho semanas: las cuatro primeras son el período anterior y las cuatro últimas el actual. */
 export const PAID_WEEKS = ["14 sep", "21 sep", "28 sep", "5 oct", "12 oct", "19 oct", "26 oct", "2 nov"] as const;
+/** Lunes de inicio de cada semana de PAID_WEEKS: una semana cuenta en el período que contiene su inicio. */
+export const PAID_WEEK_STARTS = ["2026-09-14", "2026-09-21", "2026-09-28", "2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26", "2026-11-02"] as const;
+export const PAID_PERIODS = {
+  current: { kind: "personalizado", start: "2026-10-12", end: "2026-11-08", label: "12 oct – 8 nov 2026 · 4 semanas" },
+  previous: { kind: "personalizado", start: "2026-09-14", end: "2026-10-11", label: "14 sep – 11 oct 2026" },
+} as const;
 
 export type PaidWeek = { spend: number; impressions: number; reach: number; clicks: number; leads: number; conversions: number; revenue?: number };
 export type BusinessModel = "leads" | "ecommerce";

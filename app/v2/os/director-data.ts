@@ -505,11 +505,15 @@ export function tasksForClient(tasks: OsTask[], clientSlug: string) {
 }
 
 export function isArchivedTask(task: OsTask) {
+  return isArchivedTaskAt(task, Date.now());
+}
+/** Misma regla de archivo evaluada en una fecha de corte fija (instantáneas de reportes). */
+export function isArchivedTaskAt(task: Pick<OsTask, "archivedAt" | "status" | "completedAt">, now: number) {
   if (task.archivedAt) return true;
   if (task.status !== "Hecho" || !task.completedAt) return false;
   const completedAt = new Date(task.completedAt);
   if (Number.isNaN(completedAt.getTime())) return false;
-  return Date.now() - completedAt.getTime() >= TASK_ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+  return now - completedAt.getTime() >= TASK_ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
 }
 
 export function serviceSummary(clientSlug: string, serviceId: ServiceId, tasks: OsTask[]) {

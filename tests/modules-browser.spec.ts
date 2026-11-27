@@ -19,39 +19,20 @@ function sectionNav(page: Page, label: string) {
   return page.getByRole("navigation", { name: `Secciones de ${label}` });
 }
 
-test("reports: weekly, monthly, paid media and content render for EPSA with module filter and sources", async ({ page }) => {
+test("reports: generator home with drafts and issued reports; paid media and content result reports render inside their modules", async ({ page }) => {
   const errors = errorsOf(page);
   await page.goto("/v2/clientes/epsa?view=reportes");
   await expect(page.getByRole("heading", { name: "Reportes", exact: true })).toBeVisible();
-  const picker = page.getByRole("group", { name: "Elegir reporte" });
-  await expect(picker.getByRole("button")).toHaveCount(4);
+  await expect(page.getByRole("heading", { name: "Borradores" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reportes generados" })).toBeVisible();
+  await page.getByRole("button", { name: "Crear reporte" }).click();
+  await expect(page.getByRole("navigation", { name: "Pasos del reporte" }).getByRole("button")).toHaveCount(9);
+  await page.getByRole("navigation", { name: "Pasos del reporte" }).getByRole("button", { name: /^Paso 3/ }).click();
+  await expect(page.getByRole("group", { name: "Servicios incluidos" }).getByRole("checkbox")).toHaveCount(3);
+  await page.getByRole("button", { name: "← Reportes" }).click();
+  await expect(page.getByRole("button", { name: /^Continuar Reporte mensual/ })).toBeVisible();
 
-  const weekly = page.getByRole("article", { name: "Reporte semanal operativo" });
-  await expect(weekly.getByRole("heading", { name: "Resumen ejecutivo" })).toBeVisible();
-  await expect(weekly.getByText("Datos de demostración.").first()).toBeVisible();
-  for (const heading of ["Servicios activos", "Trabajo de la semana", "Bloqueos, aprobaciones y alertas", "Próximos pasos y acciones sugeridas", "Fuentes"]) {
-    await expect(weekly.getByRole("heading", { name: heading })).toBeVisible();
-  }
-  const services = weekly.getByRole("table", { name: "Estado de los servicios activos" });
-  await expect(services.getByRole("row")).toHaveCount(4);
-  const filter = weekly.getByLabel("Filtrar reporte semanal por módulo");
-  await expect(filter.locator("option")).toHaveText(["Todos los módulos activos", "Estrategia y coordinación", "Publicidad digital", "Contenidos"]);
-  await filter.selectOption("publicidad-digital");
-  await expect(services.getByRole("row")).toHaveCount(2);
-  await expect(services).toContainText("Publicidad digital");
-  await expect(services).not.toContainText("Contenidos");
-  await expect(weekly.getByText("T-144 · Copys para piezas de lanzamiento")).toHaveCount(0);
-  await expect(weekly.getByRole("img", { name: /Tareas hechas vs. abiertas por módulo/ })).toBeVisible();
-
-  await picker.getByRole("button", { name: /Mensual de resultados/ }).click();
-  await expect(page).toHaveURL(/reporte=mensual/);
-  const monthly = page.getByRole("article", { name: "Reporte mensual de resultados" });
-  for (const heading of ["Objetivos del cliente", "Resultados por módulo", "Actividades realizadas", "Aprendizajes, oportunidades y recomendaciones", "Próximas acciones", "Fuentes"]) {
-    await expect(monthly.getByRole("heading", { name: heading })).toBeVisible();
-  }
-  await expect(monthly.getByRole("img", { name: /Variación frente al período anterior/ })).toBeVisible();
-
-  await picker.getByRole("button", { name: /Publicidad digital/ }).click();
+  await page.goto("/v2/clientes/epsa/campanas?seccion=resultados");
   const paid = page.getByRole("article", { name: "Reporte de Publicidad digital" });
   for (const label of ["Inversión", "Alcance", "Impresiones", "Clics", "CTR", "CPC", "Leads", "CPL", "Conversiones"]) {
     await expect(paid.getByRole("region", { name: "Indicadores de pauta" }).getByText(label, { exact: true })).toBeVisible();
@@ -61,16 +42,16 @@ test("reports: weekly, monthly, paid media and content render for EPSA with modu
   await expect(paid.getByText("No conectada").first()).toBeVisible();
   await expect(paid.getByRole("table", { name: "Resultados por campaña" })).toContainText("Sin datos");
 
-  await picker.getByRole("button", { name: /Contenidos/ }).click();
+  await page.goto("/v2/clientes/epsa/contenido?seccion=resultados");
   const content = page.getByRole("article", { name: "Reporte de Contenidos" });
   await expect(content.getByRole("img", { name: /Formatos más efectivos/ })).toBeVisible();
   await expect(content.getByRole("heading", { name: "Aprendizajes y propuestas para el próximo período" })).toBeVisible();
-  await expect(content.getByRole("table", { name: "Crecimiento de audiencia" })).toContainText("LinkedIn");
 
-  // Edinovo has no paid media module: its report is not offered.
-  await page.goto("/v2/clientes/edinovo?view=reportes&reporte=publicidad");
-  await expect(page.getByRole("group", { name: "Elegir reporte" }).getByRole("button", { name: /Publicidad digital/ })).toHaveCount(0);
-  await expect(page.getByRole("article", { name: "Reporte semanal operativo" })).toBeVisible();
+  // Edinovo no tiene Publicidad digital: no se ofrece en los servicios del reporte.
+  await page.goto("/v2/clientes/edinovo?view=reportes");
+  await page.getByRole("button", { name: "Crear reporte" }).click();
+  await page.getByRole("navigation", { name: "Pasos del reporte" }).getByRole("button", { name: /^Paso 3/ }).click();
+  await expect(page.getByRole("group", { name: "Servicios incluidos" })).not.toContainText("Publicidad digital");
   expect(errors).toEqual([]);
 });
 
@@ -291,7 +272,7 @@ for (const [name, width, height] of [["desktop", 1440, 900], ["notebook", 1280, 
       "/v2/clientes/epsa/contenido?seccion=calendario",
       "/v2/clientes/epsa/tareas",
       "/v2/clientes/epsa?view=reportes",
-      "/v2/clientes/epsa?view=reportes&reporte=publicidad",
+      "/v2/clientes/epsa/campanas?seccion=resultados",
       "/v2/clientes/grupo-portland/desarrollo-web",
     ]) {
       await page.goto(path);

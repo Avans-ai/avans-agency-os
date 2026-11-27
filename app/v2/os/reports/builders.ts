@@ -1,18 +1,27 @@
-/* Builders puros de reportes. Reciben tareas, objetos de los módulos y métricas
- * (hoy fixtures DEMO, mañana integraciones) y devuelven view models listos para
- * presentar. No leen React, localStorage ni la red: se prueban en dominio. */
-import { isArchivedTask, serviceForTask, tasksForClient, type ClientAttentionItem } from "../director-data";
-import { serviceLabel, type OsClient, type OsTask, type ServiceId } from "../os-data";
-import type {
-  AudienceRow,
-  BusinessModel,
-  ContentMonth,
-  DemoLine,
-  MonthlyDemo,
-  MonthlyIndicator,
-  PaidWeek,
-  PieceMetric,
+/* Builders puros de reportes. Usan las MISMAS definiciones de métricas que el Inicio del
+ * cliente (app/v2/os/metrics/**): la instantánea del generador llama a serviceSnapshot y los
+ * reportes de resultados de Publicidad digital y Contenidos (embebidos en sus módulos) usan
+ * paidTotals/weeksInPeriod y contentState. No leen React, localStorage ni la red. */
+import { serviceSnapshots, METRICS_VERSION } from "../metrics";
+import { isContentInReview } from "../metrics/content";
+import type { MetricsInput } from "../metrics/input";
+import { paidTotals, weeksInPeriod, type PaidTotals } from "../metrics/paid";
+import { longDate, previousPeriod, type MetricPeriod } from "../metrics/period";
+import { HEALTH_LABEL } from "../metrics/service-health";
+import { mergeOrigins, type DataOrigin, type ServiceSnapshot } from "../metrics/types";
+import { contentFlowStep, contentState } from "../modules/content-workflow";
+import type { ModuleRecord } from "../modules/types";
+import { serviceLabel, type OsClient, type ServiceId } from "../os-data";
+import {
+  PAID_PERIODS,
+  PAID_WEEK_STARTS,
+  type AudienceRow,
+  type BusinessModel,
+  type ContentMonth,
+  type PaidWeek,
+  type PieceMetric,
 } from "./demo-fixtures";
+import { REPORT_TYPE_LABEL, reportTitle, type ReportNarrative, type ReportType } from "./generator";
 
 export type SourceOrigin = "tareas" | "objetos" | "demo" | "integracion" | "manual";
 export const ORIGIN_LABEL: Record<SourceOrigin, string> = {
@@ -54,167 +63,9 @@ function safeDivide(a: number, b: number) {
   return b ? a / b : 0;
 }
 
-type ModuleScope = { activeServices: ServiceId[]; moduleFilter?: ServiceId | "todos" };
-function inScope(serviceId: ServiceId | undefined, scope: ModuleScope) {
-  if (!serviceId) return !scope.moduleFilter || scope.moduleFilter === "todos";
-  if (!scope.activeServices.includes(serviceId)) return false;
-  return !scope.moduleFilter || scope.moduleFilter === "todos" || scope.moduleFilter === serviceId;
-}
-
-/* ───────── Reporte semanal operativo ───────── */
-export type WeeklyInput = {
-  client: OsClient;
-  activeServices: ServiceId[];
-  moduleFilter?: ServiceId | "todos";
-  tasks: OsTask[];
-  period: string;
-  owner: string;
-  demo?: { delivered: DemoLine[]; delayed: DemoLine[] };
-  attention: ClientAttentionItem[];
-  recommendations: RecommendationInput[];
-};
-
-export type WeeklyServiceRow = { serviceId: ServiceId; label: string; open: number; done: number; blocked: number; approvals: number; late: number; state: "Atención" | "Revisión" | "En curso" | "Al día" };
-
-export type WeeklyReport = {
-  kind: "semanal";
-  title: string;
-  clientName: string;
-  period: string;
-  owner: string;
-  moduleFilter: ServiceId | "todos";
-  modules: { id: ServiceId; label: string }[];
-  summary: string[];
-  kpis: ReportKpi[];
-  services: WeeklyServiceRow[];
-  tasksDone: ReportLine[];
-  deliverablesDone: ReportLine[];
-  deliverablesLate: ReportLine[];
-  blockers: ReportLine[];
-  approvals: ReportLine[];
-  nextSteps: ReportLine[];
-  alerts: ReportLine[];
-  recommendations: ReportLine[];
-  actions: ReportLine[];
-  chart: BarDatum[];
-  conclusion: string;
-  sources: ReportSource[];
-};
-
-export function buildWeeklyReport(input: WeeklyInput): WeeklyReport {
-  const scope = { activeServices: input.activeServices, moduleFilter: input.moduleFilter };
-  const all = tasksForClient(input.tasks, input.client.slug).filter((task) => inScope(serviceForTask(task), scope));
-  const current = all.filter((task) => !isArchivedTask(task));
-  const open = current.filter((task) => task.status !== "Hecho");
-  const done = current.filter((task) => task.status === "Hecho");
-  const blocked = open.filter((task) => task.blocked);
-  const approvals = open.filter((task) => task.status === "En aprobación");
-  const late = open.filter((task) => task.dueKind === "late");
-  const upcoming = open.filter((task) => task.dueKind === "today" || task.dueKind === "week");
-  const line = (task: OsTask, detail?: string, tone?: ReportLine["tone"]): ReportLine => ({ title: `${task.id} · ${task.title}`, detail, serviceId: serviceForTask(task), taskId: task.id, origin: "tareas", tone });
-
-  const demoDelivered = (input.demo?.delivered ?? []).filter((item) => inScope(item.serviceId, scope));
-  const demoDelayed = (input.demo?.delayed ?? []).filter((item) => inScope(item.serviceId, scope));
-  const deliverablesDone: ReportLine[] = [
-    ...done.filter((task) => task.deliverable).map((task) => line(task, `Entregable: ${task.deliverable}`)),
-    ...demoDelivered.map((item) => ({ title: item.title, detail: item.detail, serviceId: item.serviceId, origin: "demo" as const })),
-  ];
-  const deliverablesLate: ReportLine[] = [
-    ...late.map((task) => line(task, `Vencida ${task.due}${task.deliverable ? ` · ${task.deliverable}` : ""}`, "error")),
-    ...demoDelayed.map((item) => ({ title: item.title, detail: item.detail, serviceId: item.serviceId, origin: "demo" as const, tone: "warning" as const })),
-  ];
-
-  const services: WeeklyServiceRow[] = input.activeServices
-    .filter((serviceId) => inScope(serviceId, scope))
-    .map((serviceId) => {
-      const own = current.filter((task) => serviceForTask(task) === serviceId);
-      const ownOpen = own.filter((task) => task.status !== "Hecho");
-      const row = {
-        serviceId,
-        label: serviceLabel(serviceId),
-        open: ownOpen.length,
-        done: own.length - ownOpen.length,
-        blocked: ownOpen.filter((task) => task.blocked).length,
-        approvals: ownOpen.filter((task) => task.status === "En aprobación").length,
-        late: ownOpen.filter((task) => task.dueKind === "late").length,
-      };
-      const state: WeeklyServiceRow["state"] = row.blocked || row.late ? "Atención" : row.approvals ? "Revisión" : row.open ? "En curso" : "Al día";
-      return { ...row, state };
-    });
-
-  const alerts: ReportLine[] = input.attention
-    .filter((item) => inScope(item.serviceId, scope))
-    .map((item) => ({ title: item.title, detail: item.detail, serviceId: item.serviceId, origin: item.id.startsWith("TASK-") ? "tareas" : "demo", tone: item.tone }));
-
-  const recommendations: ReportLine[] = input.recommendations
-    .filter((item) => inScope(item.serviceId, scope) && item.status !== "Descartada")
-    .sort((a, b) => ["Alta", "Media", "Baja"].indexOf(a.priority) - ["Alta", "Media", "Baja"].indexOf(b.priority))
-    .slice(0, 5)
-    .map((item) => ({ title: item.title, detail: `${item.rationale} · Prioridad ${item.priority} · ${item.status}`, serviceId: item.serviceId, origin: item.source === "Carga manual" ? "manual" : "demo" }));
-
-  const actions: ReportLine[] = [
-    ...blocked.map((task) => ({ title: `Destrabar ${task.id}`, detail: `${task.title}: ${task.blocked}`, serviceId: serviceForTask(task), taskId: task.id, origin: "tareas" as const, tone: "error" as const })),
-    ...approvals.filter((task) => task.dueKind === "late" || task.dueKind === "today").map((task) => ({ title: `Pedir decisión sobre ${task.id}`, detail: `${task.title} · aprueba ${task.approver ?? "por asignar"}`, serviceId: serviceForTask(task), taskId: task.id, origin: "tareas" as const, tone: "warning" as const })),
-    ...late.filter((task) => task.status !== "En aprobación").map((task) => ({ title: `Reprogramar o cerrar ${task.id}`, detail: `${task.title} venció el ${task.due}`, serviceId: serviceForTask(task), taskId: task.id, origin: "tareas" as const })),
-  ].slice(0, 6);
-
-  const scopeLabel = input.moduleFilter && input.moduleFilter !== "todos" ? serviceLabel(input.moduleFilter) : `${services.length} ${services.length === 1 ? "módulo activo" : "módulos activos"}`;
-  const summary = [
-    `${input.client.name} cierra la semana con ${open.length} tareas abiertas en ${scopeLabel}: ${done.length} realizadas, ${approvals.length} esperando aprobación y ${blocked.length} bloqueadas.`,
-    blocked.length ? `El principal freno es ${blocked[0].id} (${blocked[0].title.toLocaleLowerCase("es")}): ${blocked[0].blocked}` : "No hay bloqueos activos registrados en las tareas.",
-    late.length ? `${late.length} ${late.length === 1 ? "entrega está vencida" : "entregas están vencidas"} y requieren reprogramación o decisión.` : "No hay tareas vencidas.",
-  ];
-
-  const kpis: ReportKpi[] = [
-    { label: "Tareas realizadas", value: String(done.length), origin: "tareas", note: "Hechas y no archivadas" },
-    { label: "Entregables completados", value: String(deliverablesDone.length), origin: demoDelivered.length ? "demo" : "tareas", note: "Tareas con entregable + registros demo" },
-    { label: "Entregables demorados", value: String(deliverablesLate.length), origin: demoDelayed.length ? "demo" : "tareas" },
-    { label: "Bloqueos", value: String(blocked.length), origin: "tareas" },
-    { label: "Aprobaciones pendientes", value: String(approvals.length), origin: "tareas" },
-  ];
-
-  const conclusion = blocked.length || late.length
-    ? `La prioridad de la próxima semana es destrabar ${blocked.length + late.length} ${blocked.length + late.length === 1 ? "frente" : "frentes"} antes de sumar trabajo nuevo; el resto del plan avanza según lo previsto.`
-    : approvals.length
-      ? "La operación avanza sin bloqueos; conviene acelerar las aprobaciones pendientes para no demorar entregas."
-      : "La operación está al día. Mantener el ritmo y revisar recomendaciones abiertas.";
-
-  return {
-    kind: "semanal",
-    title: "Reporte semanal operativo",
-    clientName: input.client.name,
-    period: input.period,
-    owner: input.owner,
-    moduleFilter: input.moduleFilter ?? "todos",
-    modules: input.activeServices.map((id) => ({ id, label: serviceLabel(id) })),
-    summary,
-    kpis,
-    services,
-    tasksDone: done.map((task) => line(task, task.completedAt ? `Completada · ${task.owner}` : task.owner)),
-    deliverablesDone,
-    deliverablesLate,
-    blockers: blocked.map((task) => line(task, `${task.blocked}${task.blockedSince ? ` · hace ${task.blockedSince}` : ""}`, "error")),
-    approvals: approvals.map((task) => line(task, `Aprueba ${task.approver ?? "por asignar"} · vence ${task.due}`, task.dueKind === "late" ? "error" : "warning")),
-    nextSteps: upcoming.slice(0, 8).map((task) => line(task, `${task.owner} · ${task.dueKind === "today" ? "hoy" : task.due}`)),
-    alerts,
-    recommendations,
-    actions,
-    chart: services.map((row) => ({ label: row.label, value: row.done, secondary: row.open, display: `${row.done} hechas`, secondaryDisplay: `${row.open} abiertas` })),
-    conclusion,
-    sources: [
-      { label: "Tareas del store único", origin: "tareas", detail: "Estados, bloqueos, aprobaciones, vencimientos y entregables por módulo. Guardado en este navegador." },
-      { label: "Entregables sin tarea", origin: "demo", detail: "Entregas cerradas o demoradas cargadas como fixtures de ejemplo." },
-      { label: "Alertas de la cuenta", origin: "demo", detail: "Tareas bloqueadas + alertas de demostración de la ficha." },
-      { label: "Recomendaciones", origin: "demo", detail: "Precargadas como demostración y manuales guardadas en este navegador. Sin IA conectada." },
-      { label: "Gestor de tareas externo / calendario", origin: "integracion", detail: "Alimentaría fechas reales de cierre y reuniones.", status: "No conectada" },
-    ],
-  };
-}
-
 /* ───────── Publicidad digital ───────── */
 export type CampaignInput = { id: string; name: string; platform: string; objective: string; status: string; budget: number; source: "manual" | "demo" | "integration" };
 
-export type PaidTotals = { spend: number; reach: number; impressions: number; clicks: number; leads: number; conversions: number; revenue: number; ctr: number; cpc: number; cpl: number; roas?: number };
 export type CampaignRow = CampaignInput & { hasData: boolean; current?: PaidTotals; previous?: PaidTotals; spendShare: number };
 
 export type PaidReport = {
@@ -239,27 +90,11 @@ export type PaidReport = {
   hasData: boolean;
 };
 
+/** Mismos totales que metrics/paid.ts (paidTotals → totalsOf de paid-metrics). */
 export function totalsOf(weeks: PaidWeek[], model: BusinessModel): PaidTotals {
-  const spend = sum(weeks, (week) => week.spend);
-  const impressions = sum(weeks, (week) => week.impressions);
-  const clicks = sum(weeks, (week) => week.clicks);
-  const leads = sum(weeks, (week) => week.leads);
-  const conversions = sum(weeks, (week) => week.conversions);
-  const revenue = sum(weeks, (week) => week.revenue ?? 0);
-  return {
-    spend,
-    reach: sum(weeks, (week) => week.reach),
-    impressions,
-    clicks,
-    leads,
-    conversions,
-    revenue,
-    ctr: safeDivide(clicks, impressions) * 100,
-    cpc: safeDivide(spend, clicks),
-    cpl: safeDivide(spend, leads),
-    roas: model === "ecommerce" ? safeDivide(revenue, spend) : undefined,
-  };
+  return paidTotals(weeks, model);
 }
+export type { PaidTotals };
 
 export function buildPaidMediaReport(input: {
   clientName: string;
@@ -269,11 +104,15 @@ export function buildPaidMediaReport(input: {
   businessModel: BusinessModel;
   period: string;
   previousPeriod: string;
+  /** Períodos medidos (por el lunes de cada semana). Por defecto, los del reporte de demostración. */
+  periods?: { current: Pick<MetricPeriod, "start" | "end">; previous: Pick<MetricPeriod, "start" | "end"> };
+  weekStarts?: readonly string[];
 }): PaidReport {
-  const half = Math.floor(input.weeks.length / 2);
+  const periods = input.periods ?? PAID_PERIODS;
+  const starts = input.weekStarts ?? PAID_WEEK_STARTS;
   const withData = input.campaigns.filter((campaign) => input.metrics[campaign.id]?.some((week) => week.spend > 0));
-  const currentWeeks = (id: string) => (input.metrics[id] ?? []).slice(half);
-  const previousWeeks = (id: string) => (input.metrics[id] ?? []).slice(0, half);
+  const currentWeeks = (id: string) => weeksInPeriod(input.metrics[id] ?? [], periods.current, starts);
+  const previousWeeks = (id: string) => weeksInPeriod(input.metrics[id] ?? [], periods.previous, starts);
   const allCurrent = withData.flatMap((campaign) => currentWeeks(campaign.id));
   const allPrevious = withData.flatMap((campaign) => previousWeeks(campaign.id));
   const totals = totalsOf(allCurrent, input.businessModel);
@@ -398,7 +237,10 @@ export type ContentReport = {
   sources: ReportSource[];
 };
 
-const PRODUCED = new Set(["En producción", "En revisión", "En aprobación", "Cambios pedidos", "Programada", "Publicada", "Producción de diseño", "Revisión interna del diseño", "Aprobación final del cliente", "Aprobado", "Programado"]);
+/** Estado del flujo editorial de una pieza (misma lectura que el módulo, con compatibilidad de estados anteriores). */
+function pieceState(piece: PieceInput) {
+  return contentState({ values: { estado: piece.status } } as unknown as ModuleRecord);
+}
 
 export function buildContentReport(input: {
   clientName: string;
@@ -410,7 +252,7 @@ export function buildContentReport(input: {
   learnings: string[];
   period: string;
 }): ContentReport {
-  const published = input.pieces.filter((piece) => piece.status === "Publicada");
+  const published = input.pieces.filter((piece) => pieceState(piece) === "Publicada");
   const measured = published.filter((piece) => input.metrics[piece.id]);
   const reach = sum(measured, (piece) => input.metrics[piece.id].reach);
   const interactions = sum(measured, (piece) => input.metrics[piece.id].interactions);
@@ -434,8 +276,8 @@ export function buildContentReport(input: {
   const formats = groupBy((piece) => piece.format);
   const themes = groupBy((piece) => axisName(piece.axisId));
   const statusCounts = new Map<string, number>();
-  input.pieces.forEach((piece) => statusCounts.set(piece.status, (statusCounts.get(piece.status) ?? 0) + 1));
-  const pendingApproval = input.pieces.filter((piece) => ["En aprobación", "Revisión preliminar del cliente", "Aprobación final del cliente"].includes(piece.status)).length;
+  input.pieces.forEach((piece) => statusCounts.set(pieceState(piece), (statusCounts.get(pieceState(piece)) ?? 0) + 1));
+  const pendingApproval = input.pieces.filter((piece) => isContentInReview(pieceState(piece))).length;
 
   const kpi = (label: string, current: number, previous: number | undefined, format: (value: number) => string, origin: SourceOrigin = "demo"): ReportKpi => ({
     label,
@@ -446,7 +288,8 @@ export function buildContentReport(input: {
     origin,
   });
 
-  const produced = input.pieces.filter((piece) => PRODUCED.has(piece.status)).length;
+  // Producidas: desde «Producción de diseño» (etapa 5 del flujo) en adelante.
+  const produced = input.pieces.filter((piece) => contentFlowStep(pieceState(piece)) >= 5).length;
   const audience = input.audience.map((row) => ({ ...row, growth: percentChange(row.end, row.start) ?? 0 }));
 
   return {
@@ -504,126 +347,97 @@ export function buildContentReport(input: {
   };
 }
 
-/* ───────── Reporte mensual de resultados ───────── */
-export type MonthlyReport = {
-  kind: "mensual";
-  title: string;
+
+/* ───────── Generador de reportes: instantánea reproducible ───────── */
+export type ReportReviewLine = { part: string; role: string; owner: string; status: string; by: string; at: string; comment: string };
+
+export type ReportSnapshot = {
+  schema: 1;
+  metricsVersion: string;
+  clientSlug: string;
   clientName: string;
-  period: string;
-  previousPeriod: string;
-  owner: string;
+  type: ReportType;
+  typeLabel: string;
+  title: string;
+  period: MetricPeriod;
+  previousPeriod: MetricPeriod;
+  /** Fecha de corte de los estados operativos (AAAA-MM-DD). */
+  asOf: string;
+  generatedAt: string;
+  generatedBy: string;
+  version: number;
+  services: { id: ServiceId; label: string }[];
+  sections: ServiceSnapshot[];
+  /** Resumen automático de los datos (sin IA): una línea por servicio. */
   summary: string[];
-  objectives: MonthlyDemo["objectives"];
-  activities: ReportLine[];
-  results: { serviceId: ServiceId; label: string; indicators: (MonthlyIndicator & { origin: SourceOrigin; delta?: number })[] }[];
-  kpis: ReportKpi[];
-  comparison: BarDatum[];
-  learnings: string[];
-  opportunities: string[];
-  recommendations: ReportLine[];
-  nextActions: ReportLine[];
-  conclusion: string;
-  sources: ReportSource[];
+  narrative: ReportNarrative;
+  review: ReportReviewLine[];
+  origins: Record<DataOrigin, number>;
+  origin: DataOrigin;
+  /** SHA-256 de la entrada de métricas usada. */
+  inputDigest: string;
 };
 
-export function buildMonthlyReport(input: {
-  client: OsClient;
-  activeServices: ServiceId[];
-  tasks: OsTask[];
-  demo?: MonthlyDemo;
-  paid?: PaidReport;
-  content?: ContentReport;
-  recommendations: RecommendationInput[];
-  period: string;
-  previousPeriod: string;
-  owner: string;
-}): MonthlyReport {
-  const scope = { activeServices: input.activeServices };
-  const tasks = tasksForClient(input.tasks, input.client.slug).filter((task) => inScope(serviceForTask(task), scope));
-  const current = tasks.filter((task) => !isArchivedTask(task));
-  const open = current.filter((task) => task.status !== "Hecho");
-  const done = tasks.filter((task) => task.status === "Hecho");
+export function factualSummary(sections: ServiceSnapshot[]) {
+  return sections.map((section) => `${section.label}: ${HEALTH_LABEL[section.health.level].toLocaleLowerCase("es")}. ${section.health.reason}`);
+}
 
-  const results = input.activeServices.map((serviceId) => {
-    const indicators: (MonthlyIndicator & { origin: SourceOrigin; delta?: number })[] = [];
-    if (serviceId === "publicidad-digital" && input.paid?.hasData) {
-      const { totals, previousTotals } = input.paid;
-      indicators.push(
-        { label: "Inversión", current: totals.spend, previous: previousTotals.spend, unit: "ARS", better: "up", origin: "demo" },
-        { label: "Leads", current: totals.leads, previous: previousTotals.leads, better: "up", origin: "demo" },
-        { label: "CPL", current: Math.round(totals.cpl), previous: Math.round(previousTotals.cpl), unit: "ARS", better: "down", origin: "demo" },
-      );
-    }
-    if (serviceId === "contenidos" && input.content?.currentMonth && input.content.previousMonth) {
-      indicators.push({ label: "Alcance orgánico", current: input.content.currentMonth.reach, previous: input.content.previousMonth.reach, better: "up", origin: "demo" });
-    }
-    for (const indicator of input.demo?.results[serviceId] ?? []) indicators.push({ ...indicator, origin: "demo" });
-    const ownOpen = open.filter((task) => serviceForTask(task) === serviceId).length;
-    const ownDone = done.filter((task) => serviceForTask(task) === serviceId).length;
-    indicators.push({ label: "Tareas cerradas", current: ownDone, previous: 0, better: "up", origin: "tareas" });
-    indicators.push({ label: "Tareas abiertas", current: ownOpen, previous: 0, better: "down", origin: "tareas" });
-    return {
-      serviceId,
-      label: serviceLabel(serviceId),
-      indicators: indicators.map((indicator) => ({ ...indicator, delta: indicator.origin === "tareas" ? undefined : percentChange(indicator.current, indicator.previous) })),
-    };
-  });
-
-  const comparison: BarDatum[] = results.flatMap((result) => result.indicators
-    .filter((indicator) => indicator.delta !== undefined)
-    .map((indicator) => {
-      const delta = indicator.delta ?? 0;
-      const good = indicator.better === "up" ? delta >= 0 : delta <= 0;
-      return { label: `${indicator.label} · ${result.label}`, value: Number(delta.toFixed(1)), secondary: good ? 1 : 0, display: `${delta > 0 ? "+" : ""}${formatNumber(delta, 1)} %` };
-    }));
-
-  const better = comparison.filter((item) => item.secondary === 1).length;
-  const recommendations: ReportLine[] = input.recommendations
-    .filter((item) => input.activeServices.includes(item.serviceId) && item.status !== "Descartada")
-    .slice(0, 5)
-    .map((item) => ({ title: item.title, detail: item.rationale, serviceId: item.serviceId, origin: item.source === "Carga manual" ? "manual" : "demo" }));
-
+/** Instantánea del reporte: misma función de métricas que el Inicio, con el período elegido. */
+export function buildReportSnapshot(input: {
+  client: Pick<OsClient, "slug" | "name">;
+  report: { type: ReportType; period: MetricPeriod; services: ServiceId[]; narrative: ReportNarrative };
+  metrics: MetricsInput;
+  asOf: string;
+  generatedAt: string;
+  generatedBy: string;
+  version: number;
+  review: ReportReviewLine[];
+  inputDigest: string;
+}): ReportSnapshot {
+  if (input.metrics.clientSlug !== input.client.slug) throw new Error("Los datos pertenecen a otro cliente.");
+  const sections = serviceSnapshots(input.report.services, input.metrics, { period: input.report.period, asOf: input.asOf, compare: true });
+  const all = sections.flatMap((section) => [...section.indicators.map((metric) => metric.origin), ...section.results.map((metric) => metric.origin)]);
+  const origins: Record<DataOrigin, number> = { real: 0, demo: 0, pendiente: 0, "no-conectado": 0 };
+  for (const origin of all) origins[origin] += 1;
   return {
-    kind: "mensual",
-    title: "Reporte mensual de resultados",
+    schema: 1,
+    metricsVersion: METRICS_VERSION,
+    clientSlug: input.client.slug,
     clientName: input.client.name,
-    period: input.period,
-    previousPeriod: input.previousPeriod,
-    owner: input.owner,
-    summary: [
-      `${input.period}: ${better} de ${comparison.length} indicadores comparables mejoraron frente a ${input.previousPeriod}.`,
-      input.paid?.hasData ? `Publicidad digital generó ${formatNumber(input.paid.totals.leads)} leads con un CPL de $ ${formatNumber(input.paid.totals.cpl)}.` : "",
-      input.content ? `Contenidos publicó ${input.content.currentMonth?.published ?? input.content.published} piezas con ${formatNumber(input.content.currentMonth?.reach ?? input.content.totals.reach)} de alcance.` : "",
-      `Quedan ${open.length} tareas abiertas y ${open.filter((task) => task.blocked).length} bloqueos para el próximo mes.`,
-    ].filter(Boolean),
-    objectives: input.demo?.objectives ?? [{ objective: input.client.context.objective, indicator: "Objetivo de la ficha", target: "—", current: "Sin medición cargada", status: "Sin datos" }],
-    activities: [
-      ...done.slice(0, 6).map((task) => ({ title: `${task.id} · ${task.title}`, detail: task.owner, serviceId: serviceForTask(task), taskId: task.id, origin: "tareas" as const })),
-      ...(input.demo?.activities ?? []).filter((item) => input.activeServices.includes(item.serviceId)).map((item) => ({ title: item.title, serviceId: item.serviceId, origin: "demo" as const })),
-    ],
-    results,
-    kpis: [
-      { label: "Indicadores que mejoraron", value: `${better}/${comparison.length}`, origin: "demo" },
-      { label: "Tareas cerradas", value: String(done.length), origin: "tareas", note: "Incluye archivadas" },
-      { label: "Tareas abiertas", value: String(open.length), origin: "tareas" },
-      { label: "Objetivos en riesgo", value: String((input.demo?.objectives ?? []).filter((item) => item.status === "En riesgo").length), origin: "demo" },
-    ],
-    comparison,
-    learnings: input.demo?.learnings ?? [],
-    opportunities: input.demo?.opportunities ?? [],
-    recommendations,
-    nextActions: open
-      .filter((task) => task.prio === "Alta" || task.blocked || task.dueKind === "late")
-      .slice(0, 6)
-      .map((task) => ({ title: `${task.id} · ${task.title}`, detail: `${task.owner} · ${task.dueKind === "late" ? `vencida ${task.due}` : task.due}`, serviceId: serviceForTask(task), taskId: task.id, origin: "tareas" as const, tone: task.blocked ? "error" as const : undefined })),
-    conclusion: better >= comparison.length / 2
-      ? "El mes muestra una mejora general. El próximo período debe consolidar lo que funcionó y cerrar los bloqueos abiertos."
-      : "El mes tiene más indicadores en retroceso que en mejora. Priorizar las acciones de destrabe y revisar el plan con el cliente.",
-    sources: [
-      { label: "Tareas del store único", origin: "tareas", detail: "Actividades realizadas, tareas abiertas y próximas acciones." },
-      { label: "Objetivos, indicadores y aprendizajes", origin: "demo", detail: "Fixtures de ejemplo por cliente." },
-      { label: "Reportes de Publicidad digital y Contenidos", origin: "demo", detail: "Se reutilizan sus totales cuando el módulo está activo." },
-      { label: "Plan de Marketing", origin: "integracion", detail: "Objetivos validados del plan (otro equipo lo está reorganizando).", status: "No conectada" },
-    ],
+    type: input.report.type,
+    typeLabel: REPORT_TYPE_LABEL[input.report.type],
+    title: reportTitle(input.report, serviceLabel),
+    period: input.report.period,
+    previousPeriod: previousPeriod(input.report.period),
+    asOf: input.asOf,
+    generatedAt: input.generatedAt,
+    generatedBy: input.generatedBy,
+    version: input.version,
+    services: input.report.services.map((id) => ({ id, label: serviceLabel(id) })),
+    sections,
+    summary: factualSummary(sections),
+    narrative: { conclusions: input.report.narrative.conclusions.trim(), recommendations: input.report.narrative.recommendations.trim(), nextSteps: input.report.narrative.nextSteps.trim() },
+    review: input.review,
+    origins,
+    origin: mergeOrigins(sections.map((section) => section.origin)),
+    inputDigest: input.inputDigest,
   };
+}
+
+/** Texto plano del reporte (se conserva en la fuente de «Archivos y documentos»). */
+export function snapshotText(snapshot: ReportSnapshot) {
+  const lines = [
+    `${snapshot.title} · ${snapshot.clientName}`,
+    `Período: ${snapshot.period.label} · Generado el ${longDate(snapshot.generatedAt.slice(0, 10))} por ${snapshot.generatedBy} · Versión ${snapshot.version}`,
+    `Servicios: ${snapshot.services.map((service) => service.label).join(", ")}`,
+    "",
+    ...snapshot.summary,
+  ];
+  for (const section of snapshot.sections) {
+    lines.push("", `${section.label} · ${section.health.label}`, ...[...section.indicators, ...section.results].map((metric) => `- ${metric.label}: ${metric.display}${metric.origin === "real" ? "" : ` (${metric.origin})`}`));
+  }
+  if (snapshot.narrative.conclusions) lines.push("", "Conclusiones", snapshot.narrative.conclusions);
+  if (snapshot.narrative.recommendations) lines.push("", "Recomendaciones", snapshot.narrative.recommendations);
+  if (snapshot.narrative.nextSteps) lines.push("", "Próximos pasos", snapshot.narrative.nextSteps);
+  return lines.join("\n");
 }
