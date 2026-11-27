@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { googleReadiness } from "../../../../../lib/google-workspace/readiness";
 import { verifyPubSubAuthorization } from "../../../../../lib/google-workspace/webhook";
+import { requireApiAuth } from "../../../../../lib/auth/session";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const actions = [
@@ -29,6 +30,8 @@ export async function GET(
   const { action } = await context.params;
   if (!actions.includes(action))
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const auth = await requireApiAuth();
+  if (!auth.ok) return auth.response;
   if (action === "status")
     return NextResponse.json(googleReadiness(process.env), {
       headers: { "Cache-Control": "no-store" },
@@ -54,5 +57,7 @@ export async function POST(
     } // Do not ACK an event before durable ingestion is enabled.
     return disabled();
   }
+  const auth = await requireApiAuth();
+  if (!auth.ok) return auth.response;
   return disabled();
 }

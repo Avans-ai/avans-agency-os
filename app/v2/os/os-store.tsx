@@ -6,7 +6,8 @@
  * multi-user persistence. Replace these actions with authenticated server
  * mutations once the Avans Supabase project is active and its RLS policies
  * have been applied and tested. */
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useSyncExternalStore, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, useSyncExternalStore, type ReactNode } from "react";
 import { CURRENT_USER, ideas as seedIdeas, osClients, osProjects, osTasks, serviceLabel, type DueKind, type Idea, type IdeaState, type OsTask, type Priority, type ServiceId, type TaskStatus, type TaskWorkItem } from "./os-data";
 import { readLocalJson, writeLocalJson, writeLocalBatch } from "./local-persistence";
 import { clientOfTask, serviceForTask, withTaskService } from "./director-data";
@@ -121,9 +122,21 @@ export type NewTaskInput = {
 
 export type TaskEdit = Partial<Pick<OsTask, "owner" | "due" | "dueKind" | "desc" | "approver" | "deliverable" | "workItem" | "projectSlug">>;
 
+/** Identidad real del servidor (modo con autenticación). null en la preview. */
+export type OsIdentity = {
+  email: string;
+  name: string;
+  initials: string;
+  roleLabel: string;
+  interfaceRole: PreviewRole;
+  internal: boolean;
+};
+
 type Store = {
   tasks: OsTask[];
   role: PreviewRole;
+  /** Presente cuando hay sesión real: el rol sale del servidor y no se puede simular. */
+  identity: OsIdentity | null;
   toast: Toast | null;
   ideas: Idea[];
   localHydrated: boolean;
@@ -158,8 +171,35 @@ type Store = {
 
 const StoreContext = createContext<Store | null>(null);
 
-export function OsStoreProvider({ children }: { children: ReactNode }) {
+export function OsStoreProvider({ children, identity: serverIdentity = null }: { children: ReactNode; identity?: OsIdentity | null }) {
   const [state, dispatch] = useReducer(reducer, undefined, seedState);
+  const [loadedIdentity, setLoadedIdentity] = useState<OsIdentity | null>(null);
+  const router = useRouter();
+  const identity = serverIdentity ?? loadedIdentity;
+
+  // Las páginas estáticas no traen la identidad renderizada: se pide al servidor.
+  // En la preview responde sin identidad y todo sigue igual.
+  useEffect(() => {
+    if (serverIdentity) return;
+    let cancelled = false;
+    fetch("/api/auth/session", { cache: "no-store", credentials: "same-origin" })
+      .then((response) => {
+        // Sesión vencida mientras la página estaba abierta: volver a ingresar sin perder el origen.
+        if (response.status === 401 && !cancelled) {
+          const origin = `${window.location.pathname}${window.location.search}`;
+          router.replace(`/ingresar?motivo=sesion-expirada&volver=${encodeURIComponent(origin)}`);
+          return null;
+        }
+        return response.ok ? response.json() : null;
+      })
+      .then((body: { identity?: OsIdentity | null } | null) => {
+        if (!cancelled && body?.identity) setLoadedIdentity(body.identity);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [router, serverIdentity]);
 
   useEffect(() => {
     const fallback = seedState();
@@ -203,9 +243,13 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "replace", tasks: next, notification, toast: { message: localMessage(message), tone, undo: undoable ? state.tasks : undefined } });
   }, [state.tasks]);
 
+  // Con sesión real, el rol de la interfaz lo define el servidor: se ignora el valor de localStorage.
+  const effectiveRole = identity?.interfaceRole ?? state.role;
+
   const store = useMemo<Store>(() => ({
     tasks: state.tasks,
-    role: state.role,
+    role: effectiveRole,
+    identity,
     toast: state.toast,
     ideas: state.ideas,
     localHydrated: state.hydrated,
@@ -261,7 +305,10 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "ideas", ideas: [idea, ...state.ideas], ideaSeq: state.ideaSeq + 1, message: localMessage(`${id} agregada al centro de ideas`) });
     },
     setIdeaState: (id, ideaState) => dispatch({ type: "ideas", ideas: state.ideas.map((idea) => (idea.id === id ? { ...idea, state: ideaState } : idea)), message: localMessage(`${id}: ${ideaState}`) }),
-    setRole: (role) => dispatch({ type: "role", role }),
+    setRole: (role) => {
+      if (identity) return;
+      dispatch({ type: "role", role });
+    },
     setStatus: (id, status) => {
       if (state.tasks.find((task) => task.id === id)?.workflow) { dispatch({ type: "toast", toast: { message: "Abrí la pieza vinculada para avanzar su revisión y conservar las aprobaciones.", tone: "default" } }); return; }
       update(id, (item) => ({ ...item, status, completedAt: completionDate(status, item.completedAt), archivedAt: status === "Hecho" ? item.archivedAt : undefined, activity: [now(`cambió el estado de ${item.status} a ${status}`), ...item.activity] }), `Estado actualizado: ${status}`, "default", true); },
@@ -305,7 +352,7 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
         workItem: input.workItem,
         deliverable: input.deliverable,
         approver: input.approver,
-        status: "Por hacer", desc: input.desc?.trim() || "Sin descripción todavía.", files: [], comments: [], activity: [{ text: `${previewActor(state.role)} creó la tarea`, when: new Date().toISOString() }],
+        status: "Por hacer", desc: input.desc?.trim() || "Sin descripción todavía.", files: [], comments: [], activity: [{ text: `${identity?.name ?? previewActor(state.role)} creó la tarea`, when: new Date().toISOString() }],
       };
       dispatch({ type: "replace", tasks: [...state.tasks, created], notification: workflowNotification({ ...created, clientSlug: clientOfTask(created)?.slug }, `${id}-${Date.now()}`, new Date().toISOString(), "assignment"), seq: state.seq + 1, toast: { message: localMessage(`${id} creada en Por hacer`), tone: "default", undo: state.tasks } });
       return id;
@@ -317,7 +364,7 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
       if (state.toast?.undo) dispatch({ type: "replace", tasks: state.toast.undo, toast: { message: localMessage("Cambio deshecho"), tone: "default" } });
     },
     dismissToast: () => dispatch({ type: "toast", toast: null }),
-  }), [state, update]);
+  }), [state, update, identity, effectiveRole]);
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }
@@ -336,7 +383,7 @@ export function useOsStore() {
     ...store,
     tasks: osTasks,
     ideas: seedIdeas,
-    role: "admin" as PreviewRole,
+    role: store.identity?.interfaceRole ?? ("admin" as PreviewRole),
     notifications: [],
     localHydrated: false,
     servicesOf: (slug: string) => osClients.find((client) => client.slug === slug)?.services ?? [],

@@ -1,0 +1,15 @@
+/* Pantalla de ingreso. Tokens Avans, esquinas rectas. */
+.page{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--av-bg);color:var(--av-text);font-family:var(--font-figtree),var(--av-font-body)}
+.card{width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px;padding:32px;background:var(--av-bg-raised);border:1px solid var(--av-border)}
+.card h1{margin:0;font-size:28px;font-weight:500;line-height:1.15}
+.eyebrow{margin:0;font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--av-link)}
+.muted{margin:0;font-size:14px;line-height:1.5;color:var(--av-text-muted)}
+.form{margin:0}
+.primary,.secondary{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;padding:0 16px;font:inherit;font-size:15px;font-weight:500;text-decoration:none;cursor:pointer;border:1px solid transparent}
+.primary{background:var(--av-bg-inverse);color:var(--av-text-on-dark)}
+.secondary{background:transparent;color:var(--av-text);border-color:var(--av-border-strong)}
+.primary:focus-visible,.secondary:focus-visible{outline:2px solid var(--av-focus,var(--av-coral-300));outline-offset:2px}
+.error,.info{margin:0;padding:10px 12px;font-size:14px;line-height:1.45;border-left:3px solid}
+.error{border-color:var(--av-coral-300);background:var(--av-bg-sunken)}
+.info{border-color:var(--av-border-strong);background:var(--av-bg-sunken)}
+@media (max-width:480px){.card{padding:24px 18px}}

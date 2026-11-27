@@ -185,7 +185,43 @@ function Notifications() {
   );
 }
 
+/** Sesión real: identidad y rol del servidor, sin selector de rol simulado. */
+function SessionMenu({ identity }: { identity: NonNullable<ReturnType<typeof useOsStore>["identity"]> }) {
+  const [open, setOpen] = useState(false);
+  const ref = useOutsideClose(open, () => setOpen(false));
+  return (
+    <div className={s.popWrap} ref={ref}>
+      <button type="button" className={s.profileBtn} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(value => !value)} aria-label={`Perfil: ${identity.name}, ${identity.roleLabel}`}>
+        <span className={cx(s.avatar, s.avatarMd, s.avatarDark)} aria-hidden="true">{identity.initials}</span>
+        <span className={s.profileText}><strong>{identity.name}</strong><span>{identity.roleLabel}</span></span>
+      </button>
+      {open ? (
+        <div className={s.popover} role="dialog" aria-label="Perfil y sesión">
+          <div className={s.menuSection}>
+            <strong>{identity.email}</strong>
+            <p>Rol: {identity.roleLabel}. Los permisos los aplica el servidor según tus asignaciones por cliente y módulo.</p>
+          </div>
+          <div className={s.menuSection}>
+            <ThemeToggle className={s.themeBtn} />
+          </div>
+          <div className={s.menuSection}>
+            <form method="post" action="/auth/signout">
+              <button type="submit" className={buttonClass("secondary", true)}>Cerrar sesión</button>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ProfileMenu() {
+  const { identity } = useOsStore();
+  if (identity) return <SessionMenu identity={identity} />;
+  return <PreviewProfileMenu />;
+}
+
+function PreviewProfileMenu() {
   const { role, setRole } = useOsStore();
   const [open, setOpen] = useState(false);
   const ref = useOutsideClose(open, () => setOpen(false));
@@ -261,7 +297,7 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
     return () => observer.disconnect();
   }, []);
 
-  const { tasks, role, notify, setRole } = useOsStore();
+  const { tasks, role, notify, setRole, identity } = useOsStore();
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
   const [sheet, setSheet] = useState(false);
@@ -277,7 +313,7 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
 
   if (role === "client" || role === "provider") {
     const clientSlug = pathname.match(/^\/v2\/clientes\/([^/]+)/)?.[1];
-    return <div className={s.page}><PageRoleBoundary role={role} clientSlug={clientSlug} onReset={() => setRole("admin")} /></div>;
+    return <div className={s.page}><PageRoleBoundary role={role} clientSlug={clientSlug} onReset={identity ? undefined : () => setRole("admin")} /></div>;
   }
   return (
     <div className={cx(s.shell, expanded && s.shellExpanded)}>
@@ -342,7 +378,7 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
                 title={`No tenés acceso a ${restrictedArea}`}
                 actions={<><button type="button" className={buttonClass("secondary", true)} onClick={() => notify("Pedir acceso: pendiente de implementación (requiere roles reales)")}>Pedir acceso</button><Link className={s.link} href="/v2">Volver a Inicio</Link></>}
               >
-                Tu rol (Ejecutiva de cuentas) ve Clientes y Proyectos. {restrictedArea} es visible para Administración y Gerencia. Vista previa simulada: cambiá el rol desde tu perfil.
+                {identity ? `Tu rol (${identity.roleLabel}) no incluye ${restrictedArea}. Pedile acceso a un administrador.` : <>Tu rol (Ejecutiva de cuentas) ve Clientes y Proyectos. {restrictedArea} es visible para Administración y Gerencia. Vista previa simulada: cambiá el rol desde tu perfil.</>}
               </OSRestricted>
             </div>
           ) : children}
@@ -366,6 +402,6 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
   );
 }
 
-function PageRoleBoundary({ role, clientSlug, onReset }: { role: string; clientSlug?: string; onReset: () => void }) {
-  return <OSRestricted title={role === "client" ? "Espacio del cliente" : "Espacio del proveedor"} actions={<>{role === "client" && clientSlug && osClients.some((c) => c.slug === clientSlug) ? <Link className={buttonClass("primary")} href={`/v2/portal/${clientSlug}`}>Abrir portal del cliente</Link> : null}{role === "provider" ? <Link className={buttonClass("primary")} href="/v2/proveedor">Abrir mis jornadas</Link> : null}<button type="button" className={buttonClass("secondary")} onClick={onReset}>Volver a la vista del equipo</button></>}>La gestión interna no se muestra en este perfil. Esta es una vista previa local; el acceso autenticado y las asignaciones externas todavía están pendientes.</OSRestricted>;
+function PageRoleBoundary({ role, clientSlug, onReset }: { role: string; clientSlug?: string; onReset?: () => void }) {
+  return <OSRestricted title={role === "client" ? "Espacio del cliente" : "Espacio del proveedor"} actions={<>{role === "client" && clientSlug && osClients.some((c) => c.slug === clientSlug) ? <Link className={buttonClass("primary")} href={`/v2/portal/${clientSlug}`}>Abrir portal del cliente</Link> : null}{role === "provider" ? <Link className={buttonClass("primary")} href="/v2/proveedor">Abrir mis jornadas</Link> : null}{onReset ? <button type="button" className={buttonClass("secondary")} onClick={onReset}>Volver a la vista del equipo</button> : null}</>}>{onReset ? "La gestión interna no se muestra en este perfil. Esta es una vista previa local: el rol es simulado." : "La gestión interna no se muestra con tu rol."}</OSRestricted>;
 }

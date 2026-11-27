@@ -18,7 +18,7 @@ test("Inicio de Operaciones muestra tareas, alertas y clientes; no muestra respo
     tasks.boundingBox(),
     alerts.boundingBox(),
     clients.boundingBox(),
-    page.locator(".homeGrid").boundingBox(),
+    page.locator("[class*=\"homeGrid\"]").first().boundingBox(),
   ]);
   expect(taskBox && alertBox && clientBox && gridBox).toBeTruthy();
   expect(Math.abs(taskBox!.y - alertBox!.y)).toBeLessThan(2);

@@ -1,5 +1,8 @@
 # Avans OS — persistencia y seguridad
 
+> **Actualización 27/11/2026 · Etapa 1 multiusuario**: se agregaron las migraciones `20261127190000_member_roles_multiuser.sql` y `20261127190100_multiuser_foundation.sql`, su reversión (`supabase/rollbacks/`) y pruebas de RLS sobre un Postgres descartable (`npm run test:db`). La autenticación con Google está implementada detrás de `AVANS_AUTH_REQUIRED`. Detalle y pasos de activación: `docs/ETAPA1_MULTIUSUARIO.md`; auditoría y brechas: `docs/MULTIUSER_AUDIT.md`. El proyecto Supabase sigue pausado y no se aplicó ninguna migración.
+
+
 ## Estado actual
 
 La rama de trabajo conserva los cinco accesos de gestión aprobados y agrega persistencia local para que la revisión no pierda cambios al recargar el navegador.

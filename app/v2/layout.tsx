@@ -5,6 +5,7 @@ import "./design-tokens.css";
 import "./theme-overrides.css";
 import "./depth-theme.css";
 import { OsStoreProvider } from "./os/os-store";
+import { getShellIdentity } from "../../lib/auth/session";
 
 const figtree = Figtree({
   subsets: ["latin", "latin-ext"],
@@ -19,10 +20,12 @@ export const metadata: Metadata = {
   applicationName: "Avans OS",
 };
 
-export default function V2Layout({ children }: { children: React.ReactNode }) {
+export default async function V2Layout({ children }: { children: React.ReactNode }) {
+  // En la preview devuelve null sin leer cookies (las páginas siguen siendo estáticas).
+  const identity = await getShellIdentity();
   return (
     <div className={`${figtree.variable} os-root`}>
-      <OsStoreProvider>{children}</OsStoreProvider>
+      <OsStoreProvider identity={identity}>{children}</OsStoreProvider>
     </div>
   );
 }

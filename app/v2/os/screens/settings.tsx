@@ -20,7 +20,7 @@ const PLATFORM_STATE: Record<string, { state: string; detail: string }> = {
 };
 
 export function SettingsScreen() {
-  const { role, setRole } = useOsStore();
+  const { role, setRole, identity } = useOsStore();
   const extra = v2NavItems.filter(item => ["inbox", "procesos", "reuniones", "agentes", "workflows", "guardrails"].includes(item.slug));
   return (
     <div className={s.page}>
@@ -47,6 +47,13 @@ export function SettingsScreen() {
             <ThemeToggle className={s.themeBtn} />
             <span className={s.cellSub}>Se guarda en este navegador.</span>
           </div>
+          {identity ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <strong style={{ fontWeight: 500 }}>Tu acceso</strong>
+              <span>{identity.email} · {identity.roleLabel}</span>
+              <span className={s.cellSub}>El rol y los clientes asignados los define un administrador; no se pueden simular.</span>
+            </div>
+          ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <strong style={{ fontWeight: 500 }}>Vista previa de rol</strong>
             <div className={s.segmented} style={{ flexWrap: "wrap" }} role="group" aria-label="Rol simulado">
@@ -56,6 +63,7 @@ export function SettingsScreen() {
             </div>
             <span className={s.cellSub}>Simulación visual. No es control de acceso: se resolverá en el servidor.</span>
           </div>
+          )}
         </div>
       </section>
 

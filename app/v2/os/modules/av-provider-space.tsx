@@ -106,12 +106,12 @@ export function ProviderSpace() {
             <select value={provider?.id ?? ""} onChange={(event) => setIdentity(event.target.value)}>{providers.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select>
           </label>
         ) : null}
-        <button type="button" className={buttonClass("secondary", true)} onClick={() => store.setRole(store.role === "provider" ? "admin" : "provider")}>{store.role === "provider" ? "Volver a la vista del equipo" : "Ver como proveedor externo"}</button>
+        {store.identity ? null : <button type="button" className={buttonClass("secondary", true)} onClick={() => store.setRole(store.role === "provider" ? "admin" : "provider")}>{store.role === "provider" ? "Volver a la vista del equipo" : "Ver como proveedor externo"}</button>}
       </header>
       <p className={a.spaceNotice}>Vista previa local · permisos visuales del rol «Proveedor externo», no seguridad de servidor. Todavía no hay acceso autenticado para proveedores. Google Drive no está conectado: el material se sube a la carpeta y se marca acá.</p>
       <main className={a.spaceMain}>
         {!ready ? <OSSkeletonRows rows={4} label="Cargando tus jornadas…" /> : !allowed ? (
-          <section className={a.work}><h2 style={{ margin: 0 }}>Este espacio es para proveedores externos</h2><p className={a.muted}>Cambiá al rol «Proveedor externo» para previsualizar qué ve un proveedor: solo sus jornadas, sin comentarios internos ni datos de otras cuentas.</p><div className={a.actions}><button type="button" className={buttonClass("primary", true)} onClick={() => store.setRole("provider")}>Ver como proveedor externo</button><Link className={buttonClass("ghost")} href="/v2">Volver a Inicio</Link></div></section>
+          <section className={a.work}><h2 style={{ margin: 0 }}>Este espacio es para proveedores externos</h2><p className={a.muted}>Cambiá al rol «Proveedor externo» para previsualizar qué ve un proveedor: solo sus jornadas, sin comentarios internos ni datos de otras cuentas.</p><div className={a.actions}>{store.identity ? null : <button type="button" className={buttonClass("primary", true)} onClick={() => store.setRole("provider")}>Ver como proveedor externo</button>}<Link className={buttonClass("ghost")} href="/v2">Volver a Inicio</Link></div></section>
         ) : !provider ? <p className={a.muted}>El catálogo no tiene proveedores cargados.</p> : (
           <>
             <section aria-label="Tu estudio" className={a.row}>

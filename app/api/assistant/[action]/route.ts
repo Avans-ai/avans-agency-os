@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { AssistantInputError, buildPrompt, normalizeResult, validateRequest } from "../../../v2/os/assistant/engine";
 import { createProvider, providerStatus, ProviderError } from "../../../v2/os/assistant/providers";
+import { requireApiAuth } from "../../../../lib/auth/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_BODY = 80_000;
 const WINDOW_MS = 5 * 60_000;
 const MAX_REQUESTS = 20;
-/* Límite por proceso; en serverless es orientativo. La autenticación real queda pendiente. */
+/* Límite por proceso; en serverless es orientativo. Con autenticación activa se cuenta por usuario. */
 const hits = new Map<string, number[]>();
 
 function limited(key: string) {
@@ -33,6 +34,8 @@ function sameOrigin(request: Request) {
 export async function GET(_request: Request, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
   if (action !== "status") return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const auth = await requireApiAuth();
+  if (!auth.ok) return auth.response;
   return NextResponse.json(providerStatus(), { headers: NO_STORE });
 }
 
@@ -40,10 +43,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ act
   const { action } = await params;
   if (action !== "generate") return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!sameOrigin(request)) return NextResponse.json({ error: "FORBIDDEN_ORIGIN" }, { status: 403, headers: NO_STORE });
+  const auth = await requireApiAuth();
+  if (!auth.ok) return auth.response;
   const provider = createProvider();
   if (!provider) return NextResponse.json({ error: "AI_NOT_CONFIGURED", ...providerStatus() }, { status: 503, headers: NO_STORE });
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
-  if (limited(ip)) return NextResponse.json({ error: "RATE_LIMITED", message: "Demasiados pedidos seguidos. Probá en unos minutos." }, { status: 429, headers: NO_STORE });
+  if (limited(auth.ctx ? `user:${auth.ctx.userId}` : `ip:${ip}`)) return NextResponse.json({ error: "RATE_LIMITED", message: "Demasiados pedidos seguidos. Probá en unos minutos." }, { status: 429, headers: NO_STORE });
   const text = await request.text();
   if (text.length > MAX_BODY) return NextResponse.json({ error: "PAYLOAD_TOO_LARGE" }, { status: 413, headers: NO_STORE });
   let body: unknown;
