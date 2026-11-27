@@ -1,6 +1,6 @@
 "use client";
 
-/* Navegación principal del cliente (Funcionalidades 2): Inicio · Tareas · Estrategia · módulos contratados.
+/* Navegación principal del cliente: Inicio | Tareas | Gestión y estrategia | módulos de servicio activos.
  * Incluye los tres accesos flotantes del cliente (Ficha, Benchmark, Cargar documentos). */
 import Link from "next/link";
 import { AvansIcon, AvansModuleIcon } from "../brand";
@@ -17,7 +17,7 @@ export function managementHref(slug: string) {
   return `/v2/clientes/${slug}?view=gestion`;
 }
 
-/** Barra de secciones del cliente (Funcionalidades 2): Inicio · Tareas · Estrategia · módulos contratados. */
+/** Barra de secciones del cliente: Inicio | Tareas | Gestión y estrategia | módulos activos (contratados o demostración). */
 export function ClientOperationNav({ client, active }: { client: OsClient; active?: ClientOperationSection }) {
   const { role, servicesOf } = useOsStore();
   const canEditTasks = canManageClient(role, client.slug);
@@ -38,7 +38,7 @@ export function ClientOperationNav({ client, active }: { client: OsClient; activ
       </Link>
       <Link href={managementHref(client.slug)} className={d.operationTab} data-active={active === "gestion"} aria-current={active === "gestion" ? "page" : undefined}>
         <AvansIcon name="estructura" size={20} />
-        Estrategia
+        Gestión y estrategia
       </Link>
       {modules.map((service) => {
         const editable = canEditService(role, client.slug, service.id);

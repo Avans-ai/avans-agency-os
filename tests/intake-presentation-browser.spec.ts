@@ -321,7 +321,7 @@ test("presentation readiness, generated PPTX versions, documents history, blocke
       (e: { version: number; format: string }) => `${e.format}-${e.version}`,
     ),
   ).toEqual(["pptx-1", "pptx-2"]);
-  await page.getByRole("navigation", { name: /^Estrategia de / }).getByRole("link", { name: "Documentos", exact: true }).click();
+  await page.getByRole("navigation", { name: /^Gestión y estrategia de / }).getByRole("link", { name: "Archivos y documentos", exact: true }).click();
   await page
     .getByRole("button", { name: "Presentaciones generadas", exact: true })
     .click();

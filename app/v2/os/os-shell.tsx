@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { ScrollRestorer } from "./navigation/back";
 import { ThemeSync, ThemeToggle } from "../components/theme-toggle";
 import { osAreas, osSettingsItems, type OsNavArea } from "../navigation";
 import { AvansIcon, AvansIsotipo, AvansWordmark } from "./brand";
@@ -274,6 +275,7 @@ export function OsShell({ active, root, title, crumbs, children }: { active: str
   }
   return (
     <div className={cx(s.shell, expanded && s.shellExpanded)}>
+      <Suspense fallback={null}><ScrollRestorer /></Suspense>
       <a href="#contenido" className={s.skip}>Saltar al contenido</a>
       <nav className={s.sidebar} aria-label="Navegación principal">
         <div className={s.brand}>

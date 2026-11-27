@@ -81,7 +81,7 @@ export function BannerModules({ client }: { client: OsClient }) {
   );
 }
 
-/** Atajos flotantes: Ficha del cliente, Benchmark y Cargar documentos (viven dentro de Estrategia). */
+/** Atajos flotantes: Ficha del cliente, Benchmark y Cargar documentos (viven dentro de Gestión y estrategia). */
 export function ClientShortcuts({ client }: { client: OsClient }) {
   return (
     <nav className={b.shortcuts} aria-label={`Accesos directos de ${client.name}`}>

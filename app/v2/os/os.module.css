@@ -168,6 +168,9 @@
 .btnDark:hover:not(:disabled){background:var(--av-umber)}
 .btnGhost{background:transparent;color:var(--av-link);padding:0;min-height:0;border:0;font-weight:400}
 .btnGhost:hover{color:var(--av-accent-ink);text-decoration:underline}
+.backLink{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px 0 8px;border:1px solid var(--av-border-strong);background:var(--av-bg-raised);color:var(--av-text);text-decoration:none;font-size:14px;width:fit-content}
+.backLink:hover{border-color:var(--av-text)}
+.backLink:focus-visible{outline:2px solid var(--av-focus);outline-offset:2px}
 .link{color:var(--av-link);text-decoration:none;border-bottom:1px solid currentColor;font-size:14px}
 .link:hover{color:var(--av-accent-ink)}
 .linkInk{color:var(--av-text);text-decoration:none;border-bottom:1px solid currentColor}

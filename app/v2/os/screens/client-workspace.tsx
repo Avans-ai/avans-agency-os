@@ -22,7 +22,6 @@ import d from "./director-update.module.css";
 import { ClientManagementContent, type ClientManagementView } from "./client-management-views";
 import { ClientOperationNav } from "./client-operation-nav";
 import { ClientManagementHub, ManagementSubnav } from "./client-management-hub";
-import { BannerModules } from "./client-banner";
 import { AddServiceModuleButton } from "./service-modules-dialog";
 
 const MANAGEMENT_VIEWS: ClientManagementView[] = ["ficha", "cuestionario", "benchmark", "plan", "reportes", "documentos"];
@@ -59,7 +58,6 @@ export function ClientWorkspace({ client, benchmark }: { client: OsClient; depth
             <div className={d.teamStack} aria-label={client.team.map((person) => person.name).join(", ")}>{client.team.slice(0, 5).map((person) => <Avatar key={person.name} name={person.name} size="md" />)}<span className={d.teamText}>{client.team.length}</span></div>
           </div>
         </div>
-        <BannerModules client={client} />
       </header>
 
       <ClientOperationNav client={client} active={view === "inicio" ? "inicio" : "gestion"} />

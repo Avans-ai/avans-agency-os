@@ -70,7 +70,7 @@ test("complete PM journey: eight sections, CRUD, relationships, quadrants, ICP, 
   await openDiscovery(page);
   await expect(
     page
-      .getByRole("navigation", { name: "Estrategia de EPSA / Line Up" })
+      .getByRole("navigation", { name: "Gestión y estrategia de EPSA / Line Up" })
       .getByRole("link"),
   ).toHaveCount(6);
   for (const label of [
@@ -377,7 +377,7 @@ test("regression: scope, five management accesses, home, tasks, content, modules
     "Documentos",
   ]) {
     await page
-      .getByRole("navigation", { name: "Estrategia de EPSA / Line Up" })
+      .getByRole("navigation", { name: "Gestión y estrategia de EPSA / Line Up" })
       .getByRole("link", { name: new RegExp(`^${label}`) })
       .click();
     await expect(

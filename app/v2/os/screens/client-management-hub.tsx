@@ -1,6 +1,6 @@
 "use client";
 
-/* Estrategia (Funcionalidades 2): información de la cuenta, accesos a Ficha,
+/* Gestión y estrategia: información de la cuenta, accesos a Ficha,
  * Benchmark, Plan, Reportes y Documentos, y estado/actualizaciones recientes.
  * Todo lo que antes ocupaba la cabecera del cliente vive acá. */
 import Link from "next/link";
@@ -58,17 +58,17 @@ const KIND_FOR: Record<ChannelType, ClientChannel["kind"]> = {
 
 export const MANAGEMENT_SECTIONS: { id: ClientManagementView; label: string; description: string; icon: AvansIconName }[] = [
   { id: "ficha", label: "Ficha del cliente", description: "Alcance, Discovery y cuestionario", icon: "identidad" },
-  { id: "benchmark", label: "Benchmark", description: "Competidores e insights", icon: "monitor" },
-  { id: "plan", label: "Plan de Marketing", description: "Plan por módulo contratado", icon: "objetivo" },
-  { id: "reportes", label: "Reportes", description: "Semanal y mensual", icon: "datos" },
-  { id: "documentos", label: "Documentos", description: "Fuentes y actualizaciones", icon: "registro" },
+  { id: "reportes", label: "Reportes", description: "Informes para el cliente", icon: "datos" },
+  { id: "benchmark", label: "Benchmark", description: "Competidores y referencias externas", icon: "monitor" },
+  { id: "plan", label: "Plan de marketing", description: "Lineamientos generales y por servicio", icon: "objetivo" },
+  { id: "documentos", label: "Archivos y documentos", description: "Material y conocimiento del cliente", icon: "registro" },
 ];
 
-/** Subnavegación dentro de Estrategia (resumen + cinco accesos). */
+/** Subnavegación dentro de Gestión y estrategia (resumen + cinco accesos). */
 export function ManagementSubnav({ client, view }: { client: OsClient; view: string }) {
   const current = view === "cuestionario" ? "ficha" : view;
   return (
-    <nav className={h.subnav} aria-label={`Estrategia de ${client.name}`}>
+    <nav className={h.subnav} aria-label={`Gestión y estrategia de ${client.name}`}>
       <Link href={`/v2/clientes/${client.slug}?view=gestion`} aria-current={current === "gestion" ? "page" : undefined}>Resumen</Link>
       {MANAGEMENT_SECTIONS.map((item) => (
         <Link key={item.id} href={`/v2/clientes/${client.slug}?view=${item.id}`} aria-current={current === item.id ? "page" : undefined}>{item.label}</Link>
@@ -129,11 +129,11 @@ export function ClientManagementHub({ client }: { client: OsClient }) {
       <section aria-labelledby="management-access-title">
         <div className={h.sectionHead}>
           <div>
-            <span className={h.eyebrow}>Estrategia</span>
-            <h2 id="management-access-title">Ficha, Benchmark, Plan, Reportes y Documentos</h2>
+            <span className={h.eyebrow}>Gestión y estrategia</span>
+            <h2 id="management-access-title">Ficha, Reportes, Benchmark, Plan y Archivos</h2>
           </div>
         </div>
-        <nav className={h.accessGrid} aria-label={`Accesos de estrategia de ${client.name}`}>
+        <nav className={h.accessGrid} aria-label={`Accesos de gestión de ${client.name}`}>
           {MANAGEMENT_SECTIONS.map((item) => {
             const info = status[item.id as "ficha" | "benchmark" | "plan" | "reportes" | "documentos"];
             return (
