@@ -18,6 +18,7 @@ import { ContentDetail, ContentEditor } from "./content-detail";
 import { AxisTag, ChannelChip, CONTENT_PLANNERS, ContentDemoBanner, MetricoolNote, ScheduleTag, StageDots, StagePill, Thumb, axisTone, monthLabel, pickPlan, shortDate, useContentDemoTasks, useContentThumbs } from "./content-ui";
 import { CONTENT_FLOW, CONTENT_STATES, clientRequests, contentFlowStep, contentSchedule, contentState } from "./content-workflow";
 import { useModuleRecords } from "./store";
+import { TaskHealthStrip } from "./module-common";
 import type { ModuleRecord } from "./types";
 import { useContentOperations } from "./use-content-operations";
 import c from "./content.module.css";
@@ -105,8 +106,11 @@ export function ContentCalendarSection({ client, editable, defaultView = "mes" }
   const pendingOf = (record: ModuleRecord) => clientRequests(record.values).filter((entry) => entry.status === "Pendiente").length;
   const card = (record: ModuleRecord) => { const st = contentState(record); const pending = pendingOf(record); return <button type="button" className={c.kanbanCard} key={record.id} data-piece={record.id} onClick={() => openPiece(record)} data-tone={axisTone(axisList, record.values.eje)}><Thumb src={thumbs(record.id)} title={record.values.titulo} channel={record.values.canal} size="sm" decorative /><span className={c.cardBody}><strong>{record.values.titulo}</strong><span className={c.cardMeta}><ChannelChip channel={record.values.canal} /><small>{record.values.formato}</small><small>{shortDate(record.values.fecha)}</small></span>{CONTENT_FLOW.find((step) => step.states.includes(st))!.states.length > 1 || st === "Publicada" ? <small className={c.subState}>{st}</small> : null}<small className={c.muted}>{record.values.responsable || "Sin responsable"}</small>{pending ? <small className={c.alertText}>{pending} pedido{pending > 1 ? "s" : ""} al cliente</small> : null}</span></button>; };
 
+  // Indicadores del módulo (misma definición que el Inicio del cliente y Reportes).
+  const inReview = records.filter((record) => /Revisión|Aprobación/.test(contentState(record))).length;
   return <div className={c.section}>
     <ContentDemoBanner client={client} records={records} editable={canPlan} />
+    <TaskHealthStrip client={client} serviceId={SERVICE} extra={[{ label: "Contenidos", value: records.length }, { label: "En revisión", value: inReview, alert: inReview > 0 }, { label: "Planes mensuales", value: (data.planes || []).length }]} />
     <section className={c.workPanel} aria-labelledby="content-calendar">
       <header className={c.workHead}>
         <div><h2 id="content-calendar">Calendario de contenidos</h2><p>Todas las piezas con su etapa, fecha y responsable. Abrí una para avanzarla.</p></div>
