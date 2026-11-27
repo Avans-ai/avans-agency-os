@@ -44,3 +44,12 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Domain regression
+        run: npm run test:discovery
+
+      - name: Browser regression
+        run: npm run test:discovery:browser
