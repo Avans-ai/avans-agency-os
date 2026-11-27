@@ -1,4 +1,5 @@
-.homeGrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr) minmax(300px,.8fr);gap:18px;align-items:start}
+.homeGrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);gap:18px;align-items:start}
+.homePanel:last-child{grid-column:1/-1}
 .homePanel{min-width:0}
 .homeList{display:flex;flex-direction:column}
 .homeClient{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--av-border);color:var(--av-text);text-decoration:none}
