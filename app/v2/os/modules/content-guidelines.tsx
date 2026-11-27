@@ -1,6 +1,7 @@
 "use client";
 
-/* «Plan de contenidos» (pestaña de lineamientos de Contenidos): VISTA DE CONSULTA.
+/* «Lineamientos de Contenidos» (área de lineamientos del servicio): VISTA DE CONSULTA.
+ * No confundir con el «Plan de contenidos» por período (content-plan.tsx, operación mensual).
  * Trae la parte de Contenidos del Plan de Marketing (Gestión y estrategia) y los do's & don'ts
  * de Contenidos, más el glosario de marca de la Ficha. No se edita acá: el plan se edita en el
  * Plan de Marketing. Los lineamientos editoriales que se guardaron antes en esta pestaña
@@ -99,7 +100,7 @@ export function ContentGuidelines({ client }: { client: OsClient }) {
   const card = (id: string, label: string, body: React.ReactNode, wide = false) => <article className={c.guide} data-wide={wide || undefined} key={id}><h3>{label}</h3>{body}</article>;
   const previous = EDITORIAL_FIELDS.filter(([id]) => notes.values[id]);
   return <div className={m.stack}>
-    <Panel title="Plan de contenidos" id="content-plan-consult" description="Consulta de la parte de Contenidos del Plan de Marketing, para tener los lineamientos a mano mientras trabajás. El plan se edita en Gestión y estrategia." actions={<><Badge tone="stone">Vista de consulta</Badge><Link className={buttonClass("secondary", true)} href={planHref(client.slug)}>Editar en el Plan de Marketing</Link></>}>
+    <Panel title="Lineamientos de Contenidos" id="content-plan-consult" description="Consulta de la parte de Contenidos del Plan de Marketing, para tener los lineamientos a mano mientras trabajás. El plan se edita en Gestión y estrategia." actions={<><Badge tone="stone">Vista de consulta</Badge><Link className={buttonClass("secondary", true)} href={planHref(client.slug)}>Editar en el Plan de Marketing</Link></>}>
       <div className={c.guides}>
         {sections.map((bp) => {
           const own = items.filter((item) => item.section === bp.id);

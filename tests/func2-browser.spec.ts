@@ -107,7 +107,7 @@ test("Plan de contenidos is a read-only consultation of the Plan with previous n
   const notes = { values: { tono: "Cercano QA y sin tecnicismos", donts: "Prometer descuentos QA", procedures: "Procedimiento QA conservado" }, history: [{ at: "2026-11-01T12:00:00.000Z", actor: "Lucía Benítez", text: "Actualizó los lineamientos editoriales" }] };
   await page.evaluate(({ prefix, notes }) => localStorage.setItem(`${prefix}client:epsa:service-guidelines:contenidos`, JSON.stringify({ version: 1, value: notes, savedAt: "2026-11-01T12:00:00.000Z" })), { prefix: KEY, notes });
   await page.goto("/v2/clientes/epsa/contenido?area=lineamientos");
-  const plan = page.getByRole("region", { name: "Plan de contenidos" });
+  const plan = page.getByRole("region", { name: "Lineamientos de Contenidos" });
   await expect(plan).toContainText("Vista de consulta");
   await expect(plan.getByRole("link", { name: "Editar en el Plan de Marketing" })).toHaveAttribute("href", "/v2/clientes/epsa?view=plan#plan-contenidos");
   await expect(page.getByRole("button", { name: "Editar lineamientos" })).toHaveCount(0);

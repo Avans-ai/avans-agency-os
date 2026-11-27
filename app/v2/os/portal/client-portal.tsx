@@ -129,7 +129,8 @@ function ReviewPanel({ client, record, item, onClose }: { client: OsClient; reco
   const artworkImage = item.artwork && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(item.artwork) ? item.artwork : item.artwork ? item.thumb : "";
   return <OSSidePanel label={`Revisar ${item.title}`} heading={<h2>{item.title}</h2>} wide onClose={onClose} persistentFooter footer={<div className={s.actions}>{actions.map((action) => <button type="button" key={action.id} className={buttonClass(action.id === "request-changes" ? "secondary" : "primary")} disabled={busy} onClick={() => act(action.id)}>{action.label}</button>)}<button type="button" className={buttonClass("ghost")} onClick={onClose}>Cerrar</button></div>}>
     <div className={s.review}>
-      <div className={s.reviewMeta}><span className={s.status}>{item.status}</span><span>{item.channel} · {item.format}</span><span>{portalDate(item.date)}{item.time && ` · ${item.time}`}</span>{item.demo ? <span className={s.demoTag}>Demo</span> : null}</div>
+      <div className={s.reviewMeta}><span className={s.status}>{item.status}</span><span>{item.channel} · {item.format}</span><span title={item.scheduleNote}>{portalDate(item.date)}{item.time && ` · ${item.time}`}</span>{item.demo ? <span className={s.demoTag}>Demo</span> : null}</div>
+      {item.date ? <p className={s.note}>{item.scheduleNote}</p> : null}
       {item.review === "preliminary" && <p className={s.callout}>Revisá todo junto en una sola instancia: idea, título, bajada, copy, formato y lo que necesitamos de vos. Esta aprobación permite avanzar con el diseño.</p>}
       {item.review === "final" && <p className={s.callout}>Revisá el diseño y el copy final. Cuando los apruebes, podremos programar la publicación.</p>}
       {item.review === "information" && <p className={s.callout}>Completá la información solicitada para que podamos seguir con este contenido.</p>}

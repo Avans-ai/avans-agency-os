@@ -5,13 +5,15 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { type OsClient } from "../os-data";
 import { useOsStore } from "../os-store";
 import { getProfileFile } from "../knowledge/profile-files";
+import { BackButton, ReturnLink, useReturnPath, useUnsavedChanges } from "../navigation/back";
 import { OSModal, OSSidePanel } from "../overlays";
 import { PEOPLE } from "./collections";
 import { buttonClass } from "../ui";
 import s from "../os.module.css";
 import { PIECE_CHANNELS, PIECE_FORMATS } from "./content-collections";
-import { AxisTag, ChannelChip, StageStepper, Thumb, useContentThumbs } from "./content-ui";
-import { CLIENT_REQUEST_TYPES, CONTENT_STATES, MONDAY_STATE, PREPRODUCTION_FIELDS, REVIEW_KIND_LABEL, VIDEO_FORMATS, clientRequestValues, clientRequests, contentChanges, contentComments, contentState, contentTransitions, contentVersionLabel, getContentActions, isDesignReview, preproductionChecklist, safeContentUrl, validContentDate, type ClientRequest, type ContentAction, type ContentRole, type ContentState } from "./content-workflow";
+import { MaterialLinks } from "./content-materials";
+import { AxisTag, ChannelChip, ScheduleTag, StageStepper, Thumb, useContentThumbs } from "./content-ui";
+import { APPROVAL_STEPS, CLIENT_REQUEST_TYPES, CONTENT_STATES, MONDAY_STATE, PREPRODUCTION_FIELDS, REVIEW_KIND_LABEL, VIDEO_FORMATS, clientRequestValues, clientRequests, contentApprovals, contentChanges, contentComments, contentSchedule, contentState, contentTransitions, contentVersionLabel, currentDesignVersion, currentProposalVersion, getContentActions, isDesignReview, preproductionChecklist, safeContentUrl, validContentDate, type ClientRequest, type ContentAction, type ContentRole, type ContentState } from "./content-workflow";
 import { checkContentGuidelines, GUIDELINE_AI_PENDING, GUIDELINE_OVERRIDE_FIELD, GUIDELINE_SOURCE_LABEL, guidelineOverrides, type GuidelineCheck } from "./content-guideline-check";
 import { useGuidelineCheckSources } from "./content-guidelines";
 import { formatDateTime, StatusBadge } from "./module-ui";
@@ -26,14 +28,18 @@ export function workflowRole(role: string): ContentRole {
 }
 export const contentTitleKey = (collection: string) => collection === "piezas" ? "titulo" : collection === "ideas" ? "idea" : "nombre";
 const newRequest = (index: number): ClientRequest => ({ id: `REQ-${Date.now().toString(36)}-${index}`, type: "Fotografías", detail: "", status: "Pendiente" });
+const CONTENT_ROLES = ["admin", "pm", "content", "operativo"];
 
 /** Ficha del contenido agrupada: propuesta, canal y fecha, copy, pedidos al cliente; lo secundario se despliega. */
 export function ContentEditor({ client, initial, refs, title = "Nuevo contenido", onClose, onSave }: { client: OsClient; initial: Record<string, string>; refs: ModuleData; title?: string; onClose: () => void; onSave: (values: Record<string, string>) => void }) {
-  const [values, setValues] = useState<Record<string, string>>(() => ({ responsable: client.team.find((member) => member.role.includes("Contenidos"))?.name || "", revisor: client.owner, disenador: client.team.find((member) => member.role.includes("Diseño"))?.name || "", clienteResponsable: client.contacts[0]?.name || "", ...initial }));
-  const [requests, setRequests] = useState<ClientRequest[]>(() => clientRequests(initial).map((item) => item.id === "REQ-LEGACY" ? { ...item, id: newRequest(0).id } : item));
+  const [start] = useState<Record<string, string>>(() => ({ responsable: client.team.find((member) => member.role.includes("Contenidos"))?.name || "", revisor: client.owner, disenador: client.team.find((member) => member.role.includes("Diseño"))?.name || "", clienteResponsable: client.contacts[0]?.name || "", ...initial }));
+  const [values, setValues] = useState<Record<string, string>>(start);
+  const [startRequests] = useState<ClientRequest[]>(() => clientRequests(initial).map((item) => item.id === "REQ-LEGACY" ? { ...item, id: newRequest(0).id } : item));
+  const [requests, setRequests] = useState<ClientRequest[]>(startRequests);
   const [error, setError] = useState("");
   const guideSources = useGuidelineCheckSources(client);
   const [review, setReview] = useState<GuidelineCheck | null>(null);
+  useUnsavedChanges("content-editor", JSON.stringify(values) !== JSON.stringify(start) || JSON.stringify(requests) !== JSON.stringify(startRequests));
   const set = (key: string) => (event: { target: { value: string } }) => { setReview(null); setValues((current) => ({ ...current, [key]: event.target.value })); };
   const field = (key: string, label: string, kind: "text" | "textarea" | "date" = "text", wide = false, placeholder?: string) => <div className={c.formField} data-wide={wide || kind === "textarea" || undefined}><label htmlFor={`content-${key}`}>{label}</label>{kind === "textarea" ? <textarea id={`content-${key}`} className={s.input} rows={3} maxLength={1500} value={values[key] || ""} onChange={set(key)} placeholder={placeholder} /> : <input id={`content-${key}`} className={s.input} type={kind} value={values[key] || ""} onChange={set(key)} placeholder={placeholder} maxLength={200} />}</div>;
   const select = (key: string, label: string, options: readonly { value: string; label: string }[], empty = "Elegir…") => <div className={c.formField}><label htmlFor={`content-${key}`}>{label}</label><select id={`content-${key}`} className={s.input} value={values[key] || ""} onChange={set(key)}><option value="">{empty}</option>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>;
@@ -109,29 +115,42 @@ export function ContentEditor({ client, initial, refs, title = "Nuevo contenido"
 
 const NEXT_STEP: Record<ContentState, string> = {
   Borrador: "Completá la propuesta y enviala a revisión interna.",
-  "Revisión interna de producción": "Revisión interna: enviá al cliente o pedí ajustes.",
-  "Revisión preliminar del cliente": "El cliente valida idea, título, bajada, copy, formato y pedidos en una sola instancia.",
+  "Revisión interna de producción": "El PM revisa la propuesta: la envía al cliente o pide ajustes.",
+  "Revisión preliminar del cliente": "Validación conjunta: el cliente revisa idea, bajada, copy preliminar y pedidos en una sola instancia.",
   "Información del cliente": "Esperando la información o el material pedido al cliente.",
   Ajustes: "Aplicá los ajustes pedidos y reenviá a revisión.",
   Preproducción: "Reuní todo lo que necesita el diseñador y enviá a diseño.",
   "Producción de diseño": "El diseñador trabaja con el pedido vinculado; no necesita volver a cargar datos.",
-  "Revisión interna del diseño": "Revisá la pieza antes de pedir la aprobación final.",
+  "Revisión interna del diseño": "El responsable de Contenidos revisa la entrega antes de pedir la aprobación final.",
   "Aprobación final del cliente": "El cliente aprueba la pieza final o pide ajustes.",
-  Aprobado: "Programá la publicación en tu plataforma y registrala acá.",
-  Programado: "Registro local de la programación. Metricool no conectado.",
-  Publicada: "Publicación registrada.",
+  Aprobado: "Prepará la programación: registrá fecha y hora acordadas.",
+  Programado: "Programación registrada en Avans. Metricool no está conectado: no hay confirmación del proveedor.",
+  Publicada: "Publicación registrada a mano, sin verificación.",
 };
-type Tab = "propuesta" | "preproduccion" | "revisiones" | "historial";
+/** Qué versión aprueba quien actúa en cada etapa de revisión. */
+function reviewedVersion(record: ModuleRecord, state: ContentState) {
+  if (state === "Revisión interna de producción") return `Revisás ${currentProposalVersion(record)}`;
+  if (state === "Revisión preliminar del cliente") return `El cliente valida ${currentProposalVersion(record)}`;
+  if (state === "Revisión interna del diseño") return `Revisás ${currentDesignVersion(record)}`;
+  if (state === "Aprobación final del cliente") return `El cliente aprueba ${currentDesignVersion(record)}`;
+  return "";
+}
+type Tab = "ficha" | "preproduccion" | "revisiones" | "historial";
 
-export function ContentDetail({ client, record, editable, onClose }: { client: OsClient; record: ModuleRecord; editable: boolean; onClose: () => void }) {
+/** Ficha única del contenido: todo lo que hace falta para operarlo y avanzar el proceso desde acá. */
+export function ContentDetail({ client, record, editable, onClose, backFallback }: { client: OsClient; record: ModuleRecord; editable: boolean; onClose: () => void; backFallback: string }) {
   const { role, notify } = useOsStore();
   const { data } = useModuleRecords(client.slug, "contenidos", ["piezas", "ejes", "planes"]);
   const { data: designData } = useModuleRecords(client.slug, "diseno-marca", ["trabajos"]);
   const thumbs = useContentThumbs(client);
+  const origin = useReturnPath();
   const designRequest = (designData.trabajos || []).find((request) => request.values.contenidoId === record.id);
   const operations = useContentOperations(client);
   const state = contentState(record);
-  const [tab, setTab] = useState<Tab>(state === "Preproducción" ? "preproduccion" : "propuesta");
+  const [tab, setTab] = useState<Tab>(state === "Preproducción" ? "preproduccion" : "ficha");
+  // Al llegar a preproducción se muestra directamente lo que hay que completar.
+  const [seenState, setSeenState] = useState(state);
+  if (seenState !== state) { setSeenState(state); if (state === "Preproducción") setTab("preproduccion"); }
   const [editing, setEditing] = useState<ModuleRecord | null>(null);
   const [comment, setComment] = useState("");
   const [attachment, setAttachment] = useState("");
@@ -141,9 +160,17 @@ export function ContentDetail({ client, record, editable, onClose }: { client: O
   const [date, setDate] = useState(record.values.fecha || "");
   const [time, setTime] = useState(record.values.hora || "");
   const [schedulingUrl, setSchedulingUrl] = useState(record.values.enlaceMetricool || "");
+  const [preDirty, setPreDirty] = useState(false);
   const actions = editable ? getContentActions(record, workflowRole(role)) : [];
-  const canEdit = editable && role !== "designer" && role !== "client" && ["Borrador", "Ajustes"].includes(state);
-  const designAction = actions.some((action) => action.id === "deliver-design") || (state === "Ajustes" && ["Revisión interna del diseño", "Aprobación final del cliente"].includes(record.values.returnState));
+  const designReturn = state === "Ajustes" && isDesignReview(record);
+  // En ajustes de diseño se corrige la pieza, no la propuesta ya validada por el cliente.
+  const canEdit = editable && role !== "designer" && role !== "client" && (state === "Borrador" || (state === "Ajustes" && !designReturn));
+  const designAction = actions.some((action) => action.id === "deliver-design") || designReturn;
+  const scheduling = state === "Aprobado" && editable;
+  const dirty = Boolean(comment.trim() || attachment.trim() || preDirty
+    || (designAction && (designUrl !== (record.values.archivoDiseno || "") || version !== (record.values.version || "v1")))
+    || (scheduling && (date !== (record.values.fecha || "") || time !== (record.values.hora || "") || schedulingUrl !== (record.values.enlaceMetricool || ""))));
+  useUnsavedChanges(`content-detail:${record.id}`, dirty);
   const comments = contentComments(record);
   const axes = data.ejes || [];
   const plan = (data.planes || []).find((item) => item.id === record.values.plan);
@@ -153,6 +180,9 @@ export function ContentDetail({ client, record, editable, onClose }: { client: O
   const taskId = record.values.tareaId || `CONTENT-${client.slug}-${record.id}`;
   const guideSources = useGuidelineCheckSources(client);
   const [pendingCheck, setPendingCheck] = useState<{ action: ContentAction; check: GuidelineCheck } | null>(null);
+  const reviewing = reviewedVersion(record, state);
+  const staleApprovals = contentApprovals(record).filter((item) => !item.valid);
+  const backLabel = !origin ? undefined : /seccion=(planes|ejes|ideas)/.test(origin) ? "Volver al plan" : /seccion=(calendario|piezas)/.test(origin) ? "Volver al calendario" : "Volver";
   function runAction(action: ContentAction, override?: GuidelineCheck) {
     // Antes de enviar la propuesta a revisión del PM, se revisa contra los lineamientos (sin IA).
     if (!override && (action === "submit" || (action === "resubmit" && !isDesignReview(record)))) {
@@ -165,24 +195,23 @@ export function ContentDetail({ client, record, editable, onClose }: { client: O
   }
 
   return <>
-    <OSSidePanel label={`Contenido: ${record.values.titulo}`} heading={<><h2>{record.values.titulo}</h2><div className={c.headMeta}><StatusBadge status={state} /><span className={c.muted}>{contentVersionLabel(record)}</span>{record.source === "demo" ? <span className={c.demoTag}>Demo</span> : null}</div></>} onClose={onClose} wide>
+    <OSSidePanel label={`Contenido: ${record.values.titulo}`} heading={<><h2>{record.values.titulo}</h2><div className={c.headMeta}><StatusBadge status={state} /><ScheduleTag record={record} /><span className={c.muted}>{contentVersionLabel(record)}</span>{record.source === "demo" ? <span className={c.demoTag}>Demo</span> : null}</div></>} onClose={onClose} wide>
       <div className={c.detail}>
-        <div className={c.metaRow}><ChannelChip channel={record.values.canal} label /><span>{record.values.formato || "Formato pendiente"}</span><span>{record.values.fecha || "Sin fecha"}{record.values.hora ? ` · ${record.values.hora}` : ""}</span><AxisTag axes={axes} id={record.values.eje} />{plan ? <span>{plan.values.nombre}</span> : null}<span>{record.values.responsable || "Sin responsable"}</span></div>
+        <div className={c.detailNav}><BackButton fallback={backFallback} label={backLabel ?? "Volver al calendario"} /><span className={c.code} title="Código interno">{record.id}</span></div>
         <StageStepper state={state} />
         <section className={c.nextStep} aria-label="Próximo paso">
-          <div className={c.nextHead}><strong>Próximo paso</strong><span>{NEXT_STEP[state]}</span>{state === "Ajustes" && lastRequest ? <span className={c.requestNote}>Pedido por {lastRequest.actor}: «{lastRequest.comment}»</span> : null}</div>
+          <div className={c.nextHead}><strong>Próximo paso</strong><span>{NEXT_STEP[state]}</span>{reviewing ? <span className={c.versionNote}>{reviewing}</span> : null}{state === "Ajustes" && lastRequest ? <span className={c.requestNote}>Pedido por {lastRequest.actor}: «{lastRequest.comment}»</span> : null}</div>
           {state === "Preproducción" ? <div className={c.meter}><progress value={checklist.done} max={checklist.total} aria-label="Preproducción completa" /><span>{checklist.done}/{checklist.total} listo{checklist.missing.length ? ` · falta: ${checklist.missing.join(", ").toLowerCase()}` : " · listo para diseño"}</span></div> : null}
-          {designAction && editable ? <div className={c.fieldGrid}><label>Enlace a la versión de diseño<input className={s.input} type="url" value={designUrl} onChange={(event) => setDesignUrl(event.target.value)} placeholder="https://…" /></label><label>Versión del diseño<input className={s.input} value={version} onChange={(event) => setVersion(event.target.value)} /></label></div> : null}
-          {state === "Aprobado" && editable ? <div className={c.fieldGrid}><label>Fecha de programación<input className={s.input} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label>Hora de programación<input className={s.input} type="time" value={time} onChange={(event) => setTime(event.target.value)} /></label><label data-wide="true">Enlace de programación (opcional)<input className={s.input} type="url" value={schedulingUrl} onChange={(event) => setSchedulingUrl(event.target.value)} /></label></div> : null}
+          {designAction && editable ? <div className={c.fieldGrid}><label>Enlace a la versión de diseño<input className={s.input} type="url" value={designUrl} onChange={(event) => setDesignUrl(event.target.value)} placeholder="https://…" /></label><label>Versión del diseño<input className={s.input} value={version} onChange={(event) => setVersion(event.target.value)} /></label>{designReturn ? <small className={c.hint} data-wide="true">Si no cambiás el rótulo, la entrega se registra como una versión nueva: lo aprobado o comentado sobre {currentDesignVersion(record)} no vale para la nueva.</small> : null}</div> : null}
+          {scheduling ? <div className={c.fieldGrid}><label>Fecha de programación<input className={s.input} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label>Hora de programación<input className={s.input} type="time" value={time} onChange={(event) => setTime(event.target.value)} /></label><label data-wide="true">Enlace de programación (opcional)<input className={s.input} type="url" value={schedulingUrl} onChange={(event) => setSchedulingUrl(event.target.value)} /></label><small className={c.hint} data-wide="true">Registra la programación en Avans (programación local). Metricool no está conectado: no se programa ni se publica automáticamente.</small></div> : null}
           {editable ? <div className={c.commentBox}><label>Comentario o devolución<textarea className={s.input} rows={2} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Indicá ajustes, información o decisiones…" /></label><details className={c.more}><summary>Visibilidad y material</summary><div className={c.fieldGrid}><label>Visibilidad del comentario<select className={s.input} value={visibility} onChange={(event) => setVisibility(event.target.value as "internal" | "client")}><option value="internal">Solo equipo interno</option><option value="client">Compartido con el cliente</option></select></label><label>Enlace a material (opcional)<input className={s.input} type="url" value={attachment} onChange={(event) => setAttachment(event.target.value)} /></label></div></details>
             {pendingCheck ? <GuidelineReview check={pendingCheck.check} actionLabel="Enviar igual" onProceed={() => runAction(pendingCheck.action, pendingCheck.check)} onAdjust={() => { setPendingCheck(null); if (canEdit) setEditing(record); }} adjustLabel={canEdit ? "Ajustar a mano" : "Cancelar"} /> : null}
-            <div className={c.actionRow}>{actions.map((action) => <button key={action.id} className={buttonClass(action.id === "request-changes" || action.id === "request-information" ? "secondary" : "primary", true)} onClick={() => runAction(action.id)}>{action.label}</button>)}<button className={buttonClass("ghost", true)} disabled={!comment.trim() && !attachment} onClick={() => { if (operations.comment(record, { text: comment, visibility, attachmentUrl: attachment || undefined })) { setComment(""); setAttachment(""); } }}>Guardar comentario</button></div></div> : <p className={c.muted}>Vista de consulta: tu rol no modifica este contenido.</p>}
+            <div className={c.actionRow}>{actions.map((action) => <button key={action.id} className={buttonClass(action.id === "request-changes" || action.id === "request-information" ? "secondary" : "primary", true)} onClick={() => runAction(action.id)}>{action.label}</button>)}<button className={buttonClass("ghost", true)} disabled={!comment.trim() && !attachment} onClick={() => { if (operations.comment(record, { text: comment, visibility, attachmentUrl: attachment || undefined })) { setComment(""); setAttachment(""); } }}>Guardar comentario</button>{canEdit ? <button className={buttonClass("secondary", true)} onClick={() => setEditing(record)}>Editar propuesta</button> : null}</div></div> : <p className={c.muted}>Vista de consulta: tu rol no modifica este contenido.</p>}
         </section>
-        <div className={c.linkRow}>{canEdit ? <button className={buttonClass("secondary", true)} onClick={() => setEditing(record)}>Editar propuesta</button> : null}<Link className={s.link} href={`/v2/clientes/${client.slug}/contenido?seccion=tareas&task=${taskId}`}>Ver tarea vinculada</Link>{designRequest ? <Link className={s.link} href={`/v2/clientes/${client.slug}/diseno-marca?seccion=trabajos&registro=${designRequest.id}`}>Abrir pedido de diseño</Link> : null}<Link className={s.link} href={`/v2/clientes/${client.slug}/contenido?area=lineamientos`}>Consultar lineamientos</Link></div>
-        <div className={c.tabs} role="group" aria-label="Secciones del contenido">{([["propuesta", "Propuesta"], ["preproduccion", "Preproducción"], ["revisiones", `Revisiones · ${comments.length}`], ["historial", "Historial"]] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>)}</div>
-        {tab === "propuesta" ? <ProposalTab client={client} record={record} thumb={thumbs(record.id)} requests={requests} /> : null}
-        {tab === "preproduccion" ? <PreproductionTab key={record.updatedAt} client={client} record={record} editable={editable && ["admin", "pm", "content", "operativo"].includes(role) && ["Preproducción", "Producción de diseño", "Información del cliente"].includes(state)} designRequest={designRequest} /> : null}
-        {tab === "revisiones" ? <ReviewsTab client={client} record={record} notify={notify} /> : null}
+        <div className={c.tabs} role="group" aria-label="Secciones del contenido">{([["ficha", "Ficha"], ["preproduccion", "Preproducción"], ["revisiones", `Revisiones y aprobaciones · ${comments.length}`], ["historial", "Historial"]] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>)}</div>
+        {tab === "ficha" ? <FichaTab client={client} record={record} thumb={thumbs(record.id)} requests={requests} axes={axes} plan={plan} taskId={taskId} designRequest={designRequest} canLink={editable && CONTENT_ROLES.includes(role)} /> : null}
+        {tab === "preproduccion" ? <PreproductionTab key={record.updatedAt} client={client} record={record} editable={editable && CONTENT_ROLES.includes(role) && ["Preproducción", "Producción de diseño", "Información del cliente"].includes(state)} designRequest={designRequest} onDirty={setPreDirty} /> : null}
+        {tab === "revisiones" ? <><ApprovalsPanel record={record} stale={staleApprovals.length} /><ReviewsTab client={client} record={record} notify={notify} /></> : null}
         {tab === "historial" ? <HistoryTab record={record} /> : null}
       </div>
     </OSSidePanel>
@@ -190,32 +219,67 @@ export function ContentDetail({ client, record, editable, onClose }: { client: O
   </>;
 }
 
-function ProposalTab({ client, record, thumb, requests }: { client: OsClient; record: ModuleRecord; thumb: string; requests: ClientRequest[] }) {
+function FichaTab({ client, record, thumb, requests, axes, plan, taskId, designRequest, canLink }: { client: OsClient; record: ModuleRecord; thumb: string; requests: ClientRequest[]; axes: ModuleRecord[]; plan?: ModuleRecord; taskId: string; designRequest?: ModuleRecord; canLink: boolean }) {
+  const { tasks } = useOsStore();
   const v = record.values;
-  const rows = [["Idea", v.idea || v.brief], ["Bajada", v.bajada], ["Objetivo", v.objetivo], ["Mensaje", v.mensaje], ["Referencias", v.referencias], ["Material necesario", v.materialNecesario]].filter(([, value]) => value);
-  return <div className={c.proposal}>
-    <article className={c.postPreview} aria-label="Vista previa de la publicación">
-      <header><ChannelChip channel={v.canal} /><strong>{client.name}</strong><small>{v.formato}</small></header>
-      <Thumb src={thumb} title={v.titulo} channel={v.canal} size="lg" />
-      {v.copy ? <p>{v.copy}</p> : <p className={c.muted}>Copy preliminar pendiente.</p>}
-      {v.cta ? <span className={c.cta}>{v.cta}</span> : null}
-      {safeContentUrl(v.archivoDiseno) ? <a className={s.link} href={v.archivoDiseno} target="_blank" rel="noreferrer">Abrir diseño {v.version || ""}</a> : null}
-    </article>
-    <div className={c.proposalInfo}>
-      <dl className={c.description}>{rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}{!rows.length ? <div><dt>Propuesta</dt><dd>Sin completar</dd></div> : null}</dl>
-      {safeContentUrl(v.referencia) ? <a className={s.link} href={v.referencia} target="_blank" rel="noreferrer">Abrir referencia</a> : null}
-      <section aria-label="Qué necesitamos del cliente"><h3>Qué necesitamos del cliente</h3>{requests.length ? <ul className={c.requestList}>{requests.map((item) => <li key={item.id} data-status={item.status}><b>{item.type}</b><span>{item.detail}</span><em>{item.status}{item.responseAt ? ` · ${formatDateTime(item.responseAt)}` : ""}</em></li>)}</ul> : <p className={c.muted}>Sin pedidos al cliente.</p>}</section>
-      {v.ideaId ? <p className={s.demoNote}>Origen: {v.origen || "Banco de ideas"} · {v.ideaId}</p> : null}
+  const task = tasks.find((item) => item.id === taskId);
+  const schedule = contentSchedule(record);
+  const story = [["Idea", v.idea || v.brief], ["Bajada", v.bajada], ["Objetivo", v.objetivo], ["Mensaje", v.mensaje]].filter(([, value]) => value);
+  const references = [["Otras referencias", v.referencias], ["Material necesario", v.materialNecesario]].filter(([, value]) => value);
+  return <div className={c.ficha}>
+    <div className={c.proposal}>
+      <article className={c.postPreview} aria-label="Vista previa de la publicación">
+        <header><ChannelChip channel={v.canal} /><strong>{client.name}</strong><small>{v.formato}</small></header>
+        <Thumb src={thumb} title={v.titulo} channel={v.canal} size="lg" />
+        {v.copy ? <p>{v.copy}</p> : <p className={c.muted}>Copy preliminar pendiente.</p>}
+        {v.cta ? <span className={c.cta}>{v.cta}</span> : <small className={c.muted}>CTA pendiente</small>}
+        {safeContentUrl(v.archivoDiseno) ? <a className={s.link} href={v.archivoDiseno} target="_blank" rel="noreferrer">Abrir diseño {v.version || ""}</a> : null}
+      </article>
+      <div className={c.proposalInfo}>
+        <dl className={c.facts}>
+          <div><dt>Eje temático</dt><dd><AxisTag axes={axes} id={v.eje} /></dd></div>
+          <div><dt>Canal y formato</dt><dd><ChannelChip channel={v.canal} label /> · {v.formato || "Formato pendiente"}</dd></div>
+          <div><dt>Fecha</dt><dd>{v.fecha || "Sin fecha"}{v.hora ? ` · ${v.hora}` : ""}<small>{schedule.label}{["local", "published-unverified"].includes(schedule.kind) ? ` · ${schedule.detail}` : ""}</small></dd></div>
+          <div><dt>Responsable</dt><dd>{v.responsable || "Sin responsable"}<small>Revisión: {v.revisor || "—"} · Diseño: {v.disenador || "—"}</small></dd></div>
+          <div><dt>Período</dt><dd>{plan ? plan.values.nombre : "Sin plan"}</dd></div>
+          <div><dt>Contacto del cliente</dt><dd>{v.clienteResponsable || "—"}</dd></div>
+        </dl>
+        <dl className={c.description}>{story.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}{!story.length ? <div><dt>Propuesta</dt><dd>Sin completar</dd></div> : null}</dl>
+        {v.ideaId ? <p className={s.demoNote}>Origen: {v.origen || "Banco de ideas"} · {v.ideaId}</p> : null}
+      </div>
     </div>
+    <section aria-label="Referencias"><h3>Referencias</h3>{safeContentUrl(v.referencia) ? <a className={s.link} href={v.referencia} target="_blank" rel="noreferrer">Abrir referencia</a> : null}{references.length ? <dl className={c.description}>{references.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : !safeContentUrl(v.referencia) ? <p className={c.muted}>Sin referencias cargadas.</p> : null}</section>
+    <MaterialLinks client={client} record={record} canLink={canLink} />
+    <section aria-label="Qué necesitamos del cliente"><h3>Qué necesitamos del cliente</h3>{requests.length ? <ul className={c.requestList}>{requests.map((item) => <li key={item.id} data-status={item.status}><b>{item.type}</b><span>{item.detail}{item.response ? <small className={c.muted}> · Respuesta: {item.response}</small> : null}</span><em>{item.status}{item.attachmentName ? ` · ${item.attachmentName}` : ""}{item.responseAt ? ` · ${formatDateTime(item.responseAt)}` : ""}</em></li>)}</ul> : <p className={c.muted}>Sin pedidos al cliente.</p>}</section>
+    <section aria-label="Tareas y pedido de diseño" className={c.related}><h3>Tareas y pedido de diseño</h3>
+      <div className={c.relatedRow}><span><strong>Tarea</strong><small>{task ? `${task.title} · ${task.status} · ${task.owner}` : "Se crea con la primera transición"}</small></span><ReturnLink className={s.link} href={`/v2/clientes/${client.slug}/contenido?seccion=tareas&task=${encodeURIComponent(taskId)}`}>Ver tarea vinculada</ReturnLink></div>
+      <div className={c.relatedRow}><span><strong>Pedido de diseño</strong><small>{designRequest ? `${designRequest.values.estado} · ${designRequest.values.responsable || "Diseñador por asignar"} · entrega ${designRequest.values.fechaObjetivo || "a definir"}` : "Se genera al enviar a diseño"}</small></span>{designRequest ? <ReturnLink className={s.link} href={`/v2/clientes/${client.slug}/diseno-marca?seccion=trabajos&registro=${designRequest.id}`}>Abrir pedido de diseño</ReturnLink> : null}</div>
+      <div className={c.relatedRow}><span><strong>Lineamientos</strong><small>Tono, do&apos;s & don&apos;ts y glosario</small></span><Link className={s.link} href={`/v2/clientes/${client.slug}/contenido?area=lineamientos`}>Consultar lineamientos</Link></div>
+    </section>
   </div>;
 }
 
-function PreproductionTab({ client, record, editable, designRequest }: { client: OsClient; record: ModuleRecord; editable: boolean; designRequest?: ModuleRecord }) {
+function ApprovalsPanel({ record, stale }: { record: ModuleRecord; stale: number }) {
+  const approvals = contentApprovals(record);
+  return <section aria-label="Aprobaciones" className={c.approvals}><h3>Aprobaciones de la versión vigente</h3>
+    <ol className={c.approvalList}>{APPROVAL_STEPS.map((step) => {
+      const valid = approvals.filter((item) => item.kind === step.kind && item.valid).at(-1);
+      const target = step.phase === "proposal" ? currentProposalVersion(record) : currentDesignVersion(record);
+      return <li key={step.kind} data-status={valid ? "ok" : "pending"}><i aria-hidden="true">{valid ? "✓" : ""}</i><span><strong>{step.label}</strong><small>{valid ? `${valid.version} · ${valid.actor} · ${formatDateTime(valid.at)}` : `Pendiente · ${step.who}${step.phase === "design" && !record.values.archivoDiseno ? "" : ` · ${target}`}`}</small></span></li>;
+    })}</ol>
+    {stale ? <details className={c.more}><summary>Aprobaciones de versiones anteriores · {stale}</summary><ul className={c.staleList}>{approvals.filter((item) => !item.valid).map((item) => <li key={item.id}><strong>{item.label}</strong> · {item.version} · {item.actor} · {formatDateTime(item.at)}<small>No vale para la versión vigente. {item.reason}</small></li>)}</ul></details> : null}
+  </section>;
+}
+
+function PreproductionTab({ client, record, editable, designRequest, onDirty }: { client: OsClient; record: ModuleRecord; editable: boolean; designRequest?: ModuleRecord; onDirty: (dirty: boolean) => void }) {
   const operations = useContentOperations(client);
-  const [values, setValues] = useState(() => Object.fromEntries(PREPRODUCTION_FIELDS.map((field) => [field.key, record.values[field.key] || ""])));
+  const [initial] = useState(() => Object.fromEntries(PREPRODUCTION_FIELDS.map((field) => [field.key, record.values[field.key] || ""])));
+  const [values, setValues] = useState(initial);
   const checklist = preproductionChecklist({ ...record.values, ...values });
   const video = VIDEO_FORMATS.includes(record.values.formato);
   const fields = PREPRODUCTION_FIELDS.filter((field) => !field.video || video);
+  const dirty = editable && JSON.stringify(values) !== JSON.stringify(initial);
+  useEffect(() => { onDirty(dirty); return () => onDirty(false); }, [dirty, onDirty]);
   return <div className={c.preproduction}>
     <ul className={c.checklist} aria-label="Checklist de preproducción">{checklist.items.map((item) => <li key={item.key} data-done={item.done}><i aria-hidden="true">{item.done ? "✓" : ""}</i>{item.label}{item.required ? <small> · obligatorio</small> : null}</li>)}</ul>
     <p className={c.muted}>{record.values.formato || "Formato a definir"} · {record.values.canal || "Canal a definir"} · {checklist.done}/{checklist.total} listo</p>

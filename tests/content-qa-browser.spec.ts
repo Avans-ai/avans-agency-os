@@ -47,7 +47,9 @@ test("QA Contenidos ACA: plan, eje, propuesta, validación del cliente, preprodu
   await planForm.getByLabel("Cantidad de contenidos").fill("4");
   await planForm.getByRole("button", { name: "Guardar plan mensual" }).click();
   await expect(page.getByRole("heading", { name: "Enero 2027 — ACA QA" })).toBeVisible();
-  await page.getByRole("button", { name: "Agregar eje", exact: true }).click();
+  await page.getByRole("group", { name: "Partes del plan" }).getByRole("button", { name: "Ejes temáticos" }).click();
+  await expect(page).toHaveURL(/bloque=ejes/);
+  await page.getByRole("button", { name: "Nuevo eje temático", exact: true }).click();
   const axisForm = page.getByRole("dialog", { name: "Nuevo eje temático" });
   await axisForm.getByLabel(/^Eje/).fill("QA Regreso seguro");
   await axisForm.getByLabel("Objetivo del eje").fill("Acompañar la vuelta de las vacaciones");

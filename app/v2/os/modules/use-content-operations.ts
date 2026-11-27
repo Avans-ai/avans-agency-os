@@ -9,7 +9,7 @@ import { projectPortalContent } from "../portal/portal-model";
 import { buildContentTask, contentOwner, contentTaskId, workflowNotification, type LocalWrite } from "../workflow-tasks";
 import { resetContentDemo } from "./content-demo-tasks";
 import { upsertContentDesignRequest } from "./content-design";
-import { addContentComment, applyContentAction, clientRequests, clientRequestValues, contentComments, contentState, contentTransitions, PREPRODUCTION_FIELDS, recordContentChange, type ContentAction, type ContentRole } from "./content-workflow";
+import { addContentComment, applyContentAction, clientRequests, clientRequestValues, contentComments, contentState, contentTransitions, isDesignReview, PREPRODUCTION_FIELDS, recordContentChange, type ContentAction, type ContentRole } from "./content-workflow";
 import { createDesignVersion } from "./design-model";
 import { buildGuidelineOverride, GUIDELINE_OVERRIDE_FIELD, guidelineOverrides, type GuidelineWarning } from "./content-guideline-check";
 import { moduleKey, seedRecords } from "./store";
@@ -136,13 +136,15 @@ export function useContentOperations(client: OsClient) {
       if (!store.localHydrated || !["admin", "pm", "content", "operativo"].includes(store.role) || !canEditService(store.role, client.slug, "contenidos")) throw new Error("Tu rol no puede editar propuestas de esta cuenta.");
       if (!values.titulo?.trim()) throw new Error("Completá el título del contenido.");
       if (previous && !["Borrador", "Ajustes"].includes(contentState(previous))) throw new Error("La propuesta está en revisión. Solicitá ajustes antes de modificarla.");
+      // En ajustes de diseño se corrige la pieza: la propuesta validada por el cliente no se reescribe.
+      if (previous && isDesignReview(previous)) throw new Error("La propuesta ya fue validada: en esta etapa se ajusta el diseño.");
       const data = previous ? current(previous) : {
         records: read("contenidos", "piezas"),
         tasks: readLocalJson<{ tasks: OsTask[] }>("workspace", { tasks: store.tasks }).tasks,
       };
       const at = new Date().toISOString(), actor = previewActor(store.role);
       const override = parseOverride(values[GUIDELINE_OVERRIDE_FIELD]);
-      const protectedKeys = new Set(["estado", "clientSnapshot", "contentTransitions", "contentComments", "contentChanges", "preliminaryApprovedAt", "finalApprovedAt", "returnState", "informationReturnState", "tareaId", "demo", "guidelineChecks", GUIDELINE_OVERRIDE_FIELD]);
+      const protectedKeys = new Set(["estado", "clientSnapshot", "contentTransitions", "contentComments", "contentChanges", "preliminaryApprovedAt", "finalApprovedAt", "preliminaryApprovedVersion", "finalApprovedVersion", "materialesVinculados", "returnState", "informationReturnState", "tareaId", "demo", "guidelineChecks", GUIDELINE_OVERRIDE_FIELD]);
       const patch = Object.fromEntries(Object.entries(values).filter(([key]) => !protectedKeys.has(key)));
       for (const [field, collection] of [["eje", "ejes"], ["plan", "planes"]]) {
         if (patch[field] && !read("contenidos", collection).some((item) => item.id === patch[field] && item.client === client.slug)) throw new Error(`La referencia de ${field} no pertenece a este cliente.`);
