@@ -10,7 +10,7 @@ import { buttonClass } from "../ui";
 import { CONTENT_DEMO_LABEL } from "./content-demo";
 import { hasContentDemo, withContentDemoTasks } from "./content-demo-tasks";
 import { contentThumbnail } from "./content-design";
-import { CONTENT_FLOW, MONDAY_STATE, contentFlowStep, contentState, type ContentState } from "./content-workflow";
+import { CONTENT_FLOW, MONDAY_STATE, contentFlowStep, contentSchedule, contentState, type ContentState } from "./content-workflow";
 import { channelGroup } from "./content-collections";
 import { useModuleRecords } from "./store";
 import type { ModuleRecord } from "./types";
@@ -70,7 +70,14 @@ export function useContentDemoTasks(client: OsClient) {
   }, [client.slug, pieces, store]);
 }
 export function MetricoolNote() {
-  return <div className={c.integration} role="note"><strong><i className={c.offDot} aria-hidden="true" />Metricool no conectado</strong><span>El calendario muestra los contenidos guardados en Avans. No hay sincronización ni programación automática: «Programado» registra lo que el equipo programó en su plataforma.</span></div>;
+  return <div className={c.integration} role="note"><strong><i className={c.offDot} aria-hidden="true" />Metricool no conectado</strong><span>Sin sincronización: «Programación local» es la fecha que el equipo registró en Avans, no una confirmación del proveedor. Nada figura como publicado sin evidencia.</span></div>;
+}
+/** Marca de programación: distingue fecha prevista, programación local, confirmada y publicación sin verificar. */
+export function ScheduleTag({ record, compact = false }: { record: ModuleRecord; compact?: boolean }) {
+  const schedule = contentSchedule(record);
+  // Una fecha prevista es lo habitual: solo se marca lo que ya se registró como programado o publicado.
+  if (schedule.kind === "none" || schedule.kind === "planned") return null;
+  return <span className={c.schedTag} data-kind={schedule.kind} title={`${schedule.label}${schedule.detail ? ` · ${schedule.detail}` : ""}`}>{compact ? schedule.short : schedule.label}</span>;
 }
 /** Rótulo de demostración con reinicio que solo afecta registros `source: "demo"`. */
 export function ContentDemoBanner({ client, records, editable }: { client: OsClient; records: ModuleRecord[]; editable: boolean }) {
@@ -87,4 +94,17 @@ export function ContentDemoBanner({ client, records, editable }: { client: OsCli
 }
 export function stateCount(records: ModuleRecord[], states: ContentState[]) {
   return records.filter((record) => states.includes(contentState(record))).length;
+}
+
+/* Utilidades compartidas por Plan de contenidos y Calendario. */
+export const CONTENT_PLANNERS = ["admin", "pm", "content", "operativo"];
+export const monthLabel = (month = "") => /^\d{4}-\d{2}$/.test(month) ? new Date(`${month}-01T12:00:00`).toLocaleDateString("es-AR", { month: "long", year: "numeric" }) : month || "Mes a definir";
+export const shortDate = (date = "") => /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T12:00:00`).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" }) : "Sin fecha";
+/** Plan de trabajo vigente: el último no cerrado (o el último cargado). */
+export function pickPlan(list: ModuleRecord[]) {
+  const sorted = [...list].sort((a, b) => (b.values.mes || "").localeCompare(a.values.mes || ""));
+  return sorted.find((plan) => plan.values.estado !== "Cerrado") || sorted[0];
+}
+export function planPieces(records: ModuleRecord[], plan?: ModuleRecord) {
+  return plan ? records.filter((record) => record.values.plan === plan.id) : [];
 }

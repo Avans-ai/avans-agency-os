@@ -37,6 +37,8 @@ export type PortalContent = {
   status: string;
   pending: boolean;
   review: "preliminary" | "final" | "information" | null;
+  /** Aclaración de la fecha: prevista, registrada por Avans o publicación sin verificar (Metricool no conectado). */
+  scheduleNote: string;
   comments: PortalComment[];
 };
 
@@ -86,14 +88,17 @@ export function projectPortalContent(record: ModuleRecord, clientSlug: string, a
     : v.estado === "Información del cliente" ? "information" : null;
   const status = review === "preliminary" ? "Revisá la propuesta" : review === "final" ? "Revisá la pieza final"
     : review === "information" ? "Necesitamos tu información" : v.estado === "Aprobado" ? "Aprobado para programar"
-    : ["Programado", "Programada"].includes(v.estado) ? "Programado" : v.estado === "Publicada" ? "Publicado"
+    : ["Programado", "Programada"].includes(v.estado) ? "Programado" : v.estado === "Publicada" ? "Publicación registrada"
     : v.estado === "Ajustes" ? "Estamos aplicando tus cambios"
     : ["Preproducción", "Producción de diseño", "Revisión interna del diseño"].includes(v.estado) ? "Aprobada · en producción" : "En preparación";
   // Pedidos compartidos (del snapshot) con su estado actual: la respuesta del cliente se ve enseguida.
   const live = clientRequests(v);
   const requests: PortalRequest[] = clientRequests(publicValues).map((item) => { const current = live.find((entry) => entry.id === item.id); return { id: item.id, type: item.type, detail: item.detail, status: current?.status || item.status, attachmentName: current?.attachmentName }; });
+  const scheduleNote = ["Programado", "Programada"].includes(v.estado) ? "Fecha registrada por Avans. La plataforma de publicación no está conectada: no hay confirmación automática."
+    : v.estado === "Publicada" ? "Registrada a mano por Avans, sin verificación automática de la publicación."
+    : "Fecha prevista, sujeta a aprobación.";
   return {
-    id: record.id, title: publicValues.titulo || "Contenido sin título", axis,
+    id: record.id, scheduleNote, title: publicValues.titulo || "Contenido sin título", axis,
     idea: publicValues.idea || "", description: publicValues.bajada || "", objective: publicValues.objetivo || "",
     requestedMaterial: publicValues.necesitaCliente || "", requests, copy: publicValues.copy || "", cta: publicValues.cta || "", demo: record.source === "demo", channel: publicValues.canal || "",
     format: publicValues.formato || "", date: final ? v.fecha || publicValues.fecha || "" : publicValues.fecha || "", time: final ? v.hora || publicValues.hora || "" : publicValues.hora || "",

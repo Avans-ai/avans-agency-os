@@ -163,8 +163,9 @@ const records = contents.map((def) => ({ def, record: buildContent(def) }));
 const toSeed = ({ id, values }: ModuleRecord): DemoSeed => ({ ...values, id });
 const legacyPieces: DemoSeed[] = [
   // Publicaciones de octubre en formato anterior: se conservan para mostrar la compatibilidad de lectura.
-  { id: "PZA-ACA-02", titulo: "Reel: asistencia en ruta", eje: "EJE-ACA-02", formato: "Reel", canal: "Instagram", fecha: "2026-10-20", estado: "Publicada", responsable: "Lucía Benítez", brief: "", copy: "", version: "v1", feedback: "", enlace: "Publicación de demostración", demo: CONTENT_DEMO_LABEL },
-  { id: "PZA-ACA-04", titulo: "Destinos de verano para socios", eje: "EJE-ACA-03", formato: "Post estático", canal: "Facebook", fecha: "2026-10-27", estado: "Publicada", responsable: "Lucía Benítez", brief: "", copy: "", version: "v1", feedback: "", enlace: "Publicación de demostración", demo: CONTENT_DEMO_LABEL },
+  // «Publicada» es un registro manual de demostración: la interfaz la muestra como «sin verificar».
+  { id: "PZA-ACA-02", titulo: "Reel: asistencia en ruta", eje: "EJE-ACA-02", formato: "Reel", canal: "Instagram", fecha: "2026-10-20", estado: "Publicada", responsable: "Lucía Benítez", brief: "", copy: "", version: "v1", feedback: "", enlace: "", registroPublicacion: "Registro manual de demostración: no hay evidencia de la publicación (Metricool no conectado).", demo: CONTENT_DEMO_LABEL },
+  { id: "PZA-ACA-04", titulo: "Destinos de verano para socios", eje: "EJE-ACA-03", formato: "Post estático", canal: "Facebook", fecha: "2026-10-27", estado: "Publicada", responsable: "Lucía Benítez", brief: "", copy: "", version: "v1", feedback: "", enlace: "", registroPublicacion: "Registro manual de demostración: no hay evidencia de la publicación (Metricool no conectado).", demo: CONTENT_DEMO_LABEL },
 ];
 
 /* Pedidos de Diseño derivados (uno por contenido, id DIS-<contenido>) y versiones en la biblioteca. */

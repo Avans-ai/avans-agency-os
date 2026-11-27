@@ -212,6 +212,9 @@ export function applyContentAction(record: ModuleRecord, action: ContentAction, 
       // Every design change repeats internal design review, including a client's final rejection.
       to = ["Revisión interna del diseño", "Aprobación final del cliente"].includes(values.returnState) ? "Revisión interna del diseño" : "Revisión interna de producción";
       if (to === "Revisión interna del diseño" && !safeContentUrl(values.archivoDiseno)) throw new Error("Adjuntá un enlace válido a la versión del diseño.");
+      // Un reenvío de diseño es siempre una versión nueva: si no se cambió el rótulo, se numera solo.
+      // Así ningún comentario ni aprobación de la versión anterior queda pegado a la nueva.
+      if (to === "Revisión interna del diseño" && (values.version || "") === (record.values.version || "")) values.version = nextDesignVersion(record);
       break;
     case "request-information":
       if (!comment) throw new Error("Indicá qué información falta.");
@@ -247,9 +250,9 @@ export function applyContentAction(record: ModuleRecord, action: ContentAction, 
   }
   values.contentTransitions = JSON.stringify([...contentTransitions(record), transition]);
   values.tareaId = transition.taskId;
-  if (action === "approve-preliminary") values.preliminaryApprovedAt = at;
-  if (action === "approve-final") values.finalApprovedAt = at;
-  if (["request-changes", "resubmit"].includes(action)) delete values.finalApprovedAt;
+  if (action === "approve-preliminary") { values.preliminaryApprovedAt = at; values.preliminaryApprovedVersion = version; }
+  if (action === "approve-final") { values.finalApprovedAt = at; values.finalApprovedVersion = version; }
+  if (["request-changes", "resubmit"].includes(action)) { delete values.finalApprovedAt; delete values.finalApprovedVersion; }
   const next: ModuleRecord = { ...record, user: context.actor, updatedAt: at, values, history: [{ at, user: context.actor, text: `${from} → ${to}${comment ? ` · ${comment}` : ""} · ${transition.taskId}` }, ...record.history] };
   // El comentario de una transición pertenece a la versión revisada (no a la siguiente).
   if (comment) return addContentComment(next, { actor: context.actor, at, text: comment, visibility: context.role === "client" || action === "request-information" ? "client" : "internal", version, stage: from, kind: reviewKind(from, action) });
@@ -264,4 +267,75 @@ export function validContentDate(date?: string) {
 
 export function ideaToContentValues(idea: ModuleRecord, initial: Record<string, string> = {}) {
   return { titulo: idea.values.idea || "", idea: idea.values.detalle || idea.values.idea || "", eje: idea.values.eje || "", referencia: idea.values.url || "", ideaId: idea.id, origen: idea.values.origen || "Equipo", sourceBenchmarkBrandId: idea.values.sourceBenchmarkBrandId || "", sourceBenchmarkItemId: idea.values.sourceBenchmarkItemId || "", capturaReferencia: idea.values.captura || "", ...initial, estado: "Borrador" };
+}
+
+/** Próximo rótulo de versión de diseño (v1, v2, …) según las entregas registradas. */
+export function nextDesignVersion(record: ModuleRecord) {
+  const deliveries = contentTransitions(record).filter((entry) => entry.action === "deliver-design" || (entry.action === "resubmit" && entry.to === "Revisión interna del diseño")).length;
+  const labelled = Number(/^v(\d+)$/i.exec(record.values.version || "")?.[1]) || 0;
+  return `v${Math.max(deliveries, labelled, 1) + 1}`;
+}
+
+/* ───────── Aprobaciones atadas a la versión ─────────
+ * Cada aprobación queda registrada en su transición con la versión revisada. Una aprobación vale
+ * solo para esa versión: si después cambia la propuesta (Propuesta vN+1) o el diseño (Diseño vN+1),
+ * o si se pidieron ajustes sobre esa misma versión, deja de contar para la versión vigente. */
+export type ContentApprovalKind = "internal-proposal" | "client-proposal" | "internal-design" | "client-final";
+export const APPROVAL_STEPS: { kind: ContentApprovalKind; action: ContentAction; label: string; who: string; phase: "proposal" | "design" }[] = [
+  { kind: "internal-proposal", action: "approve-internal", label: "Revisión interna de la propuesta", who: "PM", phase: "proposal" },
+  { kind: "client-proposal", action: "approve-preliminary", label: "Validación de la propuesta con el cliente", who: "Cliente", phase: "proposal" },
+  { kind: "internal-design", action: "approve-design", label: "Revisión interna del diseño", who: "Responsable de Contenidos", phase: "design" },
+  { kind: "client-final", action: "approve-final", label: "Aprobación final del cliente", who: "Cliente", phase: "design" },
+];
+export type ContentApproval = { id: string; kind: ContentApprovalKind; label: string; actor: string; at: string; version: string; comment: string; valid: boolean; reason?: string };
+export function currentProposalVersion(record: ModuleRecord) {
+  return `Propuesta v${proposalVersion(record)}`;
+}
+export function currentDesignVersion(record: ModuleRecord) {
+  return `Diseño ${record.values.version || "v1"}`;
+}
+export function contentApprovals(record: ModuleRecord): ContentApproval[] {
+  const transitions = contentTransitions(record);
+  return transitions.flatMap((entry, index) => {
+    const step = APPROVAL_STEPS.find((item) => item.action === entry.action);
+    if (!step) return [];
+    const version = entry.version || (step.phase === "proposal" ? "Propuesta v1" : "Diseño v1");
+    const current = step.phase === "proposal" ? currentProposalVersion(record) : currentDesignVersion(record);
+    const rejected = transitions.slice(index + 1).some((later) => later.action === "request-changes" && (later.version || "") === version);
+    const valid = version === current && !rejected;
+    const reason = version !== current ? `Corresponde a ${version}; la versión vigente es ${current}.` : rejected ? `Después se pidieron ajustes sobre ${version}.` : undefined;
+    return [{ id: entry.id, kind: step.kind, label: step.label, actor: entry.actor, at: entry.at, version, comment: entry.comment, valid, reason }];
+  });
+}
+/** Aprobación vigente (de la versión actual) para un paso, si existe. */
+export function validApproval(record: ModuleRecord, kind: ContentApprovalKind) {
+  return contentApprovals(record).filter((item) => item.kind === kind && item.valid).at(-1);
+}
+
+/* ───────── Programación y publicación ─────────
+ * Metricool no está conectado: una fecha guardada en Avans nunca se presenta como programación
+ * confirmada por el proveedor, y nada se muestra como publicado sin evidencia. */
+export type ContentScheduleKind = "none" | "planned" | "local" | "confirmed" | "published-unverified" | "published";
+export type ContentSchedule = { kind: ContentScheduleKind; label: string; short: string; detail: string };
+export function contentSchedule(record: ModuleRecord): ContentSchedule {
+  const state = contentState(record);
+  const v = record.values;
+  const when = v.fecha ? `${v.fecha}${v.hora ? ` · ${v.hora}` : ""}` : "";
+  if (state === "Publicada") {
+    if (v.publicacionProveedor === "metricool" && v.publicacionProveedorId && safeContentUrl(v.publicacionUrl)) return { kind: "published", label: "Publicación verificada por Metricool", short: "Publicada", detail: when };
+    return { kind: "published-unverified", label: "Publicación sin verificar", short: "Sin verificar", detail: v.registroPublicacion || "Registrada a mano. No hay evidencia de la publicación: Metricool no está conectado." };
+  }
+  if (state === "Programado") {
+    if (v.programacionProveedor === "metricool" && v.programacionProveedorId) return { kind: "confirmed", label: "Programación confirmada por Metricool", short: "Confirmada", detail: when };
+    return { kind: "local", label: "Programación local", short: "Prog. local", detail: `${when ? `${when} · ` : ""}registrada en Avans por el equipo. Metricool no la confirmó (no conectado).` };
+  }
+  if (v.fecha) return { kind: "planned", label: "Fecha prevista", short: "Prevista", detail: `${when} · todavía no está programada.` };
+  return { kind: "none", label: "Sin fecha", short: "Sin fecha", detail: "Asignale una fecha prevista desde la propuesta." };
+}
+
+/* Materiales vinculados desde «Archivos y documentos»: solo referencias, nunca copias. */
+export type LinkedMaterial = { id: string; at: string; by: string };
+export const MATERIALS_FIELD = "materialesVinculados";
+export function linkedMaterials(values: Record<string, string>): LinkedMaterial[] {
+  return readArray<LinkedMaterial>(values[MATERIALS_FIELD]).filter((item) => item && typeof item.id === "string" && Boolean(item.id));
 }
