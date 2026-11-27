@@ -4,8 +4,8 @@ import { test, expect } from "@playwright/test";
 test("Ficha: local file, product relationship and glossary persist, isolate clients and respect visual role", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
-  await page.goto("/v2/clientes/epsa?view=ficha&ficha=materiales");
-  await page.getByRole("button", { name: "Agregar material", exact: true }).click();
+  await page.goto("/v2/clientes/epsa?view=documentos&archivos=biblioteca");
+  await page.getByRole("button", { name: "Agregar archivo", exact: true }).click();
   let editor = page.getByRole("dialog", { name: "Ficha de material" });
   await editor.getByLabel("Nombre del material *", { exact: true }).fill("Catálogo local QA");
   await editor.getByLabel("Categoría", { exact: true }).selectOption("Catálogos");
@@ -20,7 +20,7 @@ test("Ficha: local file, product relationship and glossary persist, isolate clie
   expect(download.suggestedFilename()).toBe("catalogo-qa.txt");
   expect(readFileSync((await download.path())!, "utf8")).toBe("Catálogo QA: oferta comercial vigente");
 
-  await page.getByRole("tab", { name: "Productos y servicios", exact: true }).click();
+  await page.goto("/v2/clientes/epsa?view=ficha&ficha=productos");
   await page.getByRole("button", { name: "Crear producto o servicio" }).click();
   editor = page.getByRole("dialog", { name: "Ficha de producto", exact: true });
   await editor.getByLabel("Nombre del producto *", { exact: true }).fill("Producto Ficha QA");
@@ -60,15 +60,15 @@ test("Ficha: local file, product relationship and glossary persist, isolate clie
 });
 
 test("materials preserve edits and prevent duplicate URL; independent questionnaire remains accessible", async ({ page }) => {
-  await page.goto("/v2/clientes/epsa?view=ficha&ficha=materiales");
-  await page.getByRole("button", { name: "Agregar material", exact: true }).click();
+  await page.goto("/v2/clientes/epsa?view=documentos&archivos=biblioteca");
+  await page.getByRole("button", { name: "Agregar archivo", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "Ficha de material" });
   await editor.getByLabel("Nombre del material *").fill("Manual de marca QA");
   await editor.getByLabel("Tipo de material").selectOption("URL");
   await editor.getByLabel("URL del material *").fill("https://example.com/manual-qa.pdf");
   await editor.getByRole("button", { name: "Guardar material" }).click();
   await expect(editor).toHaveCount(0);
-  await page.getByRole("button", { name: "Agregar material", exact: true }).click();
+  await page.getByRole("button", { name: "Agregar archivo", exact: true }).click();
   await editor.getByLabel("Nombre del material *").fill("Duplicado QA");
   await editor.getByLabel("Tipo de material").selectOption("URL");
   await editor.getByLabel("URL del material *").fill("https://example.com/manual-qa.pdf");
@@ -76,6 +76,7 @@ test("materials preserve edits and prevent duplicate URL; independent questionna
   await expect(editor.getByRole("alert")).toContainText("No se guardó");
   await expect(page.getByRole("article", { name: "Duplicado QA" })).toHaveCount(0);
   await editor.getByRole("button", { name: "Cerrar panel" }).click();
+  await page.goto("/v2/clientes/epsa?view=ficha");
   await page.getByRole("link", { name: "Cuestionario inicial", exact: true }).first().click();
   await expect(page).toHaveURL(/view=cuestionario/);
   await expect(page.getByRole("button", { name: "Imprimir cuestionario vacío", exact: true })).toBeVisible();

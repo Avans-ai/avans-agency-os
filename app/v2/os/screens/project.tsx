@@ -8,6 +8,7 @@ import { Glyph } from "../glyphs";
 import { CURRENT_USER, TASK_STATUSES, serviceLabel, shortName, type OsProject, type OsTask } from "../os-data";
 import { serviceForTask } from "../director-data";
 import { useOsStore } from "../os-store";
+import { BackButton } from "../navigation/back";
 import { dueLabel, getClient, isSoon, projectProgress, tasksOf } from "../selectors";
 import { NewTaskModal, TaskSidePanel } from "../task-blocks";
 import { Avatar, buttonClass, cx, OSDue, OSEmptyState, OSPriority, OSStatus, Progress } from "../ui";
@@ -62,6 +63,7 @@ export function ProjectScreen({ project }: { project: OsProject }) {
   return (
     <>
       <div className={sc.projectHead}>
+        <BackButton fallback={`/v2/clientes/${project.clientSlug}`} fallbackLabel={client?.name ?? "el cliente"} />
         <div className={sc.projectHeadTop}>
           <div>
             <p className={sc.projectFrom}>Proyecto de <Link className={s.link} style={{ fontSize: 15, fontWeight: 500 }} href={`/v2/clientes/${project.clientSlug}`}>{client?.name}</Link></p>

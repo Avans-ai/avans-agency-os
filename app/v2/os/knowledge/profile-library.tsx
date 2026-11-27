@@ -39,6 +39,22 @@ export function ProfileLibrary({ client }: { client: OsClient }) {
   const [editing, setEditing] = useState<KnowledgeSource | null>(null);
   const sources = k.sources.filter(s => sourceVisible(s, editable));
   const filtered = sources.filter(s => (category === "Todas" || materialOf(s).category === category) && `${s.title} ${materialOf(s).description}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+  // Qué está realmente disponible: archivo recuperable en este navegador, enlace externo o solo metadatos.
+  const [available, setAvailable] = useState<Record<string, boolean>>({});
+  const fileKeys = sources.map(source => materialOf(source).file?.id).filter(Boolean).join("|");
+  useEffect(() => {
+    let alive = true;
+    const ids = fileKeys.split("|").filter(Boolean);
+    Promise.all(ids.map(id => getProfileFile(client.slug, id).then(blob => [id, Boolean(blob)] as const).catch(() => [id, false] as const)))
+      .then(entries => { if (alive) setAvailable(Object.fromEntries(entries)); });
+    return () => { alive = false; };
+  }, [client.slug, fileKeys]);
+  function storage(source: KnowledgeSource) {
+    const file = materialOf(source).file;
+    if (file) return available[file.id] === undefined ? { label: "Verificando archivo…", tone: "pending" } : available[file.id] ? { label: "Archivo guardado · recuperable en este navegador", tone: "stored" } : { label: "Archivo no disponible en este navegador", tone: "missing" };
+    if (source.externalUrl) return { label: "Enlace externo", tone: "link" };
+    return { label: "Solo metadatos (sin archivo)", tone: "meta" };
+  }
   async function download(source: KnowledgeSource) {
     try {
       const file = materialOf(source).file;
@@ -49,12 +65,12 @@ export function ProfileLibrary({ client }: { client: OsClient }) {
       a.href = url; a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) { notify(error instanceof Error ? error.message : "No se pudo descargar", "error"); }
   }
-  return <section className={p.root} aria-label="Biblioteca de materiales">
-    <div className={p.head}><div><h3>Biblioteca de materiales</h3><p>{sources.length} recursos · identidad, productos y documentación del cliente</p></div>{editable && <button className={buttonClass("primary")} onClick={() => setEditing(createMaterialSource(client.slug, context()))}>Agregar material</button>}</div>
-    <label className={m.field}><span>Buscar material</span><input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Nombre o descripción" /></label>
+  return <section className={p.root} aria-label="Biblioteca de archivos">
+    <div className={p.head}><div><h3>Biblioteca de archivos</h3><p>{sources.length} recursos · negocio, catálogos, marca, presentaciones, minutas, reportes y archivos de contenidos y pedidos</p></div>{editable && <button className={buttonClass("primary")} onClick={() => setEditing(createMaterialSource(client.slug, context()))}>Agregar archivo</button>}</div>
+    <label className={m.field}><span>Buscar archivo</span><input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Nombre o descripción" /></label>
     <div className={p.filters} aria-label="Categorías de materiales">{["Todas", ...materialCategories].map(c => <button key={c} aria-pressed={category === c} onClick={() => setCategory(c)}>{c} <span>{c === "Todas" ? sources.length : sources.filter(s => materialOf(s).category === c).length}</span></button>)}</div>
     <div className={p.grid}>{filtered.map(source => { const material = materialOf(source); return <article className={p.card} key={source.id} aria-label={source.title}>
-      <MaterialPreview source={source} /><div className={p.body}><div className={p.meta}><span>{material.category}</span><span>· {material.kind}</span>{source.demo && <span>· DEMO</span>}</div><h4>{source.title || "Sin título"}</h4><p>{material.description || "Sin descripción"}</p><div className={p.meta}><span>{source.validationStatus}</span><span>· {source.owner || "Sin responsable"}</span><span>· {(source.occurredAt || source.importedAt).slice(0, 10)}</span></div>
+      <MaterialPreview source={source} /><div className={p.body}><div className={p.meta}><span>{material.category}</span><span>· {material.kind}</span>{source.demo && <span>· DEMO</span>}</div><span className={p.storage} data-tone={storage(source).tone}>{storage(source).label}</span><h4>{source.title || "Sin título"}</h4><p>{material.description || "Sin descripción"}</p><div className={p.meta}><span>{source.validationStatus}</span><span>· {source.owner || "Sin responsable"}</span><span>· {(source.occurredAt || source.importedAt).slice(0, 10)}</span></div>
       <div className={p.actions}>{material.productIds.map(id => <span className={p.tag} key={id}>{k.discovery.offerings.find(o => o.id === id)?.name || "Producto pendiente de revisión"}</span>)}{material.serviceIds.map(id => <span className={p.tag} key={id}>{serviceCatalog.find(s => s.id === id)?.label}</span>)}</div>
       <div className={p.actions}>{source.externalUrl && <ExternalLink url={source.externalUrl} label="Abrir enlace" />}{material.file && <button className={buttonClass("secondary", true)} onClick={() => download(source)}><Download size={14} /> Descargar</button>}{editable && <button className={buttonClass("secondary", true)} onClick={() => setEditing(source)}>Editar material</button>}</div></div>
     </article>; })}</div>

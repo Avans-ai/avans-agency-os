@@ -372,10 +372,15 @@ test("active-service selectors preserve hidden data and unsupported services hav
     values: { statement: "Objetivo QA" },
   };
   k = savePlanItem(k, item, "estrategia", ["estrategia"], ctx);
-  expect(visiblePlan(k, [])).toHaveLength(0);
-  expect(visiblePlan(k, ["estrategia"])[0].items).toHaveLength(1);
-  expect(visiblePlan(k, ["crm"])[0].templatePending).toBe(true);
-  expect(() => savePlanItem(k, item, "estrategia", [], ctx)).toThrow(
+  // Los lineamientos generales de la cuenta siempre encabezan el Plan, con o sin servicios activos.
+  expect(visiblePlan(k, [])).toHaveLength(1);
+  expect(visiblePlan(k, [])[0]).toMatchObject({ general: true, service: "estrategia" });
+  expect(visiblePlan(k, [])[0].items).toHaveLength(1);
+  expect(visiblePlan(k, ["estrategia"])).toHaveLength(1);
+  expect(visiblePlan(k, ["crm"])[1].templatePending).toBe(true);
+  expect(() => savePlanItem(k, item, "estrategia", [], ctx)).not.toThrow();
+  const kpi = { ...newItem("campaigns", ctx), values: {} };
+  expect(() => savePlanItem(k, kpi, "publicidad-digital", [], ctx)).toThrow(
     /inactivo/,
   );
 });

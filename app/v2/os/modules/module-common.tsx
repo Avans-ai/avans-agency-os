@@ -96,7 +96,7 @@ export function ScopePanel({ client, serviceId }: { client: OsClient; serviceId:
 
 export function DocsPanel({ client }: { client: OsClient }) {
   const links = [
-    { href: `/v2/clientes/${client.slug}?view=documentos`, label: "Documentos", detail: "Fuentes, actas y versiones aprobadas" },
+    { href: `/v2/clientes/${client.slug}?view=documentos`, label: "Archivos y documentos", detail: "Archivos, documentos, actas y versiones aprobadas" },
     { href: `/v2/clientes/${client.slug}?view=plan`, label: "Plan de Marketing", detail: "Objetivos y lineamientos del módulo" },
     { href: `/v2/clientes/${client.slug}?view=benchmark`, label: "Benchmark", detail: "Hallazgos competitivos" },
     { href: `/v2/clientes/${client.slug}?view=reportes`, label: "Reportes", detail: "Semanal, mensual y por módulo" },

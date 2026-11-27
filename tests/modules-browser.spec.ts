@@ -80,7 +80,7 @@ test("publicidad digital: no generic flow block, own sections, campaign persists
   await expect(page.getByRole("heading", { name: "Publicidad digital", level: 1 })).toBeVisible();
   await expect(page.getByText("Flujo del servicio")).toHaveCount(0);
   const nav = sectionNav(page, "Publicidad digital");
-  for (const label of ["Inicio", "Plan de medios", "Campañas", "Anuncios y piezas", "Tareas", "Optimización", "Resultados", "Recomendaciones"]) {
+  for (const label of ["Inicio", "Plan de medios", "Campañas", "Anuncios y piezas", "Tareas", "Optimización", "Resultados", "Aprobaciones y seguimiento"]) {
     await expect(nav.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
   }
   await expect(page.getByText("No conectada").first()).toBeVisible();
@@ -225,11 +225,10 @@ test("contenidos, estrategia, web and audiovisual workspaces show their own obje
   const errors = errorsOf(page);
   await page.goto("/v2/clientes/epsa/contenido");
   const contentNav = sectionNav(page, "Contenidos");
-  for (const label of ["Calendario", "Piezas", "Ejes temáticos", "Tareas", "Resultados", "Entregables y aprobaciones", "Historial"]) {
+  for (const label of ["Calendario", "Piezas", "Ejes temáticos", "Ideas", "Tareas", "Resultados", "Aprobaciones y seguimiento"]) {
     await expect(contentNav.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
   }
-  // El Banco de ideas es un área propia (C), separada de la operación mensual.
-  await expect(page.getByRole("navigation", { name: "Áreas de Contenidos" }).getByRole("link", { name: "Banco de ideas" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Áreas de Contenidos" }).getByRole("link")).toHaveText(["Lineamientos", "Operación mensual"]);
   await contentNav.getByRole("link", { name: "Calendario" }).click();
   await expect(page.getByRole("grid", { name: /Calendario editorial · noviembre de 2026/i })).toBeVisible();
   await page.getByRole("button", { name: /Teaser del lanzamiento Line Up/ }).click();

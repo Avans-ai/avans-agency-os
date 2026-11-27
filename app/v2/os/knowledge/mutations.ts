@@ -1,6 +1,7 @@
 import {
   benchmarkBlueprints,
   findingBlueprint,
+  GENERAL_PLAN_SERVICE,
   planBlueprints,
 } from "./blueprints";
 import { assertExternalBrand, validateItem } from "./benchmark";
@@ -124,7 +125,8 @@ export function savePlanItem(
   active: ServiceId[],
   ctx: MutationContext,
 ) {
-  if (!active.includes(service))
+  // Los lineamientos generales de la cuenta se editan aunque «Estrategia» no esté contratado.
+  if (!active.includes(service) && service !== GENERAL_PLAN_SERVICE)
     throw new Error(
       "El módulo está inactivo. Los datos anteriores se conservan.",
     );

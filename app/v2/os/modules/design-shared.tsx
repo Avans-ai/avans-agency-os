@@ -81,7 +81,7 @@ export function LinkedBrandMaterial({ source }: { source: KnowledgeSource }) {
   return <article className={d.tile}>{imageUrl ? <div className={d.thumb}>
     {/* eslint-disable-next-line @next/next/no-img-element -- Blob stored in the local material library. */}
     <img src={imageUrl} alt={source.title} /></div> : <div className={d.thumb}><span className={d.muted}>{material.category}</span></div>}
-    <div className={d.tileBody}><h3>{source.title}</h3><Badge tone="stone">{material.category}</Badge><Link className={d.textLink} href={`/v2/clientes/${source.clientSlug}?view=ficha&ficha=materiales`}>Abrir en materiales de la Ficha</Link></div>
+    <div className={d.tileBody}><h3>{source.title}</h3><Badge tone="stone">{material.category}</Badge><Link className={d.textLink} href={`/v2/clientes/${source.clientSlug}?view=documentos&archivos=biblioteca`}>Abrir en Archivos y documentos</Link></div>
   </article>;
 }
 

@@ -370,23 +370,19 @@ test("regression: scope, five management accesses, home, tasks, content, modules
   await expect(
     page.getByRole("region", { name: "Alcance por módulo" }),
   ).toBeVisible();
-  for (const label of [
-    "Benchmark",
-    "Plan de Marketing",
-    "Reportes",
-    "Documentos",
-  ]) {
+  for (const [label, view] of [
+    ["Reportes", "reportes"],
+    ["Benchmark", "benchmark"],
+    ["Plan de marketing", "plan"],
+    ["Archivos y documentos", "documentos"],
+  ] as const) {
     await page
       .getByRole("navigation", { name: "Gestión y estrategia de EPSA / Line Up" })
-      .getByRole("link", { name: new RegExp(`^${label}`) })
+      .getByRole("link", { name: label, exact: true })
       .click();
-    await expect(
-      page.getByRole("heading", {
-        name: label === "Documentos" ? "Fuentes y actualizaciones" : label,
-        exact: true,
-      }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`view=${view}`));
   }
+  await expect(page.getByRole("heading", { name: "Archivos y documentos", exact: true })).toBeVisible();
   await page
     .getByRole("navigation", { name: "Navegación de EPSA / Line Up" })
     .getByRole("link", { name: "Inicio", exact: true })

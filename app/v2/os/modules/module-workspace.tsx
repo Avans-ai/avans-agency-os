@@ -13,6 +13,7 @@ import { serviceHref, type ServiceWorkspaceConfig } from "../service-workspace-d
 import { Badge, LinkButton, OSEmptyState, OSSkeletonRows } from "../ui";
 import s from "../os.module.css";
 import { ClientOperationNav } from "../screens/client-operation-nav";
+import { BackButton } from "../navigation/back";
 import { ActivateDemoModuleButton } from "../screens/service-modules-dialog";
 import { CollectionView, useWorkItems } from "./collection-view";
 import { collectionDef, moduleCollections, primaryWorkCollection } from "./collections";
@@ -33,11 +34,12 @@ type Section = { id: string; label: string };
 type Go = (section: string, extra?: Record<string, string>) => void;
 type Ctx = { client: OsClient; serviceId: ServiceId; editable: boolean; go: Go; params: URLSearchParams; tasksBoard: ReactNode; supportDesign: boolean };
 
+/* Entregables, aprobaciones, recomendaciones e historial se consultan en una sola sección
+ * de seguimiento (antes eran tres pestañas por módulo). Los enlaces anteriores redirigen acá. */
 const COMMON_TAIL: Section[] = [
-  { id: "entregables", label: "Entregables y aprobaciones" },
-  { id: "recomendaciones", label: "Recomendaciones" },
-  { id: "historial", label: "Historial" },
+  { id: "aprobaciones", label: "Aprobaciones y seguimiento" },
 ];
+const LEGACY_TAIL = new Set(["entregables", "recomendaciones", "historial"]);
 
 export function moduleSections(serviceId: ServiceId): Section[] {
   switch (serviceId) {
@@ -119,6 +121,13 @@ function collectionSection(ctx: Ctx, collection: string) {
 function renderSection(section: string, ctx: Ctx): ReactNode {
   const { client, serviceId, editable, go, params } = ctx;
   if (section === "tareas") return ctx.tasksBoard;
+  if (section === "aprobaciones") return (
+    <div className={m.stack}>
+      <DeliverablesSection client={client} serviceId={serviceId} />
+      <RecommendationsSection client={client} serviceId={serviceId} editable={editable} consolidated={serviceId === "estrategia"} />
+      <HistorySection client={client} serviceId={serviceId} />
+    </div>
+  );
   if (section === "entregables") return <DeliverablesSection client={client} serviceId={serviceId} />;
   if (section === "recomendaciones") return <RecommendationsSection client={client} serviceId={serviceId} editable={editable} consolidated={serviceId === "estrategia"} />;
   if (section === "historial") return <HistorySection client={client} serviceId={serviceId} />;
@@ -187,17 +196,13 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
   const supportDesign = serviceId === "diseno-marca" && !activeServices.includes("diseno-marca") && ((activeServices.includes("contenidos") && (designData.trabajos || []).some((record) => record.values.contenidoId)) || (activeServices.includes("audiovisuales") && (designData.trabajos || []).some((record) => record.values.jornadaId)));
   const definition = serviceCatalog.find((item) => item.id === serviceId);
   const editable = canEditService(role, client.slug, serviceId);
-  const sections = moduleSections(serviceId).filter((section) => !supportDesign || ["trabajos", "biblioteca", "tareas", "historial"].includes(section.id));
+  const sections = moduleSections(serviceId).filter((section) => !supportDesign || ["trabajos", "biblioteca", "tareas", "aprobaciones"].includes(section.id));
   // Compatibilidad de enlaces anteriores: «pedidos» de Diseño y «produccion» (creatividades) de Publicidad digital.
   const legacy = params.get("seccion");
-  const requested = legacy === "pedidos" && serviceId === "diseno-marca" ? "trabajos" : legacy === "produccion" && serviceId === "publicidad-digital" ? "anuncios" : legacy;
+  const requested = legacy === "pedidos" && serviceId === "diseno-marca" ? "trabajos" : legacy === "produccion" && serviceId === "publicidad-digital" ? "anuncios" : legacy && LEGACY_TAIL.has(legacy) ? "aprobaciones" : legacy;
   const guidelines = params.get("area") === "lineamientos";
   const taskParam = params.get("task");
   const current = sections.some((section) => section.id === requested) ? requested! : taskParam ? "tareas" : supportDesign ? "trabajos" : "resumen";
-  // Área C de cada módulo creativo: repositorio separado de la operación mensual.
-  const repository = serviceId === "diseno-marca" ? { id: "biblioteca", label: "Biblioteca de marca" } : serviceId === "contenidos" ? { id: "ideas", label: "Banco de ideas" } : null;
-  const inRepository = !guidelines && Boolean(repository) && current === repository?.id && sections.some((section) => section.id === repository?.id);
-  const operationSections = sections.filter((section) => section.id !== repository?.id);
   const primary = primaryWorkCollection(serviceId);
   const workItems = useWorkItems(client, serviceId, primary);
   const stats = useModuleTaskStats(client, serviceId);
@@ -247,6 +252,7 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
     <div>
       <ClientOperationNav client={client} active={serviceId} />
       <header className={m.hero}>
+        <div className={m.heroBack}><BackButton fallback={`/v2/clientes/${client.slug}`} fallbackLabel={client.name} /></div>
         <div className={m.heroTitle}>
           <span className={m.heroIcon}>{definition ? <AvansModuleIcon name={definition.icon} size={34} /> : null}</span>
           <div>
@@ -270,13 +276,12 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
       </header>
 
       <nav className={m.sectionNav} aria-label={`Áreas de ${service.label}`}>
-        <Link className={m.sectionTab} aria-current={!guidelines && !inRepository ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?seccion=${inRepository ? operationSections[0]?.id ?? "resumen" : current}`} scroll={false}>Operación mensual</Link>
-        <Link className={m.sectionTab} aria-current={guidelines ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?area=lineamientos`} scroll={false}>{serviceId === "contenidos" ? "Plan de contenidos" : "Lineamientos del servicio"}</Link>
-        {repository ? <Link className={m.sectionTab} aria-current={inRepository ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?seccion=${repository.id}`} scroll={false}>{repository.label}</Link> : null}
+        <Link className={m.sectionTab} aria-current={guidelines ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?area=lineamientos`} scroll={false}>Lineamientos</Link>
+        <Link className={m.sectionTab} aria-current={!guidelines ? "page" : undefined} href={`${serviceHref(client.slug, serviceId)}?seccion=${current}`} scroll={false}>Operación mensual</Link>
       </nav>
 
-      {!guidelines && !inRepository ? <nav className={m.sectionNav} aria-label={`Secciones de ${service.label}`}>
-        {operationSections.map((section) => (
+      {!guidelines ? <nav className={m.sectionNav} aria-label={`Secciones de ${service.label}`}>
+        {sections.map((section) => (
           <Link
             key={section.id}
             href={`${serviceHref(client.slug, serviceId)}?seccion=${section.id}`}

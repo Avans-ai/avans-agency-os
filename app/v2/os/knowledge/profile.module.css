@@ -31,3 +31,10 @@
 .glossary ul { padding-left:20px; margin:0; line-height:1.8; }
 .glossary p { white-space:pre-wrap; margin:0; font-size:13px; }
 @media(max-width:600px) { .fields { grid-template-columns:1fr; } .preview { height:130px; } }
+
+.storage{display:inline-flex;align-items:center;gap:6px;width:fit-content;padding:2px 8px;font-size:12px;border:1px solid var(--av-border);color:var(--av-text-muted)}
+.storage::before{content:"";width:7px;height:7px;flex:none;background:currentColor}
+.storage[data-tone="stored"]{color:var(--av-success);border-color:currentColor}
+.storage[data-tone="missing"]{color:var(--av-error);border-color:currentColor}
+.storage[data-tone="link"]{color:var(--av-link)}
+.storage[data-tone="link"]::before{border-radius:50%}

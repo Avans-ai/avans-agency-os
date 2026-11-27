@@ -159,9 +159,10 @@ export function PlanView({
     );
   }
   const index = modules.map((module) => ({
-    id: `plan-${module.service}`,
-    label: serviceLabel(module.service),
+    id: module.general ? "plan-lineamientos-generales" : `plan-${module.service}`,
+    label: module.general ? "Lineamientos generales" : serviceLabel(module.service),
   }));
+  const chapterNumber = modules.map((_, idx) => modules.slice(0, idx + 1).filter((item) => !item.general).length);
   return (
     <div className={m.root}>
       <DocumentShell
@@ -175,7 +176,8 @@ export function PlanView({
                 <h2>Plan de Marketing</h2>
                 <p>
                   Documento vivo construido desde el Discovery y el Benchmark.
-                  Muestra solo los módulos contratados por {client.name}.
+                  Empieza por los lineamientos generales de {client.name} y sigue
+                  con un capítulo por cada servicio activo.
                 </p>
               </div>
               <div className={m.actions}>
@@ -200,23 +202,15 @@ export function PlanView({
           </header>
         }
       >
-        {!modules.length ? (
-          <DocumentSection id="plan-vacio" title="Sin módulos contratados">
-            <p className={m.empty}>
-              El cliente no tiene módulos de servicio activos. Agregalos desde
-              el inicio del cliente para habilitar sus secciones del Plan.
-            </p>
-          </DocumentSection>
-        ) : null}
         {modules.map((module, i) => {
-          const definition = serviceCatalog.find((service) => service.id === module.service);
+          const definition = module.general ? undefined : serviceCatalog.find((service) => service.id === module.service);
           return (
             <DocumentSection
-              key={module.service}
-              id={`plan-${module.service}`}
-              number={`Módulo ${String(i + 1).padStart(2, "0")}`}
-              title={serviceLabel(module.service)}
-              hint={SERVICE_PITCH[module.service]}
+              key={module.general ? "general" : module.service}
+              id={module.general ? "plan-lineamientos-generales" : `plan-${module.service}`}
+              number={module.general ? "Toda la cuenta" : `Módulo ${String(chapterNumber[i]).padStart(2, "0")}`}
+              title={module.general ? "Lineamientos generales de la cuenta" : serviceLabel(module.service)}
+              hint={module.general ? "Posicionamiento, storytelling, objetivos del plan y ecosistema digital. Son la referencia común de todos los servicios: sus lineamientos se leen desde acá." : SERVICE_PITCH[module.service]}
               state={moduleState(module)}
               actions={
                 definition ? (
@@ -297,6 +291,14 @@ export function PlanView({
             </DocumentSection>
           );
         })}
+        {modules.length <= 1 ? (
+          <DocumentSection id="plan-vacio" title="Sin servicios activos">
+            <p className={m.empty}>
+              El cliente no tiene módulos de servicio activos. Agregalos desde
+              el inicio del cliente para habilitar sus secciones del Plan.
+            </p>
+          </DocumentSection>
+        ) : null}
       </DocumentShell>
       <History k={k} type="marketing-plan" />
       {editor ? (

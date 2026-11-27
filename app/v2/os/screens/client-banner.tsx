@@ -87,7 +87,7 @@ export function ClientShortcuts({ client }: { client: OsClient }) {
     <nav className={b.shortcuts} aria-label={`Accesos directos de ${client.name}`}>
       <Link href={`/v2/clientes/${client.slug}?view=ficha`} title="Ficha del cliente"><AvansIcon name="identidad" size={18} /><span>Ficha del cliente</span></Link>
       <Link href={`/v2/clientes/${client.slug}?view=benchmark`} title="Benchmark"><AvansIcon name="monitor" size={18} /><span>Benchmark</span></Link>
-      <Link href={`/v2/clientes/${client.slug}?view=documentos#cargar-documentos`} title="Cargar documentos"><AvansIcon name="registro" size={18} /><span>Cargar documentos</span></Link>
+      <Link href={`/v2/clientes/${client.slug}?view=documentos&archivos=documentos`} title="Cargar documentos"><AvansIcon name="registro" size={18} /><span>Cargar documentos</span></Link>
     </nav>
   );
 }

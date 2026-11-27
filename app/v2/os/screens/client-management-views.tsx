@@ -77,7 +77,35 @@ export function ClientManagementContent({
       />
     );
   if (view === "reportes") return <ClientReports client={client} />;
-  return <DocumentsView key={client.slug} client={client} />;
+  return <ClientFiles key={client.slug} client={client} />;
+}
+
+/** Archivos y documentos: repositorio común (biblioteca de archivos) + documentos, minutas y cambios propuestos. */
+function ClientFiles({ client }: { client: OsClient }) {
+  const params = useSearchParams();
+  const router = useRouter();
+  const tab = params.get("archivos") === "biblioteca" ? "biblioteca" : "documentos";
+  function select(next: "biblioteca" | "documentos") {
+    const url = new URL(window.location.href);
+    url.searchParams.set("archivos", next);
+    url.hash = "";
+    router.replace(`${url.pathname}${url.search}`, { scroll: false });
+  }
+  return (
+    <div className={sc.stack}>
+      <div className={s.pageHead}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 500 }}>Archivos y documentos</h2>
+          <p>Material y conocimiento del cliente en un solo lugar. Los servicios consultan y vinculan estos archivos sin copiarlos.</p>
+        </div>
+      </div>
+      <div className={d.managementTabs} role="tablist" aria-label="Archivos y documentos">
+        <button type="button" role="tab" aria-selected={tab === "documentos"} onClick={() => select("documentos")}>Documentos y actualizaciones</button>
+        <button type="button" role="tab" aria-selected={tab === "biblioteca"} onClick={() => select("biblioteca")}>Biblioteca de archivos</button>
+      </div>
+      {tab === "biblioteca" ? <ProfileLibrary client={client} /> : <DocumentsView client={client} />}
+    </div>
+  );
 }
 
 function ClientSheet({ client }: { client: OsClient }) {
@@ -86,7 +114,6 @@ function ClientSheet({ client }: { client: OsClient }) {
   const sheetTabs = [
     { id: "scope", param: "alcance", label: "Alcance del servicio" },
     { id: "business", param: "discovery", label: "Discovery del negocio" },
-    { id: "materials", param: "materiales", label: "Materiales" },
     { id: "products", param: "productos", label: "Productos y servicios" },
     { id: "glossary", param: "glosario", label: "Glosario" },
   ] as const;
@@ -101,7 +128,9 @@ function ClientSheet({ client }: { client: OsClient }) {
   // Earlier links pointed to the questionnaire as the first Discovery chapter.
   useEffect(() => {
     if (window.location.hash === "#discovery-cuestionario") router.replace(questionnaireHref(client.slug));
-  }, [client.slug, router]);
+    // «Materiales» se unificó en Archivos y documentos: los enlaces anteriores redirigen.
+    if (params.get("ficha") === "materiales") router.replace(`/v2/clientes/${client.slug}?view=documentos&archivos=biblioteca`);
+  }, [client.slug, params, router]);
 
   return (
     <div className={sc.stack}>
@@ -111,7 +140,7 @@ function ClientSheet({ client }: { client: OsClient }) {
             Ficha del cliente
           </h2>
           <p>
-            Conocimiento del negocio, materiales, productos y voz de marca.
+            Alcance, conocimiento del negocio, productos y voz de marca. Los archivos viven en Archivos y documentos.
           </p>
         </div>
         <div className={s.actions}>
@@ -184,7 +213,7 @@ function ClientSheet({ client }: { client: OsClient }) {
               contractual.
             </p>
           </>
-        ) : tab === "materials" ? <ProfileLibrary client={client} /> : tab === "products" ? <ProfileProducts client={client} /> : tab === "glossary" ? <ProfileGlossary client={client} /> : (
+        ) : tab === "products" ? <ProfileProducts client={client} /> : tab === "glossary" ? <ProfileGlossary client={client} /> : (
           <MarketingDiscoveryView
             key={client.slug}
             client={client}

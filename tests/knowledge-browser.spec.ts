@@ -288,7 +288,7 @@ test("Plan modules preserve decisions across activation, show conditional fields
   });
   const index = page.getByRole("navigation", { name: "Índice de Plan de Marketing" });
   await expect(index.getByRole("link", { name: "Desarrollo web", exact: true })).toBeVisible();
-  await planBlock(page, "estrategia", "Objetivos")
+  await planBlock(page, "lineamientos-generales", "Objetivos del plan")
     .getByRole("button", { name: "+ Agregar", exact: true })
     .click();
   await page
@@ -296,11 +296,10 @@ test("Plan modules preserve decisions across activation, show conditional fields
     .getByLabel("Enunciado")
     .fill("Objetivo persistente QA");
   await saveRecord(page);
+  // Los lineamientos generales encabezan el Plan aunque «Estrategia y coordinación» se desactive.
   await setModules(page, { "Estrategia y coordinación": false });
-  await expect(page.locator("#plan-estrategia")).toHaveCount(0);
-  await expect(
-    index.getByRole("link", { name: "Estrategia y coordinación", exact: true }),
-  ).toHaveCount(0);
+  await expect(index.getByRole("link").first()).toHaveText("Lineamientos generales");
+  await expect(page.locator("#plan-lineamientos-generales")).toContainText("Objetivo persistente QA");
   await setModules(page, { "Estrategia y coordinación": true });
   await expect(
     page.getByText("Objetivo persistente QA", { exact: true }),

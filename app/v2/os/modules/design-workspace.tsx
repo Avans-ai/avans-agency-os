@@ -114,7 +114,7 @@ export function DesignRequestsSection({ client, editable, supportOnly = false }:
 }
 
 const SHORT_STAGE: Record<string, string> = { Pendientes: "Pend.", "En producción": "Prod.", "En revisión interna": "Rev.", Ajustes: "Ajus.", "Esperando aprobación": "Esp.", Aprobados: "Apr.", Entregados: "Entr." };
-const LIBRARY_TABS = ["Piezas", "Recursos de marca", "Referencias", "Materiales de la Ficha"] as const;
+const LIBRARY_TABS = ["Piezas", "Recursos de marca", "Referencias", "Archivos del cliente"] as const;
 
 function LibraryPieceDetail({ client, piece, all, requests, onClose, onNewVersion, editable }: { client: OsClient; piece: ModuleRecord; all: ModuleRecord[]; requests: ModuleRecord[]; onClose: () => void; onNewVersion: (r: ModuleRecord) => void; editable: boolean }) {
   const { tokens } = useBrand(client);

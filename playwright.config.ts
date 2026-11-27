@@ -28,6 +28,7 @@ export default defineConfig({
         "pptx-*-model.spec.ts",
         "modules-reports-model.spec.ts",
         "assistant-model.spec.ts",
+        "navigation-back-model.spec.ts",
       ],
     },
     {

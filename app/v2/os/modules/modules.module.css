@@ -170,3 +170,7 @@
 .dense [class*="num"]{white-space:nowrap}
 .dense td[class*="cellSub"]{white-space:nowrap}
 .dense a[aria-label^="Abrir Kanban"]{white-space:nowrap}
+
+.muted{margin:0;font-size:13px;color:var(--av-text-muted)}
+
+.heroBack{flex-basis:100%;width:100%}

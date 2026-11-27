@@ -114,7 +114,7 @@ test("Cuestionario inicial is a separate tool; validated answers build the conti
 
 for (const [view, label, first] of [
   ["benchmark", "Índice de Benchmark", "Marcas"],
-  ["plan", "Índice de Plan de Marketing", "Estrategia y coordinación"],
+  ["plan", "Índice de Plan de Marketing", "Lineamientos generales"],
 ] as const) {
   test(`${view} is a continuous document with sticky index and active section`, async ({ page }) => {
     await page.goto(`/v2/clientes/epsa?view=${view}`);

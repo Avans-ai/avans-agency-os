@@ -1,4 +1,6 @@
 /* Gestión y estrategia del cliente. Tokens Avans, esquinas rectas. */
+.back{padding:12px 32px 0;background:var(--av-bg-raised)}
+@media (max-width:767px){.back{padding:10px 12px 0}}
 .subnav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:0 32px;background:var(--av-bg-raised);border-bottom:1px solid var(--av-border)}
 .subnav::-webkit-scrollbar{display:none}
 .subnav a{flex:none;display:inline-flex;align-items:center;min-height:46px;padding:0 14px;font-size:14px;color:var(--av-text-muted);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}

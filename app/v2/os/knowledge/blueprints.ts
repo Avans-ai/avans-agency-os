@@ -155,11 +155,28 @@ export const findingBlueprint: Blueprint = {
     select("impact", "Impacto", ["Bajo", "Medio", "Alto"]),
   ],
 };
+/* Lineamientos generales de la cuenta: encabezan el Plan para todos los clientes,
+ * aunque «Estrategia y coordinación» no esté contratado. Se guardan donde siempre
+ * (plan.modules.estrategia) para no migrar datos. */
+export const GENERAL_PLAN_SERVICE = "estrategia" as const;
+export const GENERAL_PLAN_ORDER = ["positioning", "story", "objectives", "channels", "insight", "voice"];
 export const planBlueprints: Blueprint[] = [
+  {
+    id: "positioning",
+    service: "estrategia",
+    label: "Posicionamiento",
+    slide: "26",
+    fields: [
+      t("statement", "Enunciado de posicionamiento"),
+      t("audience", "Para quién"),
+      t("difference", "Diferencial"),
+      t("proof", "Fundamento", false),
+    ],
+  },
   {
     id: "objectives",
     service: "estrategia",
-    label: "Objetivos",
+    label: "Objetivos del plan",
     slide: "27",
     fields: [
       t("statement", "Enunciado"),
@@ -171,7 +188,7 @@ export const planBlueprints: Blueprint[] = [
   {
     id: "channels",
     service: "estrategia",
-    label: "Ecosistema de canales",
+    label: "Ecosistema digital",
     slide: "28",
     fields: [
       select("stage", "Etapa", [

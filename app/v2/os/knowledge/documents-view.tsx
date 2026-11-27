@@ -532,7 +532,7 @@ export function DocumentsView({ client }: { client: OsClient }) {
     <div className={m.root}>
       <div className={m.head}>
         <div>
-          <h2>Fuentes y actualizaciones</h2>
+          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>Documentos y actualizaciones</h3>
           <p>
             Documentos, reuniones y cuestionarios del cliente. Los cambios se
             aplican después de la revisión.

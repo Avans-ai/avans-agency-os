@@ -69,7 +69,7 @@ test("design system, request and single task, immutable library versions, guidel
   expect(tasks.filter((t: { workItem?: { id: string } }) => t.workItem?.id === request.id)).toHaveLength(1);
   await page.keyboard.press("Escape");
 
-  await page.getByRole("navigation", { name: "Áreas de Diseño de marca" }).getByRole("link", { name: "Biblioteca de marca" }).click();
+  await page.getByRole("navigation", { name: "Secciones de Diseño de marca" }).getByRole("link", { name: "Biblioteca de marca" }).click();
   await page.getByRole("button", { name: "Agregar pieza a biblioteca" }).click();
   editor = page.getByRole("dialog", { name: "Agregar pieza a biblioteca" });
   await editor.getByLabel("Nombre", { exact: true }).fill("Brochure QA");
@@ -89,12 +89,10 @@ test("design system, request and single task, immutable library versions, guidel
   expect(versions).toHaveLength(2);
   expect(versions.find((r: { values: { version: string } }) => r.values.version === "1").values.archivo).toBe("https://example.com/brochure-v1.pdf");
 
-  await page.getByRole("navigation", { name: "Áreas de Diseño de marca" }).getByRole("link", { name: "Lineamientos del servicio" }).click();
-  await page.getByRole("button", { name: "Editar procedimientos" }).click();
-  await page.getByLabel("Criterios de revisión", { exact: true }).fill("Comprobar legibilidad y contraste");
-  await page.getByRole("button", { name: "Guardar procedimientos" }).click();
+  await page.getByRole("navigation", { name: "Áreas de Diseño de marca" }).getByRole("link", { name: "Lineamientos", exact: true }).click();
+  // Los lineamientos se leen del Plan de marketing: no hay procedimientos editables aparte.
+  await expect(page.getByRole("button", { name: "Editar procedimientos" })).toHaveCount(0);
   await page.reload();
-  await expect(page.getByText("Comprobar legibilidad y contraste", { exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.goto("/v2/clientes/aca/diseno-marca?seccion=sistema");
@@ -146,6 +144,6 @@ test("content design support opens existing requests without activating a separa
   const active = await page.evaluate(() => JSON.parse(localStorage.getItem("avans-os:preview:v1:workspace")!).value.services.epsa);
   expect(active).toContain("contenidos");
   expect(active).not.toContain("diseno-marca");
-  await page.getByRole("navigation", { name: "Áreas de Diseño de marca" }).getByRole("link", { name: "Lineamientos del servicio" }).click();
-  await expect(page.getByRole("link", { name: "Plan de Marketing", exact: true }).last()).toHaveAttribute("href", /plan-contenidos$/);
+  await page.getByRole("navigation", { name: "Áreas de Diseño de marca" }).getByRole("link", { name: "Lineamientos", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Editar en el Plan", exact: true }).last()).toHaveAttribute("href", /plan-contenidos$/);
 });

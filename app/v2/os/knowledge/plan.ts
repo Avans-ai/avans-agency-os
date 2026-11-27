@@ -1,11 +1,14 @@
-import { planBlueprints, visibleFields, type Blueprint } from "./blueprints";
+import { GENERAL_PLAN_ORDER, GENERAL_PLAN_SERVICE, planBlueprints, visibleFields, type Blueprint } from "./blueprints";
 import { itemMissing, validateItem } from "./benchmark";
 import type { ServiceId } from "../os-data";
 import type { KnowledgeItem, KnowledgeState } from "./types";
 export function visiblePlan(k: KnowledgeState, active: ServiceId[]) {
-  return active.map((service) => ({
+  const chapter = (service: ServiceId, general: boolean) => ({
     service,
-    blueprints: planBlueprints.filter((b) => b.service === service),
+    general,
+    blueprints: general
+      ? GENERAL_PLAN_ORDER.map((id) => planBlueprints.find((b) => b.id === id)).filter((b): b is Blueprint => Boolean(b))
+      : planBlueprints.filter((b) => b.service === service),
     items: k.plan.modules[service] ?? [],
     needsReview: k.reviews.filter(
       (r) =>
@@ -14,7 +17,9 @@ export function visiblePlan(k: KnowledgeState, active: ServiceId[]) {
         (r.entityId === service || r.entityId === "all"),
     ),
     templatePending: !planBlueprints.some((b) => b.service === service),
-  }));
+  });
+  // Lineamientos generales primero; después los capítulos de los servicios activos.
+  return [chapter(GENERAL_PLAN_SERVICE, true), ...active.filter((service) => service !== GENERAL_PLAN_SERVICE).map((service) => chapter(service, false))];
 }
 export function allocationErrors(items: KnowledgeItem[]) {
   const errors: string[] = [];

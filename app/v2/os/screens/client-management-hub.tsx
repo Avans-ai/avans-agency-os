@@ -4,6 +4,7 @@
  * Benchmark, Plan, Reportes y Documentos, y estado/actualizaciones recientes.
  * Todo lo que antes ocupaba la cabecera del cliente vive acá. */
 import Link from "next/link";
+import { BackButton } from "../navigation/back";
 import { useMemo, useState } from "react";
 import { AvansIcon, AvansModuleIcon, type AvansIconName } from "../brand";
 import { canManageClient, directorMeta, type ClientChannel } from "../director-data";
@@ -68,12 +69,15 @@ export const MANAGEMENT_SECTIONS: { id: ClientManagementView; label: string; des
 export function ManagementSubnav({ client, view }: { client: OsClient; view: string }) {
   const current = view === "cuestionario" ? "ficha" : view;
   return (
+    <>
+    {current !== "gestion" ? <div className={h.back}><BackButton fallback={`/v2/clientes/${client.slug}?view=gestion`} fallbackLabel="Gestión y estrategia" /></div> : null}
     <nav className={h.subnav} aria-label={`Gestión y estrategia de ${client.name}`}>
       <Link href={`/v2/clientes/${client.slug}?view=gestion`} aria-current={current === "gestion" ? "page" : undefined}>Resumen</Link>
       {MANAGEMENT_SECTIONS.map((item) => (
         <Link key={item.id} href={`/v2/clientes/${client.slug}?view=${item.id}`} aria-current={current === item.id ? "page" : undefined}>{item.label}</Link>
       ))}
     </nav>
+    </>
   );
 }
 
@@ -166,7 +170,7 @@ export function ClientManagementHub({ client }: { client: OsClient }) {
             ))}
           </ol>
         ) : <p className={s.demoNote}>Sin actualizaciones registradas en Discovery, Benchmark, Plan o Documentos.</p>}
-        {status.pendingProposals || status.openReviews ? <Link className={s.link} href={`/v2/clientes/${client.slug}?view=documentos`}>Revisar en Documentos</Link> : null}
+        {status.pendingProposals || status.openReviews ? <Link className={s.link} href={`/v2/clientes/${client.slug}?view=documentos`}>Revisar en Archivos y documentos</Link> : null}
       </section>
     </div>
   );

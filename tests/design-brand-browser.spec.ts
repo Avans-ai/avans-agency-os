@@ -187,7 +187,7 @@ test("operation Kanban and list move a piece through states; approval puts the s
   await page.getByRole("button", { name: "Kanban", exact: true }).click();
   await expect(board.getByRole("region", { name: "Aprobados" }).getByRole("button", { name: "Abrir Placa QA flujo" })).toBeVisible();
 
-  await page.getByRole("navigation", { name: "Áreas de Diseño de marca" }).getByRole("link", { name: "Biblioteca de marca" }).click();
+  await page.getByRole("navigation", { name: "Secciones de Diseño de marca" }).getByRole("link", { name: "Biblioteca de marca" }).click();
   await page.getByRole("group", { name: "Estado en la biblioteca" }).getByRole("button", { name: "Aprobadas y entregadas" }).click();
   await page.getByRole("textbox", { name: "Buscar", exact: true }).fill("Placa QA flujo");
   await expect(page.getByRole("heading", { name: "Placa QA flujo", exact: true })).toHaveCount(1);
