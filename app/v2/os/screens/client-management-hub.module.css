@@ -1,0 +1,65 @@
+/* Gestión y estrategia del cliente. Tokens Avans, esquinas rectas. */
+.back{padding:12px 32px 0;background:var(--av-bg-raised)}
+@media (max-width:767px){.back{padding:10px 12px 0}}
+.subnav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:0 32px;background:var(--av-bg-raised);border-bottom:1px solid var(--av-border)}
+.subnav::-webkit-scrollbar{display:none}
+.subnav a{flex:none;display:inline-flex;align-items:center;min-height:46px;padding:0 14px;font-size:14px;color:var(--av-text-muted);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}
+.subnav a:hover{color:var(--av-text)}
+.subnav a[aria-current="page"]{color:var(--av-text);font-weight:500;border-bottom-color:var(--av-coral-300)}
+
+.hub{display:flex;flex-direction:column;gap:28px;min-width:0}
+.sectionHead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 16px;margin-bottom:14px}
+.sectionHead h2{margin:4px 0 0;font-size:22px;font-weight:500;line-height:1.2}
+.eyebrow{font-size:12px;font-weight:500;letter-spacing:var(--av-tracking-rotulo);text-transform:uppercase;color:var(--av-link)}
+
+.account{padding:20px;background:var(--av-bg-raised);border:1px solid var(--av-border);display:flex;flex-direction:column;gap:16px;min-width:0}
+.facts{margin:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--av-border);border:1px solid var(--av-border)}
+.facts>div{background:var(--av-bg);padding:10px 12px;min-width:0}
+.facts dt{font-size:12px;letter-spacing:var(--av-tracking-rotulo);text-transform:uppercase;color:var(--av-text-muted)}
+.facts dd{margin:4px 0 0;font-size:15px;overflow-wrap:anywhere}
+.facts .wide{grid-column:1/-1}
+.team{display:flex;align-items:center;gap:4px}
+.team>span:last-child{margin-left:6px;font-size:13px;color:var(--av-text-muted)}
+.modules{display:flex;flex-wrap:wrap;gap:8px 16px}
+.modules span{display:inline-flex;align-items:center;gap:6px}
+
+.channels{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.channelGroup{display:flex;flex-direction:column;gap:6px;min-width:0}
+.channelType{display:inline-flex;align-items:center;gap:6px;font-size:12px;letter-spacing:var(--av-tracking-rotulo);text-transform:uppercase;color:var(--av-text-muted)}
+.channelGroup ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.channel{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;padding:8px 10px;background:var(--av-bg);border:1px solid var(--av-border);font-size:14px;min-width:0}
+.channel strong{font-weight:600}
+.channel span{color:var(--av-text-muted);overflow-wrap:anywhere}
+.channelEdit{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;width:100%}
+.addChannel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) auto;gap:10px;align-items:end;padding-top:12px;border-top:1px solid var(--av-border)}
+
+.accessGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--av-border);border:1px solid var(--av-border)}
+.access{display:flex;flex-direction:column;gap:6px;padding:16px;min-height:150px;background:var(--av-bg-raised);color:var(--av-text);text-decoration:none;min-width:0}
+.access:hover{background:var(--av-bg)}
+.access:hover strong{text-decoration:underline}
+.accessIcon{display:flex;align-items:center;justify-content:center;width:40px;height:40px;background:var(--av-bg-sunken)}
+.access strong{font-size:16px;font-weight:500}
+.accessDesc{font-size:13px;color:var(--av-text-muted)}
+.accessStatus{margin-top:auto;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.accessStatus small{font-size:12px;color:var(--av-text-muted);line-height:1.4}
+
+.updates{padding:20px;background:var(--av-bg-raised);border:1px solid var(--av-border);display:flex;flex-direction:column;gap:12px}
+.counters{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;color:var(--av-text-muted)}
+.counters strong{color:var(--av-text);font-size:18px;font-weight:500;margin-right:4px}
+.timeline{margin:0;padding:0;list-style:none;display:flex;flex-direction:column}
+.timeline li{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:12px;padding:10px 0;border-top:1px solid var(--av-border);font-size:14px}
+.timeline time{color:var(--av-text-muted);font-size:13px}
+.timeline small{color:var(--av-text-muted);font-size:13px}
+
+@media (max-width:1279px){
+  .accessGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:767px){
+  .subnav{padding:0 12px}
+  .account,.updates{padding:16px}
+  .accessGrid{grid-template-columns:minmax(0,1fr)}
+  .access{min-height:0}
+  .addChannel{grid-template-columns:minmax(0,1fr)}
+  .timeline li{grid-template-columns:minmax(0,1fr)}
+}

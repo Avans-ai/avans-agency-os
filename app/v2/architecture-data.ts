@@ -35,7 +35,7 @@ export const dashboardAreas = [
   {
     number: "02",
     label: "Operaciones",
-    href: "/v2/operaciones",
+    href: "/v2/clientes",
     summary: "Procesos, proyectos, producción, reuniones, bloqueos, responsables y capacidad operativa.",
   },
   {

@@ -1,0 +1,285 @@
+import { test, expect, type Page } from "@playwright/test";
+test.use({ actionTimeout: 15000 });
+
+const errorsOf = (page: Page) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  return errors;
+};
+
+async function noOverflow(page: Page) {
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+}
+
+async function workspace(page: Page) {
+  return page.evaluate(() => JSON.parse(localStorage.getItem("avans-os:preview:v1:workspace") || "null")?.value);
+}
+
+function sectionNav(page: Page, label: string) {
+  return page.getByRole("navigation", { name: `Secciones de ${label}` });
+}
+
+test("reports: generator home with drafts and issued reports; paid media and content result reports render inside their modules", async ({ page }) => {
+  const errors = errorsOf(page);
+  await page.goto("/v2/clientes/epsa?view=reportes");
+  await expect(page.getByRole("heading", { name: "Reportes", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Borradores" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reportes generados" })).toBeVisible();
+  await page.getByRole("button", { name: "Crear reporte" }).click();
+  await expect(page.getByRole("navigation", { name: "Pasos del reporte" }).getByRole("button")).toHaveCount(9);
+  await page.getByRole("navigation", { name: "Pasos del reporte" }).getByRole("button", { name: /^Paso 3/ }).click();
+  await expect(page.getByRole("group", { name: "Servicios incluidos" }).getByRole("checkbox")).toHaveCount(3);
+  await page.getByRole("button", { name: "← Reportes" }).click();
+  await expect(page.getByRole("button", { name: /^Continuar Reporte mensual/ })).toBeVisible();
+
+  await page.goto("/v2/clientes/epsa/campanas?seccion=resultados");
+  const paid = page.getByRole("article", { name: "Reporte de Publicidad digital" });
+  for (const label of ["Inversión", "Alcance", "Impresiones", "Clics", "CTR", "CPC", "Leads", "CPL", "Conversiones"]) {
+    await expect(paid.getByRole("region", { name: "Indicadores de pauta" }).getByText(label, { exact: true })).toBeVisible();
+  }
+  await expect(paid.getByRole("img", { name: /Leads semanales/ })).toBeVisible();
+  await expect(paid.getByText("ROAS no aplica", { exact: false }).first()).toBeVisible();
+  await expect(paid.getByText("No conectada").first()).toBeVisible();
+  await expect(paid.getByRole("table", { name: "Resultados por campaña" })).toContainText("Sin datos");
+
+  await page.goto("/v2/clientes/epsa/contenido?seccion=resultados");
+  const content = page.getByRole("article", { name: "Reporte de Contenidos" });
+  await expect(content.getByRole("img", { name: /Formatos más efectivos/ })).toBeVisible();
+  await expect(content.getByRole("heading", { name: "Aprendizajes y propuestas para el próximo período" })).toBeVisible();
+
+  // Edinovo no tiene Publicidad digital: no se ofrece en los servicios del reporte.
+  await page.goto("/v2/clientes/edinovo?view=reportes");
+  await page.getByRole("button", { name: "Crear reporte" }).click();
+  await page.getByRole("navigation", { name: "Pasos del reporte" }).getByRole("button", { name: /^Paso 3/ }).click();
+  await expect(page.getByRole("group", { name: "Servicios incluidos" })).not.toContainText("Publicidad digital");
+  expect(errors).toEqual([]);
+});
+
+test("publicidad digital: no generic flow block, own sections, campaign persists and opens its detail", async ({ page }) => {
+  const errors = errorsOf(page);
+  await page.goto("/v2/clientes/epsa/campanas");
+  await expect(page.getByRole("heading", { name: "Publicidad digital", level: 1 })).toBeVisible();
+  await expect(page.getByText("Flujo del servicio")).toHaveCount(0);
+  const nav = sectionNav(page, "Publicidad digital");
+  for (const label of ["Inicio", "Plan de medios", "Campañas", "Anuncios y piezas", "Tareas", "Optimización", "Resultados", "Aprobaciones y seguimiento"]) {
+    await expect(nav.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
+  }
+  await expect(page.getByText("No conectada").first()).toBeVisible();
+
+  await nav.getByRole("link", { name: /^Campañas/ }).click();
+  await expect(page).toHaveURL(/seccion=campanas/);
+  // Alta asistida: guarda un borrador y abre la planificación paso a paso (Instancia 1).
+  await page.getByRole("button", { name: "Nueva campaña con asistente" }).click();
+  const panel = page.getByRole("dialog", { name: "Nueva campaña", exact: true });
+  // El formulario asistido arranca como borrador; los campos están en la columna de configuración.
+  await panel.getByRole("button", { name: "Guardar borrador" }).click();
+  const dialog = panel.locator("form");
+  await expect(dialog.getByText("Completá nombre")).toBeVisible();
+  await dialog.getByLabel(/^Nombre/).fill("QA Campaña de prueba");
+  await dialog.getByLabel("Objetivo").selectOption("Generación de leads");
+  await dialog.getByLabel("Plataforma").selectOption("LinkedIn Ads");
+  await dialog.getByLabel("Audiencia").fill("Compras industriales QA");
+  await dialog.getByLabel("Presupuesto del período (ARS)").fill("500000");
+  await dialog.getByLabel(/^Estado/).selectOption("Activa");
+  await dialog.getByLabel("Responsable").selectOption("Martín Ledesma");
+  await dialog.getByLabel(/^Inicio/).fill("2026-11-20");
+  await panel.getByRole("button", { name: "Guardar en este navegador" }).click();
+  await expect(panel).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Planificación · QA Campaña de prueba" })).toBeVisible();
+
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("avans-os:preview:v1:client:epsa:module:publicidad-digital:campanas") || "null")?.value);
+  const created = stored.find((record: { values: { nombre: string } }) => record.values.nombre === "QA Campaña de prueba");
+  expect(created).toMatchObject({ client: "epsa", module: "publicidad-digital", source: "manual", user: "Nicolás Okro" });
+  expect(created.history.length).toBeGreaterThan(0);
+  expect(created.updatedAt).toBeTruthy();
+
+  await page.reload();
+  await page.getByRole("button", { name: "QA Campaña de prueba" }).click();
+  await expect(page).toHaveURL(/campana=CMP-/);
+  await expect(page.getByRole("heading", { name: "QA Campaña de prueba", level: 2 })).toBeVisible();
+  await expect(page.getByText("las plataformas no están conectadas", { exact: false })).toBeVisible();
+
+  // Isolation: ACA never sees the EPSA campaign.
+  await page.goto("/v2/clientes/aca/campanas?seccion=campanas");
+  await expect(page.getByRole("button", { name: "Captación de socios · Meta" })).toBeVisible();
+  await expect(page.getByText("QA Campaña de prueba")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("module Kanban shows only its own tasks; a task created in a module is the same task in the client view", async ({ page }) => {
+  const errors = errorsOf(page);
+  await page.goto("/v2/clientes/epsa/campanas?seccion=tareas");
+  const paidBoard = page.getByLabel("Kanban de Publicidad digital");
+  await expect(paidBoard.getByRole("button", { name: /^T-143 / })).toBeVisible();
+  await expect(paidBoard.getByRole("button", { name: /^T-146 / })).toBeVisible();
+  await expect(paidBoard.getByRole("button", { name: /^T-142 / })).toHaveCount(0);
+  await expect(paidBoard.getByRole("button", { name: /^T-403 / })).toHaveCount(0);
+
+  await page.goto("/v2/clientes/epsa/contenido?seccion=tareas");
+  const contentBoard = page.getByLabel("Kanban de Contenidos");
+  for (const id of ["T-142", "T-144", "T-147"]) await expect(contentBoard.getByRole("button", { name: new RegExp(`^${id} `) })).toBeVisible();
+  await expect(contentBoard.getByRole("button", { name: /^T-143 / })).toHaveCount(0);
+
+  // Create inside Publicidad digital, linked to a campaign.
+  await page.goto("/v2/clientes/epsa/campanas?seccion=tareas");
+  await page.getByRole("button", { name: "Nueva tarea" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Nueva tarea" });
+  await expect(dialog.getByText("Publicidad digital", { exact: true })).toBeVisible();
+  await dialog.getByLabel(/^Título/).fill("QA tarea de pauta única");
+  await dialog.getByLabel("Campaña (opcional)").selectOption({ label: "Line Up · Generación de demanda" });
+  await dialog.getByLabel("Entregable del alcance (opcional)").selectOption("Optimización");
+  await dialog.getByRole("button", { name: "Crear tarea" }).click();
+  await expect(dialog).toHaveCount(0);
+  const card = page.getByLabel("Kanban de Publicidad digital").getByRole("button", { name: /QA tarea de pauta única/ });
+  await expect(card).toBeVisible();
+  const id = (await card.getAttribute("aria-label"))!.split(" ")[0];
+
+  const store = await workspace(page);
+  const matches = store.tasks.filter((task: { title: string }) => task.title === "QA tarea de pauta única");
+  expect(matches).toHaveLength(1);
+  expect(matches[0]).toMatchObject({ id, serviceId: "publicidad-digital", deliverable: "Optimización", workItem: { id: "CMP-EPSA-01" } });
+
+  await page.goto("/v2/clientes/epsa/tareas");
+  // La vista por defecto agrupa por persona: la tabla vive en la vista «Lista».
+  await page.getByRole("group", { name: "Ver tareas" }).getByRole("button", { name: "Lista", exact: true }).click();
+  const rows = page.getByRole("table", { name: "Tareas de EPSA / Line Up" }).locator(`tr[data-task-id="${id}"]`);
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText("Publicidad digital");
+  await expect(rows).toContainText("Line Up · Generación de demanda");
+  await rows.getByRole("link", { name: "QA tarea de pauta única" }).click();
+  await expect(page).toHaveURL(new RegExp(`/v2/clientes/epsa/campanas\\?seccion=tareas&task=${id}`));
+  await expect(page.getByRole("dialog", { name: new RegExp(`${id} QA tarea de pauta única`) })).toBeVisible();
+
+  // Isolation: ACA tasks never include it.
+  await page.goto("/v2/clientes/aca/tareas");
+  await expect(page.getByText("QA tarea de pauta única")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("archived filter, legacy migration, inactive module state and read-only role", async ({ page }) => {
+  const errors = errorsOf(page);
+  // Legacy persisted state without serviceId is migrated in place, without losing tasks.
+  await page.goto("/v2");
+  // Wait for the store to hydrate and write the seed, so the legacy payload is not overwritten.
+  await expect.poll(async () => Boolean(await workspace(page))).toBe(true);
+  await page.evaluate(() => {
+    const legacy = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      value: {
+        tasks: [
+          { id: "T-142", projectSlug: "lanzamiento-line-up-2027", title: "Definir key visual de campaña", owner: "Tomás Aguirre", prio: "Alta", due: "30 oct", dueKind: "today", status: "En aprobación", desc: "x", files: [], comments: [], activity: [] },
+          { id: "T-999", projectSlug: "performance-always-on", title: "Tarea anterior sin módulo", owner: "Sofía Ramírez", prio: "Media", due: "6 nov", dueKind: "week", status: "Por hacer", desc: "x", files: [], comments: [], activity: [] },
+          { id: "T-140", projectSlug: "lanzamiento-line-up-2027", title: "Kickoff con el comité de marketing", owner: "Valentina Ríos", prio: "Media", due: "3 oct", dueKind: "past", status: "Hecho", completedAt: "2026-10-03T15:00:00.000Z", desc: "x", files: [], comments: [], activity: [] },
+        ],
+        seq: 150, role: "admin", services: {}, ideas: [], ideaSeq: 40,
+      },
+    };
+    localStorage.setItem("avans-os:preview:v1:workspace", JSON.stringify(legacy));
+  });
+  await page.goto("/v2/clientes/epsa/estrategia?seccion=tareas");
+  await expect.poll(async () => (await workspace(page))?.tasks?.map((task: { id: string; serviceId: string }) => `${task.id}:${task.serviceId}`)).toEqual(["T-142:contenidos", "T-999:publicidad-digital", "T-140:estrategia"]);
+  await expect(page.getByRole("button", { name: /^T-140 / })).toHaveCount(0);
+  await page.getByRole("button", { name: "Archivadas (1)" }).click();
+  await expect(page.getByLabel("Kanban de Estrategia y coordinación").getByRole("button", { name: /^T-140 / })).toBeVisible();
+  await page.goto("/v2/clientes/aca/campanas?seccion=tareas");
+  await expect(page.getByLabel("Kanban de Publicidad digital").getByRole("button", { name: /^T-999 / })).toBeVisible();
+
+  // Inactive module: restricted state, nothing deleted.
+  await page.goto("/v2/clientes/aca/estrategia");
+  await expect(page.getByRole("heading", { name: "Estrategia y coordinación no está activo para ACA" })).toBeVisible();
+  await expect(page.getByText("Ningún dato se borra", { exact: false })).toBeVisible();
+
+  // Operative preview role, not assigned to Grupo Portland: read only.
+  await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem("avans-os:preview:v1:workspace")!);
+    raw.value.role = "operativo";
+    localStorage.setItem("avans-os:preview:v1:workspace", JSON.stringify(raw));
+  });
+  await page.goto("/v2/clientes/grupo-portland/desarrollo-web?seccion=proyectos");
+  await expect(page.getByRole("button", { name: "Nuevo proyecto web" })).toBeDisabled();
+  await expect(page.getByText("los permisos son visuales", { exact: false }).first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("contenidos, estrategia, web and audiovisual workspaces show their own objects", async ({ page }) => {
+  const errors = errorsOf(page);
+  await page.goto("/v2/clientes/epsa/contenido");
+  const contentNav = sectionNav(page, "Contenidos");
+  for (const label of ["Plan de contenidos", "Calendario", "Tareas", "Resultados", "Aprobaciones y seguimiento"]) {
+    await expect(contentNav.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
+  }
+  await expect(page.getByRole("navigation", { name: "Áreas de Contenidos" }).getByRole("link")).toHaveText(["Lineamientos", "Operación mensual"]);
+  await contentNav.getByRole("link", { name: "Calendario" }).click();
+  await expect(page.getByRole("grid", { name: /Calendario editorial · noviembre de 2026/i })).toBeVisible();
+  await page.getByRole("button", { name: /Teaser del lanzamiento Line Up/ }).click();
+  const panel = page.getByRole("dialog", { name: "Contenido: Teaser del lanzamiento Line Up", exact: true });
+  // A legacy approval stays an approval, never an implicit scheduled publication.
+  await expect(panel.getByText("Aprobación final del cliente", { exact: true }).first()).toBeVisible();
+  await expect(panel.getByText("Algo nuevo llega a la línea técnica.", { exact: true })).toBeVisible();
+  await panel.getByRole("button", { name: "Aprobar pieza final", exact: true }).click();
+  await expect(page.getByText("La pieza necesita un enlace al diseño final.", { exact: true })).toBeVisible();
+  await panel.getByLabel("Comentario o devolución").fill("Adjuntar la versión final del diseño");
+  await panel.getByRole("button", { name: "Solicitar ajustes", exact: true }).click();
+  await panel.getByLabel("Enlace a la versión de diseño").fill("https://example.com/line-up-v3.pdf");
+  await panel.getByLabel("Versión del diseño").fill("v3");
+  await panel.getByRole("button", { name: "Reenviar a revisión", exact: true }).click();
+  await expect(panel.getByText("Revisión interna del diseño", { exact: true }).first()).toBeVisible();
+  await panel.getByRole("button", { name: "Solicitar aprobación final", exact: true }).click();
+  await panel.getByRole("button", { name: "Aprobar pieza final", exact: true }).click();
+  await expect(panel.getByText("Aprobado", { exact: true }).first()).toBeVisible();
+  await expect(panel.getByText("Programado", { exact: true })).toHaveCount(0);
+  await panel.getByLabel("Fecha de programación").fill("2026-11-26");
+  await panel.getByLabel("Hora de programación").fill("10:30");
+  await panel.getByRole("button", { name: "Marcar programado", exact: true }).click();
+  await expect(panel.getByText("Programado", { exact: true }).first()).toBeVisible();
+  const persistedPiece = await page.evaluate(() => JSON.parse(localStorage.getItem("avans-os:preview:v1:client:epsa:module:contenidos:piezas")!).value.find((record: { id: string }) => record.id === "PZA-EPSA-01"));
+  expect(persistedPiece.values).toMatchObject({ copy: "Algo nuevo llega a la línea técnica.", estado: "Programado", version: "v3", archivoDiseno: "https://example.com/line-up-v3.pdf" });
+  expect(JSON.parse(persistedPiece.values.contentTransitions).map((entry: { to: string }) => entry.to)).toEqual(["Ajustes", "Revisión interna del diseño", "Aprobación final del cliente", "Aprobado", "Programado"]);
+  await page.keyboard.press("Escape");
+  await page.getByRole("group", { name: "Vista del calendario" }).getByRole("button", { name: "Semana" }).click();
+  await expect(page.getByText(/Semana del/)).toBeVisible();
+
+  await page.goto("/v2/clientes/epsa/estrategia?seccion=seguimiento");
+  const tracking = page.getByRole("table", { name: "Seguimiento de módulos de EPSA / Line Up" });
+  await expect(tracking.getByRole("row")).toHaveCount(4);
+  await page.goto("/v2/clientes/epsa/estrategia?seccion=recomendaciones");
+  await expect(page.getByRole("heading", { name: "Recomendaciones consolidadas" })).toBeVisible();
+  await expect(page.getByText("Pendiente de conexión").first()).toBeVisible();
+  await page.getByRole("button", { name: "Nueva recomendación" }).click();
+  await page.getByLabel(/^Recomendación/).fill("QA recomendación manual");
+  await page.getByRole("button", { name: "Guardar en este navegador" }).click();
+  await page.reload();
+  await expect(page.getByText("QA recomendación manual")).toBeVisible();
+
+  await page.goto("/v2/clientes/grupo-portland/desarrollo-web?seccion=sitemap");
+  await expect(page.getByRole("list", { name: "Sitemap" }).getByText("Unidad operativa")).toBeVisible();
+  await page.goto("/v2/clientes/edinovo/audiovisuales");
+  // Audiovisuales sigue el procedimiento «Jornada audiovisual»; las producciones quedan en «Guiones y entregas».
+  await expect(page.getByRole("list", { name: "Jornadas por etapa", exact: true })).toContainText("Serie educativa · grabación del episodio 1");
+  await page.goto("/v2/clientes/edinovo/audiovisuales?seccion=producciones");
+  await expect(page.getByText("Serie educativa 2026 · cuatro episodios").first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+for (const [name, width, height] of [["desktop", 1440, 900], ["notebook", 1280, 800], ["tablet", 820, 1180], ["mobile", 390, 844]] as const) {
+  test(`responsive ${name}: modules, client tasks and reports without horizontal overflow`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height });
+    const errors = errorsOf(page);
+    for (const path of [
+      "/v2/clientes/epsa/campanas",
+      "/v2/clientes/epsa/campanas?seccion=tareas",
+      "/v2/clientes/epsa/contenido?seccion=calendario",
+      "/v2/clientes/epsa/tareas",
+      "/v2/clientes/epsa?view=reportes",
+      "/v2/clientes/epsa/campanas?seccion=resultados",
+      "/v2/clientes/grupo-portland/desarrollo-web",
+    ]) {
+      await page.goto(path);
+      await expect(page.locator("main").first()).toBeVisible();
+      await noOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`${name}-${path.replace(/[^a-z0-9]+/gi, "_")}.png`), fullPage: true });
+    }
+    expect(errors).toEqual([]);
+  });
+}

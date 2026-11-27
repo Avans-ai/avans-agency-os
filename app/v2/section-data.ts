@@ -53,7 +53,7 @@ export const sectionData: Record<string, SectionConfig> = {
       { label: "Contexto validado", value: "84%", detail: "Promedio de completitud" },
     ],
     rows: [
-      { title: "Epsa", meta: "Cliente activo", detail: "Contexto estratégico, procesos, entregables, aprobaciones e histórico centralizados.", status: "Saludable" },
+      { title: "EPSA / Line Up", meta: "Cliente activo", detail: "Contexto estratégico, procesos, entregables, aprobaciones e histórico centralizados.", status: "Saludable" },
       { title: "ACA", meta: "Cliente activo", detail: "Cuenta con dependencias operativas pendientes y próximos hitos en seguimiento.", status: "Atención" },
       { title: "Grupo Portland", meta: "Cliente activo", detail: "Discovery, propuesta, proyectos y memoria disponibles desde una única ficha.", status: "Saludable" },
       { title: "Edinovo", meta: "Cliente activo", detail: "Feedback y aprendizajes recientes listos para consolidarse en contexto.", status: "Saludable" },

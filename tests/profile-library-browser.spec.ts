@@ -1,0 +1,83 @@
+import { readFileSync } from "node:fs";
+import { test, expect } from "@playwright/test";
+
+test("Ficha: local file, product relationship and glossary persist, isolate clients and respect visual role", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto("/v2/clientes/epsa?view=documentos&archivos=biblioteca");
+  await page.getByRole("button", { name: "Agregar archivo", exact: true }).click();
+  let editor = page.getByRole("dialog", { name: "Ficha de material" });
+  await editor.getByLabel("Nombre del material *", { exact: true }).fill("Catálogo local QA");
+  await editor.getByLabel("Categoría", { exact: true }).selectOption("Catálogos");
+  await editor.getByLabel("Tipo de material").selectOption("Archivo");
+  await editor.getByLabel("Adjuntar archivo").setInputFiles({ name: "catalogo-qa.txt", mimeType: "text/plain", buffer: Buffer.from("Catálogo QA: oferta comercial vigente") });
+  await editor.getByRole("button", { name: "Guardar material" }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByRole("article", { name: "Catálogo local QA" })).toBeVisible();
+  await page.reload();
+  const card = page.getByRole("article", { name: "Catálogo local QA" });
+  const [download] = await Promise.all([page.waitForEvent("download"), card.getByRole("button", { name: "Descargar" }).click()]);
+  expect(download.suggestedFilename()).toBe("catalogo-qa.txt");
+  expect(readFileSync((await download.path())!, "utf8")).toBe("Catálogo QA: oferta comercial vigente");
+
+  await page.goto("/v2/clientes/epsa?view=ficha&ficha=productos");
+  await page.getByRole("button", { name: "Crear producto o servicio" }).click();
+  editor = page.getByRole("dialog", { name: "Ficha de producto", exact: true });
+  await editor.getByLabel("Nombre del producto *", { exact: true }).fill("Producto Ficha QA");
+  await editor.getByLabel("Descripción del producto", { exact: true }).fill("Producto de prueba funcional");
+  await editor.getByLabel("Beneficios", { exact: true }).fill("Ahorra tiempo operativo");
+  await editor.getByRole("checkbox", { name: "Catálogo local QA · Catálogos" }).check();
+  await editor.getByRole("button", { name: "Guardar producto" }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByRole("article", { name: "Producto Ficha QA" })).toContainText("Ahorra tiempo operativo");
+  await page.getByRole("tab", { name: "Glosario", exact: true }).click();
+  await page.getByRole("button", { name: "Editar glosario", exact: true }).click();
+  editor = page.getByRole("dialog", { name: "Editar glosario de marca" });
+  await editor.getByLabel("Palabras que usamos").fill("cercanía\nconfianza");
+  await editor.getByLabel("Palabras que evitamos").fill("barato");
+  await editor.getByLabel("Tono de marca", { exact: true }).fill("Claro y directo QA");
+  await editor.getByRole("button", { name: "Guardar glosario" }).click();
+  await expect(editor).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Glosario de marca" })).toContainText("Claro y directo QA");
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("avans-os:preview:v1:client:epsa:knowledge:v1")!).value);
+  const product = saved.discovery.offerings.find((o: { name: string }) => o.name === "Producto Ficha QA");
+  expect(product.sourceIds).toHaveLength(1);
+  expect(saved.sources.find((s: { id: string }) => s.id === product.sourceIds[0]).metadata.brandMaterial.category).toBe("Catálogos");
+  await page.goto("/v2/clientes/aca?view=ficha&ficha=productos");
+  await expect(page.getByRole("article", { name: "Producto Ficha QA" })).toHaveCount(0);
+  await page.goto("/v2/clientes/epsa?view=ficha&ficha=glosario");
+  await page.getByRole("button", { name: /^Perfil:/ }).click();
+  await page.getByRole("group", { name: "Rol simulado" }).getByRole("button", { name: "Ejecutiva de cuentas", exact: true }).click();
+  await page.getByRole("button", { name: /^Perfil:/ }).click();
+  await expect(page.getByRole("button", { name: "Editar glosario", exact: true })).toHaveCount(0);
+  await expect(page.getByText("Claro y directo QA")).toBeVisible();
+  for (const width of [1440, 820, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  }
+  expect(errors).toEqual([]);
+});
+
+test("materials preserve edits and prevent duplicate URL; independent questionnaire remains accessible", async ({ page }) => {
+  await page.goto("/v2/clientes/epsa?view=documentos&archivos=biblioteca");
+  await page.getByRole("button", { name: "Agregar archivo", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Ficha de material" });
+  await editor.getByLabel("Nombre del material *").fill("Manual de marca QA");
+  await editor.getByLabel("Tipo de material").selectOption("URL");
+  await editor.getByLabel("URL del material *").fill("https://example.com/manual-qa.pdf");
+  await editor.getByRole("button", { name: "Guardar material" }).click();
+  await expect(editor).toHaveCount(0);
+  await page.getByRole("button", { name: "Agregar archivo", exact: true }).click();
+  await editor.getByLabel("Nombre del material *").fill("Duplicado QA");
+  await editor.getByLabel("Tipo de material").selectOption("URL");
+  await editor.getByLabel("URL del material *").fill("https://example.com/manual-qa.pdf");
+  await editor.getByRole("button", { name: "Guardar material" }).click();
+  await expect(editor.getByRole("alert")).toContainText("No se guardó");
+  await expect(page.getByRole("article", { name: "Duplicado QA" })).toHaveCount(0);
+  await editor.getByRole("button", { name: "Cerrar panel" }).click();
+  await page.goto("/v2/clientes/epsa?view=ficha");
+  await page.getByRole("link", { name: "Cuestionario inicial", exact: true }).first().click();
+  await expect(page).toHaveURL(/view=cuestionario/);
+  await expect(page.getByRole("button", { name: "Imprimir cuestionario vacío", exact: true })).toBeVisible();
+});

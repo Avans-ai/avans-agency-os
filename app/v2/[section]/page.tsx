@@ -6,7 +6,6 @@ import { architectureAreas } from "../architecture-data";
 import { AgencyClientGate } from "../components/agency-client-gate";
 import { AuditHub } from "../components/audit-hub";
 import { ArchitectureHub } from "../components/architecture-hub";
-import { ClientHub } from "../components/client-hub";
 import { FinanceHub } from "../components/finance-hub";
 import { HrHub } from "../components/hr-hub";
 import { InboxHub } from "../components/inbox-hub";
@@ -49,14 +48,6 @@ export default async function V2SectionPage({
     return (
       <V2Chrome active={section} title={navItem.label}>
         <InboxHub />
-      </V2Chrome>
-    );
-  }
-
-  if (section === "clientes") {
-    return (
-      <V2Chrome active={section} title={navItem.label}>
-        <ClientHub />
       </V2Chrome>
     );
   }
