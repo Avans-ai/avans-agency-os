@@ -8,7 +8,7 @@ import { readLocalJson, writeLocalBatch } from "../local-persistence";
 import type { OsClient, OsTask } from "../os-data";
 import { useOsStore } from "../os-store";
 import { previewActor } from "../preview-roles";
-import type { LocalWrite } from "../workflow-tasks";
+import { applyStageTask, chainBaseOf, isUnassigned, latestChainTask, type LocalWrite } from "../workflow-tasks";
 import {
   AD_ACTIONS, PAID_SERVICE, adState, adTaskId, applyAdAction, applyPlanAction, addAdComment, buildAdTask, buildPlanTask, campaignPlan, canActPaid,
   createAdRecord, linkedDesignRequest, mainChannel, ownerFor, paidNotification, paidTeam, planStepErrors, planTaskId, STAGE_OWNER, upsertAdDesignRequest,
@@ -92,13 +92,15 @@ export function usePaidOperations(client: OsClient) {
       const at = new Date().toISOString();
       const next = applyPlanAction(current, action, { actor, at, comment });
       const all = tasks();
-      const previous = all.find((task) => task.id === planTaskId(client.slug, current.id));
-      const task = buildPlanTask(client, next, previous, actor, at);
+      // Cadena de la planificación: validación del PM → (devuelta) ajuste del Líder técnico → nueva validación…
+      const base = planTaskId(client.slug, current.id);
+      const stage = applyStageTask(all, buildPlanTask(client, next, latestChainTask(all, base), actor, at), { base, at, actor, stageKey: (value) => value === "Borrador" ? "Devuelta al Líder técnico" : value });
+      const task = stage.current;
       next.values.tareaPlanId = task.id;
       const recipient = action === "approve" ? team.lt : task.owner;
       const kind = action === "submit" ? "approval" : action === "approve" ? "approval" : "changes";
       const title = action === "submit" ? `Validar planificación · ${next.values.nombre}` : action === "approve" ? `Planificación aprobada · ${next.values.nombre}: armá los briefs` : `Planificación devuelta · ${next.values.nombre}`;
-      const ok = store.commitWorkflow(task, paidNotification(task, recipient, `${action}-${at}`, at, kind, title), [{ key: moduleKey(client.slug, PAID_SERVICE, "campanas"), value: replace(records, next) }]);
+      const ok = store.commitWorkflow(stage.changed, isUnassigned(recipient) ? undefined : paidNotification(task, recipient, `${action}-${at}`, at, kind, title), [{ key: moduleKey(client.slug, PAID_SERVICE, "campanas"), value: replace(records, next) }]);
       if (!ok) return null;
       store.notify(action === "submit" ? `Enviada a validación de ${team.pm}` : action === "approve" ? "Planificación aprobada · Instancia 2 habilitada" : `Devuelta a ${team.lt}`, "success");
       return next;
@@ -125,9 +127,10 @@ export function usePaidOperations(client: OsClient) {
       if (campaignPlan(campaign).state !== "Aprobada") throw new Error("La planificación de la campaña tiene que estar aprobada por el PM (Instancia 1).");
       const at = new Date().toISOString();
       const ad = createAdRecord(client.slug, `ANU-${Date.now().toString(36).toUpperCase()}`, input, { actor, at, brief });
-      const task = buildAdTask(client, ad, undefined, actor, at, campaign.values.nombre);
+      const stage = applyStageTask(tasks(), buildAdTask(client, ad, undefined, actor, at, campaign.values.nombre), { base: adTaskId(client.slug, ad.id), at, actor });
+      const task = stage.current;
       ad.values.tareaId = task.id;
-      const ok = store.commitWorkflow(task, paidNotification(task, task.owner, `create-${at}`, at, "assignment", `Nuevo brief · ${ad.values.nombre}`), [{ key: moduleKey(client.slug, PAID_SERVICE, "anuncios"), value: [ad, ...read("anuncios")] }]);
+      const ok = store.commitWorkflow(stage.changed, isUnassigned(task.owner) ? undefined : paidNotification(task, task.owner, `create-${at}`, at, "assignment", `Nuevo brief · ${ad.values.nombre}`), [{ key: moduleKey(client.slug, PAID_SERVICE, "anuncios"), value: [ad, ...read("anuncios")] }]);
       if (!ok) return null;
       store.notify(`Brief enviado a ${task.owner} como tarea`, "success");
       return ad;
@@ -163,8 +166,11 @@ export function usePaidOperations(client: OsClient) {
       const next = applyAdAction(current, action, { actor: who, at, comment: options.comment, patch: options.patch });
       const campaign = read("campanas").find((item) => item.id === next.values.campana);
       const all = tasks();
-      const previous = all.find((task) => task.id === (current.values.tareaId || adTaskId(client.slug, current.id)));
-      const task = buildAdTask(client, next, previous, who, at, campaign?.values.nombre);
+      // Cada etapa del pedido es una tarea de su cadena: se completa la vigente y se crea la siguiente.
+      const linked = all.find((task) => task.id === (current.values.tareaId || adTaskId(client.slug, current.id)));
+      const base = linked ? chainBaseOf(linked) : adTaskId(client.slug, current.id);
+      const stage = applyStageTask(all, buildAdTask(client, next, latestChainTask(all, base), who, at, campaign?.values.nombre), { base, at, actor: who });
+      const task = stage.current;
       next.values.tareaId = task.id;
       const writes: LocalWrite[] = [];
       const design = upsertAdDesignRequest(readDesign(), next, { actor: who, at, taskId: task.id, designer: team.designer, reviewer: team.pm, campaignName: campaign?.values.nombre });
@@ -177,7 +183,7 @@ export function usePaidOperations(client: OsClient) {
       const returning = AD_ACTIONS[action].needsComment;
       const recipient = state === "En circulación" || state === "Finalizado" ? team.lt : ownerFor(client, state);
       const title = returning ? `Cambios pedidos · ${next.values.nombre}` : `${state} · ${next.values.nombre}`;
-      const ok = store.commitWorkflow(task, paidNotification(task, recipient, `${action}-${at}`, at, returning ? "changes" : state === "Aprobación del cliente" || state.startsWith("Validación") ? "review" : "owner", title), writes);
+      const ok = store.commitWorkflow(stage.changed, isUnassigned(recipient) ? undefined : paidNotification(task, recipient, `${action}-${at}`, at, returning ? "changes" : state === "Aprobación del cliente" || state.startsWith("Validación") ? "review" : "owner", title), writes);
       if (!ok) return null;
       store.notify(design.created ? `Pedido de diseño creado para ${team.designer}` : `${state} · responsable ${recipient}`, "success");
       return next;

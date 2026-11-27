@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { expectChain, openOf, type ChainTask } from "./task-chain-helpers";
 
 /* Publicidad digital · Funcionalidades 2. Persistencia local de la preview y roles visuales:
  * el rol se cambia en localStorage (no hay permisos de servidor). Métricas DE DEMOSTRACIÓN. */
@@ -17,7 +18,7 @@ async function asRole(page: Page, role: string, path: string) {
 async function noOverflow(page: Page) {
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 }
-type Task = { id: string; owner: string; status: string; serviceId: string; workflow?: { kind: string; stage: string } };
+type Task = ChainTask & { serviceId: string };
 type Note = { recipient: string; taskId: string; title: string; href: string };
 
 test("inicio: alerts, weekly semáforos, monthly budget, spend by channel, platforms not connected, open campaigns", async ({ page }) => {
@@ -102,7 +103,12 @@ test("instancia 1 → PM → instancia 2 → full ad flow with one task, one des
   await expect(page.getByText("Plan: Aprobada").first()).toBeVisible();
   workspace = await local(page, "workspace");
   expect(workspace.tasks.find((task: Task) => task.id === planTask.id).status).toBe("Hecho");
-  expect(workspace.notifications.some((n: Note) => n.taskId === planTask.id && n.recipient === "Martín Ledesma" && /armá los briefs/.test(n.title))).toBe(true);
+  // La aprobación cierra la cadena de la planificación (registro de cierre ya completado, sin tareas abiertas).
+  const planChain = workspace.tasks.filter((task: Task) => task.workItem?.id === campaignId);
+  expect(openOf(planChain)).toHaveLength(0);
+  const planClosed = expectChain(planChain, planTask.id);
+  expect(planClosed).toMatchObject({ status: "Hecho", workflow: { stage: "Aprobada" } });
+  expect(workspace.notifications.some((n: Note) => n.taskId === planClosed.id && n.recipient === "Martín Ledesma" && /armá los briefs/.test(n.title))).toBe(true);
 
   // Instancia 2: pedido de anuncio → brief al Content, con plazos por etapa.
   await asRole(page, "technical", `/v2/clientes/epsa/campanas?seccion=campanas&campana=${campaignId}`);
@@ -158,15 +164,19 @@ test("instancia 1 → PM → instancia 2 → full ad flow with one task, one des
   await step("pm", async () => {}, "Aprobar y enviar a diseño", "Diseño");
   let design = (await local(page, "client:epsa:module:diseno-marca:trabajos")).filter((r: { values: { anuncioId?: string } }) => r.values.anuncioId === ad.id);
   expect(design).toHaveLength(1);
-  expect(design[0].values).toMatchObject({ servicioOrigen: "publicidad-digital", campanaId: campaignId, responsable: "Tomás Aguirre", tareaId: taskId, operacion: "En producción" });
+  // Cada etapa es una tarea de la cadena del pedido: el pedido de diseño queda vinculado a la tarea de Diseño.
   workspace = await local(page, "workspace");
-  expect(workspace.tasks.find((task: Task) => task.id === taskId)).toMatchObject({ owner: "Tomás Aguirre", serviceId: "diseno-marca", workflow: { kind: "paid", stage: "Diseño" } });
+  const designTask = expectChain(workspace.tasks.filter((task: Task) => task.workItem?.id === ad.id), taskId);
+  expect(design[0].values).toMatchObject({ servicioOrigen: "publicidad-digital", campanaId: campaignId, responsable: "Tomás Aguirre", tareaId: designTask.id, operacion: "En producción" });
+  expect(designTask).toMatchObject({ owner: "Tomás Aguirre", serviceId: "diseno-marca", workflow: { kind: "paid", stage: "Diseño" } });
+  expect(workspace.tasks.find((task: Task) => task.id === taskId)).toMatchObject({ status: "Hecho", workflow: { stage: "Opciones de Content" } });
   // 3 Diseño → 4 Validación del PM del diseño → 5 Cliente.
   await step("designer", async (d) => { await d.getByLabel("Enlace a las piezas diseñadas (http/https)").fill("https://example.com/qa-placa"); }, "Enviar piezas a validación del PM", "Validación del diseño");
   await step("pm", async () => {}, "Aprobar diseño y enviar al cliente", "Aprobación del cliente");
   workspace = await local(page, "workspace");
-  expect(workspace.tasks.find((task: Task) => task.id === taskId)).toMatchObject({ owner: "Cliente · EPSA / Line Up", status: "En aprobación" });
-  const clientNote = workspace.notifications.find((n: Note) => n.taskId === taskId && n.recipient === "Cliente · EPSA / Line Up");
+  const clientTask = expectChain(workspace.tasks.filter((task: Task) => task.workItem?.id === ad.id), taskId);
+  expect(clientTask).toMatchObject({ owner: "Cliente · EPSA / Line Up", status: "En aprobación" });
+  const clientNote = workspace.notifications.find((n: Note) => n.taskId === clientTask.id && n.recipient === "Cliente · EPSA / Line Up");
   expect(clientNote.href).toBe(`/v2/portal/epsa?anuncio=${ad.id}`);
   // 5 Aprobación del cliente desde su portal.
   await page.goto(clientNote.href);
@@ -182,7 +192,11 @@ test("instancia 1 → PM → instancia 2 → full ad flow with one task, one des
   expect(design).toHaveLength(1);
   expect(design[0].values.operacion).toBe("Aprobados");
   workspace = await local(page, "workspace");
-  expect(workspace.tasks.filter((task: Task) => task.id.includes(ad.id)).map((task: Task) => [task.id, task.status])).toEqual([[taskId, "Hecho"]]);
+  const adTasks = workspace.tasks.filter((task: Task) => task.workItem?.id === ad.id);
+  expect(expectChain(adTasks, taskId)).toMatchObject({ status: "Hecho", workflow: { stage: "En circulación" } });
+  expect(openOf(adTasks)).toHaveLength(0);
+  // Las devoluciones quedan como ciclos nuevos de la misma etapa, nunca como tareas duplicadas.
+  expect(adTasks.filter((task: Task) => task.workflow?.stage === "Opciones de Content").length).toBe(2);
   const dialog = page.getByRole("dialog", { name: "Pedido: Placa QA · stock 48 h" });
   await expect(dialog.getByRole("region", { name: "Comentarios por versión" })).toContainText("Sumar el código de producto");
   await expect(dialog.getByRole("region", { name: "Historial del pedido" })).toContainText("Aprobar anuncio");

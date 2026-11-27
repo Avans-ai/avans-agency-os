@@ -11,7 +11,7 @@ import type { OsClient, OsTask } from "../os-data";
 import { useOsStore, type PreviewRole } from "../os-store";
 import { previewActor } from "../preview-roles";
 import { JORNADA_TYPES, type AudiovisualProvider } from "../providers-catalog";
-import type { LocalWrite } from "../workflow-tasks";
+import { applyStageTask, assignmentNotification, isUnassigned, latestChainTask, type LocalWrite, type StageTaskResult } from "../workflow-tasks";
 import { AV_DEMO_QUOTAS } from "./av-demo";
 import {
   addJornadaComment, applyJornadaAction, buildJornadaTask, createJornada, designLead, editableFields, emptyQuota, jornadaKey, jornadaNotification, jornadaState, jornadaTaskId,
@@ -71,11 +71,16 @@ export function useJornadaOperations(client: OsClient) {
     if (current.updatedAt !== record.updatedAt) throw new Error("La jornada cambió en otra vista. Revisá la versión actual antes de continuar.");
     return { records, current };
   }
-  function commit(record: ModuleRecord, records: ModuleRecord[], task: OsTask, notify: { eventId: string; kind: Parameters<typeof jornadaNotification>[4] } | null, extra: LocalWrite[] = []) {
+  /** Tarea de la etapa actual de la jornada aplicada a su cadena (completa la anterior y crea la siguiente). */
+  function stageOf(record: ModuleRecord, tasks: OsTask[], built: OsTask, actor: string, at: string): StageTaskResult {
+    return applyStageTask(tasks, built, { base: jornadaTaskId(client.slug, record), at, actor });
+  }
+  function commit(record: ModuleRecord, records: ModuleRecord[], stage: StageTaskResult, notify: { eventId: string; kind: Parameters<typeof jornadaNotification>[4] } | null, extra: LocalWrite[] = []) {
+    const task = stage.current;
     const exists = records.some((item) => item.id === record.id && item.client === client.slug);
     const writes: LocalWrite[] = [{ key: jornadaKey(client.slug), value: exists ? records.map((item) => item.id === record.id && item.client === client.slug ? record : item) : [record, ...records] }, ...extra];
-    const notification = notify ? jornadaNotification(task, record, notify.eventId, record.updatedAt, notify.kind) : undefined;
-    return store.commitWorkflow(task, notification, writes);
+    const notification = isUnassigned(task.owner) ? undefined : notify ? jornadaNotification(task, record, notify.eventId, record.updatedAt, notify.kind) : stage.created ? assignmentNotification(task, record.updatedAt) : undefined;
+    return store.commitWorkflow(stage.changed, notification, writes);
   }
 
   function create(input: NewJornada) {
@@ -85,9 +90,9 @@ export function useJornadaOperations(client: OsClient) {
       const at = new Date().toISOString();
       const record = createJornada({ ...input, id: `JOR-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, client, actor, at, types: JORNADA_TYPES });
       const usage = quotaUsage(readQuota(client.slug), [record, ...readJornadas(client.slug)]);
-      const task = buildJornadaTask(client, record, tasks, actor, at, usage);
-      record.values.tareaId = task.id;
-      return commit(record, readJornadas(client.slug), task, { eventId: `${client.slug}-${record.id}-created`, kind: "assignment" }) ? record : null;
+      const stage = stageOf(record, tasks, buildJornadaTask(client, record, tasks, actor, at, usage), actor, at);
+      record.values.tareaId = stage.current.id;
+      return commit(record, readJornadas(client.slug), stage, { eventId: `${client.slug}-${record.id}-created`, kind: "assignment" }) ? record : null;
     } catch (error) { store.notify(error instanceof Error ? error.message : "No se pudo crear la jornada.", "error"); return null; }
   }
 
@@ -98,9 +103,14 @@ export function useJornadaOperations(client: OsClient) {
       const quota = readQuota(client.slug);
       const before = quotaUsage(quota, records);
       const taskId = jornadaTaskId(client.slug, current);
-      const next = applyJornadaAction(current, action, { role, actor, client, providerId: options.providerId, comment: options.comment, patch: options.patch, available: before.available, taskId });
-      const nextRecords = records.map((item) => item.id === next.id && item.client === client.slug ? next : item);
-      const task = buildJornadaTask(client, next, tasks, actor, next.updatedAt, quotaUsage(quota, nextRecords));
+      const applied = applyJornadaAction(current, action, { role, actor, client, providerId: options.providerId, comment: options.comment, patch: options.patch, available: before.available, taskId });
+      const nextRecords = records.map((item) => item.id === applied.id && item.client === client.slug ? applied : item);
+      const chain = stageOf(applied, tasks, buildJornadaTask(client, applied, tasks, actor, applied.updatedAt, quotaUsage(quota, nextRecords)), actor, applied.updatedAt);
+      const task = chain.current;
+      // La transición y la jornada quedan vinculadas a la tarea de la etapa nueva.
+      const transitions = JSON.parse(applied.values.jornadaTransitions || "[]") as { taskId: string }[];
+      if (transitions.length) transitions[transitions.length - 1].taskId = task.id;
+      const next: ModuleRecord = { ...applied, values: { ...applied.values, tareaId: task.id, jornadaTransitions: JSON.stringify(transitions) } };
       const extra: LocalWrite[] = [];
       const state = jornadaState(next);
       const designKey = moduleKey(client.slug, "diseno-marca", "trabajos");
@@ -114,7 +124,7 @@ export function useJornadaOperations(client: OsClient) {
         const deliveryKey = moduleKey(client.slug, "audiovisuales", "entregas");
         extra.push({ key: deliveryKey, value: upsertJornadaDelivery(readLocalJson<ModuleRecord[]>(deliveryKey, seedRecords(client.slug, "audiovisuales", "entregas")), next, { actor, at: next.updatedAt }) });
       }
-      const ok = commit(next, records, task, { eventId: `${client.slug}-${next.id}-${next.updatedAt}-${action}`, kind: notificationKind(action) }, extra);
+      const ok = commit(next, records, chain, { eventId: `${client.slug}-${next.id}-${next.updatedAt}-${action}`, kind: notificationKind(action) }, extra);
       if (ok && (action === "validate" || action === "cancel")) syncQuotaBlocks();
       if (ok) store.notify(`${current.values.titulo}: ${state} · responsable ${task.owner}`, "success");
       return ok;
@@ -136,9 +146,10 @@ export function useJornadaOperations(client: OsClient) {
       }
       const at = new Date().toISOString();
       const next: ModuleRecord = { ...current, user: actor, updatedAt: at, values: { ...current.values, ...clean }, history: [{ at, user: actor, text: `Actualizó ${Object.keys(clean).filter((key) => key !== "proveedor").join(", ")}` }, ...current.history] };
-      const task = buildJornadaTask(client, next, tasks, actor, at, quotaUsage(readQuota(client.slug), records));
-      const previous = tasks.find((item) => item.id === task.id);
-      return commit(next, records, task, previous && previous.owner !== task.owner ? { eventId: `${client.slug}-${next.id}-${at}-owner`, kind: "owner" } : null);
+      const stage = stageOf(next, tasks, buildJornadaTask(client, next, tasks, actor, at, quotaUsage(readQuota(client.slug), records)), actor, at);
+      const previous = tasks.find((item) => item.id === stage.current.id);
+      const task = stage.current;
+      return commit(next, records, stage, previous && previous.owner !== task.owner ? { eventId: `${client.slug}-${next.id}-${at}-owner`, kind: "owner" } : null);
     } catch (error) { store.notify(error instanceof Error ? error.message : "No se pudo guardar la jornada.", "error"); return false; }
   }
 
@@ -150,9 +161,9 @@ export function useJornadaOperations(client: OsClient) {
       if (role === "provider" && record.values.proveedorId !== options.providerId) throw new Error("Esta jornada no está asignada a tu estudio.");
       const { records, current } = fresh(record);
       const next = addJornadaComment(current, { actor, text, visibility, at: new Date().toISOString() });
-      const base = buildJornadaTask(client, next, tasks, actor, next.updatedAt);
-      const task = { ...base, comments: [...base.comments, { who: actor, when: next.updatedAt, text: `${visibility === "internal" ? "Interno" : visibility === "provider" ? "Con el proveedor" : "Con el cliente"}: ${text.trim()}` }] };
-      return commit(next, records, task, null);
+      const stage = stageOf(next, tasks, buildJornadaTask(client, next, tasks, actor, next.updatedAt), actor, next.updatedAt);
+      const task = { ...stage.current, comments: [...stage.current.comments, { who: actor, when: next.updatedAt, text: `${visibility === "internal" ? "Interno" : visibility === "provider" ? "Con el proveedor" : "Con el cliente"}: ${text.trim()}` }] };
+      return commit(next, records, { ...stage, current: task, changed: stage.changed.map((item) => item.id === task.id ? task : item) }, null);
     } catch (error) { store.notify(error instanceof Error ? error.message : "No se pudo guardar el comentario.", "error"); return false; }
   }
 
@@ -172,8 +183,9 @@ export function useJornadaOperations(client: OsClient) {
     const records = readJornadas(client.slug).filter((record) => record.client === client.slug && jornadaState(record) === "Validación");
     const usage = quotaUsage(readQuota(client.slug), readJornadas(client.slug));
     const blocked = usage.available < 1 ? "Sin jornadas disponibles en el cupo contratado" : undefined;
-    const ids = new Set(records.map((record) => jornadaTaskId(client.slug, record)));
     const latest = readLocalJson<{ tasks: OsTask[] }>("workspace", { tasks: store.tasks }).tasks;
+    // Solo la tarea vigente de cada jornada (la de Validación) refleja el bloqueo por cupo.
+    const ids = new Set(records.map((record) => latestChainTask(latest, jornadaTaskId(client.slug, record))?.id ?? jornadaTaskId(client.slug, record)));
     if (!latest.some((task) => ids.has(task.id) && task.blocked !== blocked)) return;
     store.commitTasks((tasks) => tasks.map((task) => ids.has(task.id) && task.blocked !== blocked ? { ...task, blocked } : task), []);
   }

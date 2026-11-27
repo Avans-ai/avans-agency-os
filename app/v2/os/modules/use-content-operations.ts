@@ -6,7 +6,7 @@ import type { OsClient, OsTask } from "../os-data";
 import { useOsStore } from "../os-store";
 import { previewActor } from "../preview-roles";
 import { projectPortalContent } from "../portal/portal-model";
-import { buildContentTask, contentOwner, contentTaskId, workflowNotification, type LocalWrite } from "../workflow-tasks";
+import { assignmentNotification, contentOwner, contentStageTasks, isUnassigned, workflowNotification, type LocalWrite, type StageTaskResult, type WorkflowNotification } from "../workflow-tasks";
 import { resetContentDemo } from "./content-demo-tasks";
 import { upsertContentDesignRequest } from "./content-design";
 import { addContentComment, applyContentAction, clientRequests, clientRequestValues, contentComments, contentState, contentTransitions, PREPRODUCTION_FIELDS, recordContentChange, type ContentAction, type ContentRole } from "./content-workflow";
@@ -48,7 +48,14 @@ export function useContentOperations(client: OsClient) {
     const tasks = readLocalJson<{ tasks: OsTask[] }>("workspace", { tasks: store.tasks }).tasks;
     return { key, records, fresh, tasks };
   }
-  function save(record: ModuleRecord, records: ModuleRecord[], task: OsTask, eventId?: string, kind?: Parameters<typeof workflowNotification>[3], extraWrites: LocalWrite[] = []) {
+  /** Reemplaza la tarea vigente de la etapa (p. ej. respuesta del cliente) dentro del resultado de la cadena. */
+  function withCurrent(stage: StageTaskResult, patch: (task: OsTask) => OsTask): StageTaskResult {
+    const current = patch(stage.current);
+    return { ...stage, current, changed: stage.changed.map((item) => item.id === current.id ? current : item) };
+  }
+  /** Guarda contenido, cadena de tareas, pedido de diseño, versión y avisos en un solo lote (todo o nada). */
+  function save(record: ModuleRecord, records: ModuleRecord[], stage: StageTaskResult, eventId?: string, kind?: Parameters<typeof workflowNotification>[3], extraWrites: LocalWrite[] = []) {
+    const task = stage.current;
     const writes: LocalWrite[] = [...extraWrites, { key: moduleKey(client.slug, "contenidos", "piezas"), value: records.map((item) => item.id === record.id && item.client === client.slug ? record : item) }];
     const state = contentState(record);
     const designKey = moduleKey(client.slug, "diseno-marca", "trabajos");
@@ -78,30 +85,33 @@ export function useContentOperations(client: OsClient) {
         writes.push({ key: libraryKey, value: result.records.map((item) => item.id === result.record.id ? { ...item, source: record.source } : item) });
       }
     }
-    const notification = eventId ? workflowNotification(task, eventId, record.updatedAt, kind) : undefined;
-    return store.commitWorkflow(task, notification, writes);
+    // Aviso del evento al responsable de la etapa; si la etapa es nueva y no hubo evento, aviso de asignación (id estable).
+    const notification: WorkflowNotification | undefined = isUnassigned(task.owner) ? undefined : eventId ? workflowNotification(task, eventId, record.updatedAt, kind) : stage.created ? assignmentNotification(task, record.updatedAt) : undefined;
+    return store.commitWorkflow(stage.changed, notification, writes);
   }
   function transition(record: ModuleRecord, action: ContentAction, options: ContentOperationOptions = {}) {
     try {
       const { records, fresh, tasks } = current(record, options.role);
       const effectiveRole = options.role === "client" ? "client" : role!;
       const actor = options.actor || previewActor(store.role);
-      let next = applyContentAction(fresh, action, { ...options, actor, role: effectiveRole, taskId: contentTaskId(client.slug, fresh, tasks) });
+      let next = applyContentAction(fresh, action, { ...options, actor, role: effectiveRole });
+      // La etapa nueva completa la tarea vigente y crea (o reabre) la suya: la transición queda vinculada a esa tarea.
+      const stage = contentStageTasks(client, next, tasks, actor, next.updatedAt);
       const transitions = contentTransitions(next);
-      transitions[transitions.length - 1].responsible = contentOwner(client, next);
-      next = { ...next, values: { ...next.values, contentTransitions: JSON.stringify(transitions) } };
+      transitions[transitions.length - 1].responsible = stage.current.owner || contentOwner(client, next);
+      transitions[transitions.length - 1].taskId = stage.current.id;
+      next = { ...next, values: { ...next.values, contentTransitions: JSON.stringify(transitions), tareaId: stage.current.id } };
       if (options.guidelineOverride?.length) next = withGuidelineOverride(next, options.guidelineOverride, actor, next.updatedAt, `Enviar a revisión · ${transitions[transitions.length - 1].to}`);
-      const task = buildContentTask(client, next, tasks, actor, next.updatedAt);
-      return save(next, records, task, `${client.slug}-${record.id}-${transitions[transitions.length - 1].id}`, effectiveRole === "client" ? "client-response" : action === "request-changes" ? "changes" : action.startsWith("approve") ? "approval" : action === "request-information" ? "blocked" : "review");
+      return save(next, records, stage, `${client.slug}-${record.id}-${transitions[transitions.length - 1].id}`, effectiveRole === "client" ? "client-response" : action === "request-changes" ? "changes" : action.startsWith("approve") ? "approval" : action === "request-information" ? "blocked" : "review");
     } catch (error) { store.notify(error instanceof Error ? error.message : "No se pudo completar la transición.", "error"); return false; }
   }
   function sync(record: ModuleRecord) {
     try {
       const { records, fresh, tasks } = current(record);
-      const task = buildContentTask(client, fresh, tasks, previewActor(store.role), fresh.updatedAt);
-      const previous = tasks.find((item) => item.id === task.id);
-      const changedOwner = previous?.owner !== task.owner;
-      return save(fresh, records, task, !previous || changedOwner ? `${client.slug}-${record.id}-${fresh.updatedAt}` : undefined, previous ? "owner" : "assignment");
+      const stage = contentStageTasks(client, fresh, tasks, previewActor(store.role), fresh.updatedAt);
+      const previous = tasks.find((item) => item.id === stage.current.id);
+      const changedOwner = previous?.owner !== stage.current.owner;
+      return save(fresh, records, stage, !previous || changedOwner ? `${client.slug}-${record.id}-${fresh.updatedAt}` : undefined, previous ? "owner" : "assignment");
     } catch (error) { store.notify(error instanceof Error ? error.message : "No se pudo vincular la tarea.", "error"); return false; }
   }
   function comment(record: ModuleRecord, options: ContentCommentOptions) {
@@ -119,16 +129,13 @@ export function useContentOperations(client: OsClient) {
         const updated = list.map((item) => item.id === options.requestId ? { ...item, status: "Recibido" as const, responseAt: next.updatedAt, responseBy: actor, response: options.text, attachmentId: options.attachmentId || item.attachmentId, attachmentName: options.attachmentName || item.attachmentName, attachmentUrl: options.attachmentUrl || item.attachmentUrl } : item);
         next = { ...next, values: { ...next.values, ...clientRequestValues(updated) } };
       }
-      const task = buildContentTask(client, next, tasks, actor, next.updatedAt);
-      if (fromClient) {
-        task.owner = next.values.responsable || client.team.find((p) => /Contenido/.test(p.role))?.name || "Content por asignar";
-        task.title = `Revisar respuesta del cliente · ${next.values.titulo}`;
-        task.status = "Por hacer";
-        task.completedAt = undefined;
-      }
       const last = contentComments(next).at(-1)!;
-      task.comments = [...task.comments, { who: actor, when: next.updatedAt, text: options.text || "Adjuntó material" }];
-      return save(next, records, task, `${client.slug}-${record.id}-${last.id}`, fromClient ? "client-response" : "review");
+      const stage = withCurrent(contentStageTasks(client, next, tasks, actor, next.updatedAt), (task) => ({
+        ...task,
+        ...(fromClient ? { owner: next.values.responsable || client.team.find((p) => /Contenido/.test(p.role))?.name || "Pendiente de asignación", title: `Revisar respuesta del cliente · ${next.values.titulo}`, status: "Por hacer" as const, completedAt: undefined, approver: undefined, approvalTitle: undefined } : {}),
+        comments: [...task.comments, { who: actor, when: next.updatedAt, text: options.text || "Adjuntó material" }],
+      }));
+      return save(next, records, stage, `${client.slug}-${record.id}-${last.id}`, fromClient ? "client-response" : "review");
     } catch (error) { store.notify(error instanceof Error ? error.message : "No se pudo guardar el comentario.", "error"); return false; }
   }
   function saveDraft(values: Record<string, string>, previous?: ModuleRecord, extraWrites: LocalWrite[] | ((record: ModuleRecord) => LocalWrite[]) = []): ModuleRecord | null {
@@ -154,11 +161,11 @@ export function useContentOperations(client: OsClient) {
         history: [{ at, user: actor, text: previous ? "Actualizó la propuesta de contenido" : "Creó el borrador de contenido" }, ...(previous?.history || [])],
       };
       if (override.length) record = withGuidelineOverride(record, override, actor, at, "Guardar borrador");
-      record.values.tareaId = contentTaskId(client.slug, record, data.tasks);
-      const task = buildContentTask(client, record, data.tasks, actor, at);
-      const oldTask = data.tasks.find((item) => item.id === task.id);
-      const event = !oldTask || oldTask.owner !== task.owner ? `${client.slug}-${record.id}-${at}` : undefined;
-      return save(record, previous ? data.records : [record, ...data.records], task, event, oldTask ? "owner" : "assignment", typeof extraWrites === "function" ? extraWrites(record) : extraWrites) ? record : null;
+      const stage = contentStageTasks(client, record, data.tasks, actor, at);
+      record.values.tareaId = stage.current.id;
+      const oldTask = data.tasks.find((item) => item.id === stage.current.id);
+      const event = !oldTask || oldTask.owner !== stage.current.owner ? `${client.slug}-${record.id}-${at}` : undefined;
+      return save(record, previous ? data.records : [record, ...data.records], stage, event, oldTask ? "owner" : "assignment", typeof extraWrites === "function" ? extraWrites(record) : extraWrites) ? record : null;
     } catch (error) { store.notify(error instanceof Error ? error.message : "No se pudo guardar el contenido.", "error"); return null; }
   }
   /** Preproducción: copy definitivo, guion, wireframe, referencias, material e indicaciones antes del diseño. */
@@ -171,8 +178,7 @@ export function useContentOperations(client: OsClient) {
       const allowed = new Set(PREPRODUCTION_FIELDS.map((field) => field.key));
       const patch = Object.fromEntries(Object.entries(values).filter(([key]) => allowed.has(key)).map(([key, value]) => [key, value.trim()]));
       const next: ModuleRecord = { ...fresh, user: actor, updatedAt: at, values: recordContentChange(fresh, { ...fresh.values, ...patch }, actor, at), history: [{ at, user: actor, text: "Actualizó la preproducción" }, ...fresh.history] };
-      const task = buildContentTask(client, next, tasks, actor, at);
-      return save(next, records, task);
+      return save(next, records, contentStageTasks(client, next, tasks, actor, at));
     } catch (error) { store.notify(error instanceof Error ? error.message : "No se pudo guardar la preproducción.", "error"); return false; }
   }
   /** Quita solo los registros de demostración de esta cuenta y los vuelve a cargar. */

@@ -48,7 +48,7 @@ async function setRole(page: Page, label: string) {
   await page.getByRole("button", { name: /^Perfil:/ }).click();
 }
 
-test("review updates one central task, notification opens the content, role review is traced and another client is unchanged", async ({ page }) => {
+test("sending to review completes the draft task and assigns the PM review task (origin, stage, link); notification opens the content; another client is unchanged", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const tasks = await prepare(page);
@@ -56,35 +56,48 @@ test("review updates one central task, notification opens the content, role revi
   await page.getByRole("dialog", { name: `Contenido: ${title}`, exact: true }).getByRole("button", { name: "Enviar a revisión interna", exact: true }).click();
   await expect.poll(async () => (await readWorkflow(page)).epsa[0].values.estado).toBe("Revisión interna de producción");
   let saved = await readWorkflow(page);
-  expect(saved.workspace.tasks).toHaveLength(2);
-  expect(saved.workspace.tasks.find((task: { id: string }) => task.id === tasks[0].id)).toMatchObject({ owner: "Valentina Ríos", status: "En aprobación" });
+  // La tarea del borrador (id histórico) queda completada y nace la revisión del PM en la misma cadena.
+  expect(saved.workspace.tasks).toHaveLength(3);
+  const reviewId = `${tasks[0].id}-revision-interna-de-produccion-1`;
+  expect(saved.workspace.tasks.find((task: { id: string }) => task.id === tasks[0].id)).toMatchObject({ status: "Hecho", owner: "Lucía Benítez", workflow: { stage: "Borrador" } });
+  expect(saved.workspace.tasks.find((task: { id: string }) => task.id === reviewId)).toMatchObject({
+    owner: "Valentina Ríos", status: "En aprobación", chainId: tasks[0].id, previousTaskId: tasks[0].id, clientSlug: "epsa", serviceId: "contenidos",
+    title: "Revisar propuesta · QA trazabilidad de tarea única", workItem: { collection: "piezas", id: recordId },
+    workflow: { kind: "content", stage: "Revisión interna de producción", href: `/v2/clientes/epsa/contenido?seccion=piezas&registro=${recordId}` },
+  });
+  expect(saved.epsa[0].values.tareaId).toBe(reviewId);
   expect(saved.workspace.notifications).toHaveLength(1);
-  expect(saved.workspace.notifications[0]).toMatchObject({ taskId: tasks[0].id, recipient: "Valentina Ríos", href: `/v2/clientes/epsa/contenido?seccion=piezas&registro=${recordId}` });
+  expect(saved.workspace.notifications[0]).toMatchObject({ taskId: reviewId, recipient: "Valentina Ríos", href: `/v2/clientes/epsa/contenido?seccion=piezas&registro=${recordId}` });
   expect(saved.aca).toEqual(before.aca);
 
   await page.goto("/v2");
   await setRole(page, "Project Manager · Valentina Ríos");
   await page.getByRole("button", { name: /^Notificaciones,/ }).first().click();
-  await page.getByRole("dialog", { name: "Notificaciones", exact: true }).getByRole("link", { name: /Revisión interna de producción · QA trazabilidad/ }).click();
+  await page.getByRole("dialog", { name: "Notificaciones", exact: true }).getByRole("link", { name: /Revisar propuesta · QA trazabilidad/ }).click();
   await expect(page.getByRole("dialog", { name: `Contenido: ${title}`, exact: true })).toBeVisible();
   await expect.poll(async () => Boolean((await readWorkflow(page)).workspace.notifications[0].readAt)).toBe(true);
   await page.getByRole("dialog", { name: `Contenido: ${title}`, exact: true }).getByRole("button", { name: "Enviar al cliente", exact: true }).click();
   await expect.poll(async () => (await readWorkflow(page)).epsa[0].values.estado).toBe("Revisión preliminar del cliente");
   saved = await readWorkflow(page);
-  expect(saved.workspace.tasks).toHaveLength(2);
+  expect(saved.workspace.tasks).toHaveLength(4);
+  const clientId = `${tasks[0].id}-revision-preliminar-del-cliente-1`;
+  expect(saved.workspace.tasks.find((task: { id: string }) => task.id === reviewId)).toMatchObject({ status: "Hecho", owner: "Valentina Ríos" });
+  expect(saved.workspace.tasks.find((task: { id: string }) => task.id === clientId)).toMatchObject({ status: "En aprobación", owner: "Cliente · EPSA / Line Up" });
   expect(saved.workspace.notifications).toHaveLength(2);
   expect(new Set(saved.workspace.notifications.map((item: { id: string }) => item.id)).size).toBe(2);
   const transitions = JSON.parse(saved.epsa[0].values.contentTransitions);
   expect(transitions).toHaveLength(2);
-  expect(transitions[1]).toMatchObject({ actor: "Valentina Ríos", taskId: tasks[0].id, responsible: "Cliente · EPSA / Line Up" });
+  expect(transitions[0]).toMatchObject({ taskId: reviewId, responsible: "Valentina Ríos" });
+  expect(transitions[1]).toMatchObject({ actor: "Valentina Ríos", taskId: clientId, responsible: "Cliente · EPSA / Line Up" });
   expect(saved.aca).toEqual(before.aca);
 
   await page.goto("/v2/clientes/epsa/tareas");
   await page.getByRole("group", { name: "Ver tareas" }).getByRole("button", { name: "Lista", exact: true }).click();
-  await expect(page.getByRole("table", { name: "Tareas de EPSA / Line Up" }).locator(`tr[data-task-id="${tasks[0].id}"]`)).toHaveCount(1);
+  // Las tareas completadas de la cadena se conservan y siguen visibles (no se archivan antes de 30 días).
+  for (const id of [tasks[0].id, reviewId, clientId]) await expect(page.getByRole("table", { name: "Tareas de EPSA / Line Up" }).locator(`tr[data-task-id="${id}"]`)).toHaveCount(1);
   await page.reload();
   saved = await readWorkflow(page);
-  expect(saved.workspace.tasks).toHaveLength(2);
+  expect(saved.workspace.tasks).toHaveLength(4);
   expect(saved.workspace.notifications).toHaveLength(2);
   expect(errors).toEqual([]);
 });
@@ -160,8 +173,9 @@ test("a workflow transition in another tab invalidates an older task undo withou
   await expect(undo).toBeHidden({ timeout: 1000 });
   await expect.poll(async () => (await readWorkflow(page)).epsa[0].values.estado).toBe("Revisión interna de producción");
   const after = await readWorkflow(page);
-  expect(after.workspace.tasks).toHaveLength(3);
-  expect(after.workspace.tasks.find((task: { id: string }) => task.id === tasks[0].id)).toMatchObject({ owner: "Valentina Ríos", status: "En aprobación", workflow: { stage: "Revisión interna de producción" } });
+  expect(after.workspace.tasks).toHaveLength(4);
+  expect(after.workspace.tasks.find((task: { id: string }) => task.id === tasks[0].id)).toMatchObject({ status: "Hecho", workflow: { stage: "Borrador" } });
+  expect(after.workspace.tasks.find((task: { id: string }) => task.id === `${tasks[0].id}-revision-interna-de-produccion-1`)).toMatchObject({ owner: "Valentina Ríos", status: "En aprobación", workflow: { stage: "Revisión interna de producción" } });
   expect(after.workspace.tasks.find((task: { id: string }) => task.id === manual.id)).toEqual(manual);
   expect(after.aca).toEqual(before.aca);
   await page.reload();

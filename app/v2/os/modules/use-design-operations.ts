@@ -6,7 +6,7 @@ import { readLocalJson, writeLocalBatch } from "../local-persistence";
 import { osProjects, type OsClient, type OsTask } from "../os-data";
 import { useOsStore } from "../os-store";
 import { previewActor } from "../preview-roles";
-import { dueKindForDate, workflowNotification, type LocalWrite } from "../workflow-tasks";
+import { applyStageTask, assignmentNotification, chainBaseOf, dueKindForDate, isUnassigned, latestChainTask, ownerOrPending, upsertTasks, workflowNotification, type LocalWrite, type StageTaskResult } from "../workflow-tasks";
 import type { ModuleRecord } from "./types";
 import { DESIGN_DEMO_TASK_DATE } from "./design-demo";
 import { designComments, designStage, resetDemoRecords } from "./design-operation";
@@ -15,13 +15,26 @@ import { moduleKey, seedRecords } from "./store";
 const SERVICE = "diseno-marca";
 const DONE = ["Aprobados", "Entregados", "Aprobado", "Hecho", "Entregado", "Cerrado"];
 
-/** Older module tasks identify their client through the project, before clientSlug existed. */
+/** Tarea vigente del pedido (la de su etapa actual dentro de la cadena).
+ * Las tareas anteriores identifican al cliente por el proyecto, antes de que existiera clientSlug. */
 export function designRequestTask(tasks: OsTask[], record: ModuleRecord) {
   if (record.module !== "diseno-marca" || record.collection !== "trabajos") return undefined;
-  return tasks.find((task) => clientOfTask(task)?.slug === record.client
+  const first = tasks.find((task) => clientOfTask(task)?.slug === record.client
     && serviceForTask(task) === "diseno-marca"
     && task.workItem?.collection === "trabajos"
     && task.workItem.id === record.id);
+  return first ? latestChainTask(tasks, chainBaseOf(first)) ?? first : undefined;
+}
+/** Pendientes y En producción son el mismo trabajo (diseñar); Aprobados y Entregados cierran el pedido. */
+export function designTaskStage(stage: string) {
+  return stage === "Pendientes" || stage === "En producción" ? "Producción" : stage;
+}
+const DESIGN_VERB: Record<string, string> = { "En revisión interna": "Revisar diseño", Ajustes: "Ajustar diseño", "Esperando aprobación": "Registrar aprobación del diseño" };
+/** Tarea de la etapa actual del pedido aplicada a su cadena (completa la anterior y crea la siguiente). */
+export function designStageTasks(client: OsClient, record: ModuleRecord, tasks: OsTask[], actor: string, at: string): StageTaskResult {
+  const previous = designRequestTask(tasks, record);
+  const base = previous ? chainBaseOf(previous) : `DESIGN-${client.slug}-${record.id}`;
+  return applyStageTask(tasks, buildDesignTask(client, record, previous, actor, at), { base, at, actor, stageKey: designTaskStage });
 }
 
 /** Tarea única del pedido: la misma entidad se actualiza en cada cambio de estado o responsable. */
@@ -34,7 +47,9 @@ export function buildDesignTask(client: OsClient, record: ModuleRecord, previous
     projectSlug: previous?.projectSlug || osProjects.find((p) => p.clientSlug === client.slug)?.slug || "", serviceId: "diseno-marca",
     workItem: { id: record.id, collection: "trabajos", label: record.values.nombre },
     workflow: { kind: "design", stage, href: `/v2/clientes/${client.slug}/diseno-marca?seccion=pedidos&registro=${encodeURIComponent(record.id)}` },
-    title: `Diseñar · ${record.values.nombre}`, owner: record.values.responsable || "Diseñador por asignar",
+    title: `${DESIGN_VERB[stage] ?? "Diseñar"} · ${record.values.nombre}`,
+    // La revisión es del revisor configurado en el pedido; si no hay, queda pendiente de asignación (no se inventa).
+    owner: ownerOrPending(review ? record.values.revisor || record.values.responsable : record.values.responsable),
     prio: (["Alta", "Media", "Baja"] as const).find((p) => p === record.values.prioridad) || previous?.prio || "Media",
     due: record.values.fechaObjetivo || "Sin fecha", dueKind: done ? "past" : dueKindForDate(record.values.fechaObjetivo, at),
     approver: review ? record.values.revisor || undefined : undefined,
@@ -66,11 +81,16 @@ export function useDesignOperations(client: OsClient) {
     const tasks = readLocalJson<{ tasks: OsTask[] }>("workspace", { tasks: store.tasks }).tasks;
     const previous = designRequestTask(tasks, record);
     const at = new Date().toISOString();
-    const task = buildDesignTask(client, record, previous, previewActor(store.role), at);
+    const stage = designStageTasks(client, record, tasks, previewActor(store.role), at);
+    const task = stage.current;
     const savedRecord = { ...record, values: { ...record.values, tareaId: task.id } };
+    // El pedido se guarda con el id de su tarea vigente, en el mismo lote que la cadena de tareas.
     const writes = options.persistRecord ? [{ key, value: oldRecord ? records.map((item) => item.id === record.id && item.client === client.slug ? savedRecord : item) : [savedRecord, ...records] }] : [];
-    const notification = !previous || previous.owner !== task.owner || previous.workflow?.stage !== task.workflow?.stage ? workflowNotification(task, `${client.slug}-${record.id}-${record.updatedAt}`, at, previous ? "owner" : "assignment") : undefined;
-    return store.commitWorkflow(task, notification, [...writes, ...(options.extraWrites || [])]);
+    const notification = isUnassigned(task.owner) || task.status === "Hecho" ? undefined
+      : stage.created && previous ? workflowNotification(task, `${client.slug}-${record.id}-${record.updatedAt}`, at, "assignment")
+        : !previous ? assignmentNotification(task, at) ?? workflowNotification(task, `${client.slug}-${record.id}-${record.updatedAt}`, at, "assignment")
+          : previous.owner !== task.owner ? workflowNotification(task, `${client.slug}-${record.id}-${record.updatedAt}`, at, "owner") : undefined;
+    return store.commitWorkflow(stage.changed, notification, [...writes, ...(options.extraWrites || [])]);
   }
   /** Crea, una sola vez, la tarea central de cada pedido de demostración que todavía no la tiene. */
   function seedDemoTasks(force = false) {
@@ -88,10 +108,12 @@ export function useDesignOperations(client: OsClient) {
         continue;
       }
       const base = buildDesignTask(client, target, undefined, "Sistema", DESIGN_DEMO_TASK_DATE);
-      const task: OsTask = { ...base, id: existing?.id || base.id, activity: [{ text: "Tarea de demostración creada con el pedido", when: DESIGN_DEMO_TASK_DATE }],
+      // Al reiniciar, la demo vuelve a su primera tarea: se quitan las tareas de etapas posteriores de esa cadena.
+      const baseId = existing ? chainBaseOf(existing) : base.id;
+      const task: OsTask = { ...base, id: baseId, chainId: undefined, cycle: 1, createdAt: DESIGN_DEMO_TASK_DATE, activity: [{ text: "Tarea de demostración creada con el pedido", when: DESIGN_DEMO_TASK_DATE }],
         comments: designComments(target).map((comment) => ({ who: comment.actor, when: comment.at, text: comment.text })) };
       const value = records.map((r) => r.id === target.id && r.client === client.slug ? { ...r, values: { ...r.values, tareaId: task.id } } : r);
-      if (!store.commitWorkflow(task, undefined, [{ key, value }])) break;
+      if (!store.commitTasks((latest) => upsertTasks(latest.filter((item) => item.chainId !== baseId), [task]), [{ key, value }])) break;
       created++;
     }
     return created;

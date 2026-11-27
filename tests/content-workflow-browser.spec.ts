@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator } from "@playwright/test";
+import { expectChain, openOf, type ChainTask } from "./task-chain-helpers";
 
 test.use({ actionTimeout: 15000 });
 async function createContent(page: Page, title: string, axisName: string) {
@@ -90,7 +91,11 @@ test("monthly plan, reusable axis and full content cycle, both adjustment loops,
   expect(record.values).toMatchObject({ estado: "Programado", version: "v2", archivoDiseno: "https://example.com/qa-design-v2.pdf", eje: createdAxis.id, plan: createdPlan.id });
   expect(JSON.parse(record.values.contentTransitions)).toHaveLength(14);
   const tasks = await page.evaluate(() => JSON.parse(localStorage.getItem("avans-os:preview:v1:workspace")!).value.tasks);
-  expect(tasks.filter((task: { workItem?: { id: string } }) => task.workItem?.id === record.id)).toHaveLength(1);
+  // Una tarea por etapa (revisiones, ajustes, diseño…) en una sola cadena: sin duplicados y todas completadas al programar.
+  const chain = tasks.filter((task: ChainTask) => task.workItem?.id === record.id);
+  expect(expectChain(chain).status).toBe("Hecho");
+  expect(openOf(chain)).toHaveLength(0);
+  expect(chain.filter((task: ChainTask) => task.workflow?.stage === "Ajustes").length).toBeGreaterThanOrEqual(2);
   await detail.getByRole("button", { name: "Historial", exact: true }).click();
   await expect(detail.getByRole("region", { name: "Historial del contenido" })).toContainText("Aclarar el diferencial");
   await expect(detail.getByRole("region", { name: "Historial del contenido" })).toContainText("a pedido de");
