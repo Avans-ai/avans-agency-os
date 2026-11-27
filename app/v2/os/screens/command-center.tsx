@@ -2,20 +2,14 @@
 
 import Link from "next/link";
 import { Suspense } from "react";
-import {
-  clientOfTask,
-  directorMeta,
-  isArchivedTask,
-  isAssignedClient,
-} from "../director-data";
+import { clientOfTask, directorMeta, isAssignedClient } from "../director-data";
 import { osClients } from "../os-data";
 import { useOsStore } from "../os-store";
 import { previewActor } from "../preview-roles";
 import { activeBlockers, myApprovals, myOpenWork, projectsNeedingAttention } from "../selectors";
 import { MyTaskRow, taskHref } from "../task-blocks";
-import { liveDueKind, ownersOf } from "../task-lists";
 import { ReturnLink } from "../navigation/back";
-import { isUnassigned, REMINDERS_NOTE } from "../workflow-tasks";
+import { REMINDERS_NOTE } from "../workflow-tasks";
 import { OSKpiTile, OSEmptyState, OSSkeletonRows, OSStatus, PageHead } from "../ui";
 import s from "../os.module.css";
 import d from "./director-update.module.css";
@@ -38,12 +32,6 @@ function CommandCenterBody() {
   const projectAlerts = projectsNeedingAttention().filter((project) => isAssignedClient(project.clientSlug, actor));
   const clients = osClients.filter((client) => isAssignedClient(client.slug, actor) || client.team.some((person) => person.name === actor));
   const attentionCount = approvals.length + blockers.length + projectAlerts.length;
-  // Administrador: responsabilidades abiertas de cada persona (mismo store; el detalle abre /v2/mis-tareas filtrado).
-  const now = new Date().toISOString();
-  const teamLoad = role === "admin" ? ownersOf(tasks.filter((task) => task.status !== "Hecho" && !isArchivedTask(task))).map((owner) => {
-    const own = tasks.filter((task) => task.status !== "Hecho" && !isArchivedTask(task) && (isUnassigned(owner) ? isUnassigned(task.owner) : task.owner === owner));
-    return { owner, open: own.length, late: own.filter((task) => liveDueKind(task, now) === "late").length, clients: new Set(own.map((task) => clientOfTask(task)?.slug).filter(Boolean)).size };
-  }) : [];
 
   const alerts = [
     ...approvals.map((task) => ({ id: `approval-${task.id}`, title: "Aprobación pendiente", detail: `${task.approvalTitle ?? task.title} · ${task.id}`, tone: task.dueKind === "late" ? "error" as const : "warning" as const, href: taskHref(task) })),
@@ -71,19 +59,6 @@ function CommandCenterBody() {
           {pending.length ? pending.slice(0, 7).map((task) => <MyTaskRow item={task} key={task.id} />) : <OSEmptyState icon="chispa" title="No tenés tareas pendientes">Las nuevas asignaciones aparecerán acá.</OSEmptyState>}
           <p className={s.demoNote} style={{ margin: 0, padding: "10px 20px" }}>{REMINDERS_NOTE}</p>
         </section>
-
-        {teamLoad.length ? (
-          <section className={`${s.surface} ${d.homePanel}`} aria-labelledby="team-load-title">
-            <div className={s.cardHead}><h2 id="team-load-title">Responsabilidades del equipo</h2><Link className={s.link} href="/v2/mis-tareas">Ver por responsable</Link></div>
-            <div className={d.homeList}>{teamLoad.map((item) => (
-              <div className={d.homeAlert} key={item.owner} data-owner={item.owner}>
-                <span className={d.homeAlertDot} data-tone={item.late || isUnassigned(item.owner) ? "error" : "warning"} aria-hidden="true" />
-                <span className={d.homeAlertMain}><strong>{item.owner}</strong><span>{plural(item.open, "tarea abierta", "tareas abiertas")}{item.late ? ` · ${plural(item.late, "vencida", "vencidas")}` : ""} · {plural(item.clients, "cliente", "clientes")}</span></span>
-                <Link className={s.link} href={`/v2/mis-tareas?responsable=${encodeURIComponent(item.owner)}`} aria-label={`Ver tareas de ${item.owner}`}>Ver</Link>
-              </div>
-            ))}</div>
-          </section>
-        ) : null}
 
         <section className={`${s.surface} ${d.homePanel}`} aria-labelledby="atencion" id="atencion">
           <div className={s.cardHead}><h2>Alertas y temas que requieren tu atención</h2><span className={s.cardMeta}>{alerts.length}</span></div>
