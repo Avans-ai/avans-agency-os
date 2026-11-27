@@ -415,3 +415,8 @@ export function clientProjection(record: ModuleRecord) {
   const v = record.values;
   return { id: record.id, state, step: jornadaStep(state), titulo: v.titulo, tipo: v.tipo, fecha: v.fecha, proveedor: v.proveedor, finalUrl: jornadaStep(state) === 6 && ["Aprobación del cliente", "Cerrada"].includes(state) ? v.finalUrl || "" : "", pending: state === "Aprobación del cliente", approvedAt: v.clienteAprobadaAt || "", comments: visibleComments(record, "client"), demo: record.source === "demo" };
 }
+
+/** Vencimiento de la etapa actual de la jornada (la misma regla que usa su tarea). */
+export function jornadaStageDue(record: ModuleRecord) {
+  return stageDue(record, jornadaState(record));
+}

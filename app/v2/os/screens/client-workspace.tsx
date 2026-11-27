@@ -1,24 +1,23 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { ClientBenchmark } from "../../benchmark-data";
-import { AvansModuleIcon } from "../brand";
-import {
-  clientAttention,
-  directorMeta,
-  serviceSummary,
-  tasksForClient,
-} from "../director-data";
+import { clientAttention, directorMeta } from "../director-data";
+import { serviceSnapshots } from "../metrics";
+import { currentMonthPeriod, longDate, todayIso } from "../metrics/period";
+import { useMetricsInput } from "../metrics/use-metrics-input";
+import { ReturnLink } from "../navigation/back";
 import { Glyph } from "../glyphs";
 import { serviceCatalog, serviceLabel, type OsClient, type ServiceId } from "../os-data";
 import { useOsStore } from "../os-store";
 import { serviceHref } from "../service-workspace-data";
-import { Avatar, Badge, LinkButton, OSEmptyState, OSStatus } from "../ui";
+import { Avatar, LinkButton, OSEmptyState, OSStatus } from "../ui";
 import s from "../os.module.css";
 import sc from "../screens.module.css";
 import d from "./director-update.module.css";
+import h from "./client-home.module.css";
+import { HealthRules, ServiceBlock } from "./client-home-blocks";
 import { ClientManagementContent, type ClientManagementView } from "./client-management-views";
 import { ClientOperationNav } from "./client-operation-nav";
 import { ClientManagementHub, ManagementSubnav } from "./client-management-hub";
@@ -29,13 +28,6 @@ const MANAGEMENT_VIEWS: ClientManagementView[] = ["ficha", "cuestionario", "benc
 function requestedView(value: string | null): ClientManagementView | "inicio" | "gestion" {
   if (value === "gestion") return "gestion";
   return MANAGEMENT_VIEWS.includes(value as ClientManagementView) ? (value as ClientManagementView) : "inicio";
-}
-
-function moduleTone(state: string) {
-  if (state === "Al día") return "cool" as const;
-  if (state === "Atención") return "error" as const;
-  if (state === "Revisión") return "peach" as const;
-  return "info" as const;
 }
 
 export function ClientWorkspace({ client, benchmark }: { client: OsClient; depth?: unknown; benchmark?: ClientBenchmark }) {
@@ -83,13 +75,11 @@ function ClientDailyHome({ client, activeServices }: { client: OsClient; activeS
   const insights = meta?.insights ?? [];
   const [insightIndex, setInsightIndex] = useState(0);
   const insight = insights[insightIndex];
-  const summaries = activeServices.map((serviceId) => serviceSummary(client.slug, serviceId, tasks));
-  // Actividad relevante: el último movimiento de cada tarea del cliente (lo más reciente primero).
-  const activity = useMemo(() => tasksForClient(tasks, client.slug)
-    .filter((task) => !task.archivedAt && task.activity.length)
-    .map((task) => ({ task, entry: task.activity[0] }))
-    .sort((a, b) => Number(b.entry.when === "Ahora") - Number(a.entry.when === "Ahora"))
-    .slice(0, 6), [client.slug, tasks]);
+  const { input, hydrated } = useMetricsInput(client);
+  // Período de las métricas: el mes en curso; los estados operativos se leen a hoy.
+  const asOf = todayIso();
+  const period = useMemo(() => currentMonthPeriod(asOf), [asOf]);
+  const snapshots = useMemo(() => serviceSnapshots(activeServices, input, { period, asOf }), [activeServices, asOf, input, period]);
 
   function changeInsight(direction: -1 | 1) {
     if (!insights.length) return;
@@ -98,53 +88,34 @@ function ClientDailyHome({ client, activeServices }: { client: OsClient; activeS
 
   return (
     <div className={sc.stack}>
-      <div className={d.dailyGrid}>
-        <section className={sc.stack} aria-labelledby="modules-summary-title">
-          <div className={s.pageHead}><div><h2 id="modules-summary-title" style={{ margin: 0, fontSize: 23, fontWeight: 500 }}>Resumen de módulos</h2><p>Los puntos más importantes de cada servicio contratado.</p></div><AddServiceModuleButton client={client} /></div>
-          {!summaries.length ? <OSEmptyState icon="ajuste" title="Sin módulos de servicio activos">Agregá los módulos contratados para habilitar su navegación, su espacio de trabajo y sus secciones del Plan de Marketing.</OSEmptyState> : null}
-          <div className={d.moduleGrid}>
-            {summaries.map((summary) => {
-              const definition = serviceCatalog.find((service) => service.id === summary.serviceId);
-              return (
-                <article className={d.moduleCard} key={summary.serviceId}>
-                  <div className={d.moduleCardHead}>
-                    <div className={d.moduleIdentity}><span className={d.moduleIcon}>{definition ? <AvansModuleIcon name={definition.icon} size={30} /> : null}</span><strong>{summary.label}</strong></div>
-                    <Badge tone={moduleTone(summary.state)}>{summary.state}</Badge>
-                  </div>
-                  <div className={d.moduleStats}><div><span>Pendientes</span><strong>{summary.open}</strong></div><div><span>Bloqueos</span><strong>{summary.blocked}</strong></div><div><span>Aprobaciones</span><strong>{summary.approvals}</strong></div></div>
-                  <div className={d.moduleNext}><strong>Próxima acción</strong>{summary.nextAction}</div>
-                  <Link href={serviceHref(client.slug, summary.serviceId)}>Abrir {serviceLabel(summary.serviceId)}</Link>
-                </article>
-              );
-            })}
+      <div className={h.layout}>
+        <section className={h.main} aria-labelledby="modules-summary-title">
+          <div className={h.head}>
+            <div>
+              <h2 id="modules-summary-title">Resumen de módulos</h2>
+              <p>Estado, indicadores, pendientes y próximas fechas de cada servicio activo.</p>
+              <p className={h.period}><span>Período de las métricas: <strong>{period.label}</strong></span><span>Estados al <strong>{longDate(asOf)}</strong></span>{hydrated ? null : <span>Cargando datos guardados…</span>}</p>
+            </div>
+            <AddServiceModuleButton client={client} />
           </div>
+          {!snapshots.length ? <OSEmptyState icon="ajuste" title="Sin módulos de servicio activos">Agregá los módulos contratados para habilitar su navegación, su espacio de trabajo y sus secciones del Plan de Marketing.</OSEmptyState> : (
+            <ol className={h.blocks} aria-label="Servicios activos">
+              {snapshots.map((snapshot) => <li key={snapshot.serviceId}><ServiceBlock snapshot={snapshot} /></li>)}
+            </ol>
+          )}
+          {snapshots.length ? <HealthRules /> : null}
         </section>
 
-        <aside className={s.surface} aria-labelledby="client-attention-title">
+        <aside className={`${s.surface} ${h.aside}`} aria-labelledby="client-attention-title">
           <div className={s.cardHead}><h2 id="client-attention-title">Alertas y temas que requieren atención</h2><span className={s.cardMeta}>Según tu rol</span></div>
           {attention.length ? <div className={d.attentionList}>{attention.map((item) => (
             <article className={d.attentionItem} key={item.id}>
               <span className={d.attentionBar} data-tone={item.tone} aria-hidden="true" />
-              <div><strong>{item.title}</strong><p>{item.detail}</p>{item.serviceId ? <Link className={s.link} href={serviceHref(client.slug, item.serviceId)}>Abrir {serviceLabel(item.serviceId)}</Link> : null}</div>
+              <div><strong>{item.title}</strong><p>{item.detail}</p>{item.serviceId ? <ReturnLink className={s.link} href={serviceHref(client.slug, item.serviceId)}>Abrir {serviceLabel(item.serviceId)}</ReturnLink> : null}</div>
             </article>
           ))}</div> : <OSEmptyState icon="chispa" title="Sin temas pendientes">Los bloqueos y alertas del cliente aparecerán acá.</OSEmptyState>}
         </aside>
       </div>
-
-      <section className={s.surface} aria-labelledby="client-activity-title">
-        <div className={s.cardHead}><h2 id="client-activity-title">Actividad relevante</h2><span className={s.cardMeta}>Últimos movimientos de las tareas</span></div>
-        {activity.length ? (
-          <ol className={d.activityList}>
-            {activity.map(({ task, entry }) => (
-              <li key={task.id}>
-                <span className={d.activityWhen}>{entry.when}</span>
-                <span><strong>{task.title}</strong> · {entry.text}</span>
-                {task.serviceId ? <Link className={s.link} href={`${serviceHref(client.slug, task.serviceId)}?seccion=tareas&task=${task.id}`}>{serviceLabel(task.serviceId)}</Link> : null}
-              </li>
-            ))}
-          </ol>
-        ) : <OSEmptyState icon="registro" title="Sin actividad reciente">Los movimientos de las tareas del cliente aparecerán acá.</OSEmptyState>}
-      </section>
 
       {insight ? (
         <section className={d.insight} aria-label="Insight y recomendación de IA">
