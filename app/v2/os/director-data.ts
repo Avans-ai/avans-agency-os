@@ -540,8 +540,9 @@ export function clientAttention(clientSlug: string, tasks: OsTask[]) {
     .slice(0, 3)
     .map((task) => ({
       id: `TASK-${task.id}`,
-      title: `${task.id} · ${task.title}`,
-      detail: task.blocked ?? "Tarea bloqueada",
+      // Título comprensible; el código interno queda como dato secundario.
+      title: task.title,
+      detail: `${task.blocked ?? "Tarea bloqueada"} · ${task.id}`,
       tone: "error" as const,
       serviceId: serviceForTask(task),
     }));

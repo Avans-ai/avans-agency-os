@@ -1,7 +1,7 @@
 "use client";
 
 /* Navegación principal del cliente: Inicio | Tareas | Gestión y estrategia | módulos de servicio activos.
- * Incluye los tres accesos flotantes del cliente (Ficha, Benchmark, Cargar documentos). */
+ * Los accesos estratégicos viven en Gestión y estrategia (sin atajos flotantes que tapen contenido). */
 import Link from "next/link";
 import { AvansIcon, AvansModuleIcon } from "../brand";
 import { canEditService, canManageClient } from "../director-data";
@@ -9,7 +9,6 @@ import { serviceCatalog, type OsClient, type ServiceId } from "../os-data";
 import { useOsStore } from "../os-store";
 import { serviceHref } from "../service-workspace-data";
 import d from "./director-update.module.css";
-import { ClientShortcuts } from "./client-banner";
 
 export type ClientOperationSection = "inicio" | "tareas" | "gestion" | ServiceId;
 
@@ -25,7 +24,6 @@ export function ClientOperationNav({ client, active }: { client: OsClient; activ
 
   return (
     <>
-    <ClientShortcuts client={client} />
     <nav className={d.operationNav} aria-label={`Navegación de ${client.name}`}>
       <Link href={`/v2/clientes/${client.slug}`} className={d.operationTab} data-active={active === "inicio"} aria-current={active === "inicio" ? "page" : undefined}>
         <AvansIcon name="nucleo" size={20} />

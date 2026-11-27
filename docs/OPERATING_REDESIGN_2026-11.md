@@ -116,3 +116,18 @@ Detalle en `docs/BRAND_DESIGN_WORKFLOW.md` y `docs/CONTENT_OPERATIONS_2026-11.md
 
 ### QA de la iteración
 `npm ci`, `npm run lint` (0 errores), `npm run typecheck`, `npm run build` (289 páginas) y suite Playwright completa: **199/199**. Recorridos: navegación y Gestión (`client-navigation-browser`), Diseño (`design-brand-browser`, `design-workspace-browser`, `design-operation-model`), Contenidos y portal (`content-qa-browser`, `content-workflow-*`, `content-demo-model`, `portal-*`, `workflow-integration-*`), regresión del resto de las suites.
+
+## Iteración del 27/11/2026 — navegación, tareas por proceso, Reportes y Archivos
+
+Criterio vigente: observaciones del usuario y reunión del 20/11/2026. Incluye en esta rama el trabajo de `feat/alineacion-func2` (avance rápido, sin reescribir historia).
+
+- **Volver** (`app/v2/os/navigation/back.tsx`, `return-path.ts`): el origen viaja en `?volver=` y se valida como ruta interna `/v2/…`; los enlaces directos tienen destino lógico (cliente, Gestión y estrategia, tareas). Filtros, vista y mes viajan en la URL; el scroll se restaura; los formularios con cambios sin guardar piden confirmación. Paneles y modales devuelven el foco.
+- **Navegación del cliente**: Inicio | Tareas | Gestión y estrategia | módulos activos. Gestión y estrategia: Ficha, Reportes, Benchmark, Plan de marketing, Archivos y documentos. Cabecera compacta, sin fila de módulos ni atajos flotantes.
+- **Inicio del cliente**: bloques horizontales por servicio con semáforo y causa, indicadores con período y origen (real/demo/pendiente/no conectado), gráfico, pendientes y próximas fechas. Reglas del semáforo en `app/v2/os/metrics/service-health.ts`. «Actividad relevante» se quitó.
+- **Tareas**: cadena de tareas por etapa por objeto de origen (`applyStageTask` en `workflow-tasks.ts`), ids deterministas, sin duplicados al repetir o recargar; tareas heredadas como primer eslabón. Tres vistas sobre el mismo registro: módulo, tareas del cliente y `/v2/mis-tareas`, agrupadas por responsable con filtros en la URL. Recordatorios de vencimiento: solo con la app abierta (sin servicio en segundo plano).
+- **Plan de marketing**: abre con «Lineamientos generales de la cuenta» (posicionamiento, storytelling, objetivos, ecosistema digital, insight y tono). Los Lineamientos de cada servicio leen el Plan; no hay documentos editables paralelos.
+- **Módulos**: dos áreas (Lineamientos / Operación mensual); entregables, recomendaciones e historial en «Aprobaciones y seguimiento». Contenidos opera con Plan de contenidos y Calendario (`docs/CONTENT_OPERATIONS_2026-11.md`).
+- **Reportes**: generador con tipo, período y servicios, revisión por responsable, conclusiones manuales, vista previa y PDF real (pdf-lib, Figtree embebida), versiones inmutables con instantánea de datos y registro en Archivos y documentos (`docs/REPORTS_GENERATOR.md`).
+- **Archivos y documentos**: Materiales unificado; cada archivo indica si es un archivo recuperable en este navegador, un enlace externo o solo metadatos. Enlaces anteriores redirigen.
+
+Límites: persistencia local del navegador (localStorage + IndexedDB), sin sincronización multiusuario ni permisos de servidor; IA, Metricool, plataformas de anuncios, Google Workspace y envío de mails no están conectados y la interfaz lo indica.
