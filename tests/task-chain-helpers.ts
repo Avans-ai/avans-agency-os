@@ -3,7 +3,7 @@
  * ids únicos, una sola tarea abierta a la vez y todas vinculadas a la primera de la cadena. */
 import { expect } from "@playwright/test";
 
-export type ChainTask = { id: string; status: string; owner: string; chainId?: string; cycle?: number; workflow?: { kind: string; stage: string; href: string }; workItem?: { id: string; collection: string }; completedAt?: string; previousTaskId?: string; serviceId?: string; title: string; createdAt?: string };
+export type ChainTask = { id: string; status: string; owner: string; chainId?: string; cycle?: number; workflow?: { kind: string; stage: string; href: string }; workItem?: { id: string; collection: string }; completedAt?: string; previousTaskId?: string; serviceId?: string; title: string; createdAt?: string; clientSlug?: string; approver?: string };
 
 export const openOf = <T extends { status: string }>(tasks: T[]) => tasks.filter((task) => task.status !== "Hecho");
 

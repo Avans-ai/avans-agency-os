@@ -6,13 +6,13 @@
  * Los filtros viajan en la URL para que «Volver» desde una tarea o su origen recupere la
  * lista exacta (navigation/back.tsx). */
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { clientOfTask, serviceForTask } from "./director-data";
 import { Glyph } from "./glyphs";
 import { ReturnLink } from "./navigation/back";
 import { osClients, people, PRIORITIES, serviceLabel, TASK_STATUSES, type OsTask, type Priority, type ServiceId, type TaskStatus, type DueKind } from "./os-data";
 import { dueSortKey, isProcedureTask, shortIsoDate } from "./procedures-periodic";
-import { dueLabel } from "./selectors";
+import { dueLabel, getProject } from "./selectors";
 import { moduleTaskHref } from "./task-blocks";
 import { Avatar, OSDue, OSPriority } from "./ui";
 import { dueKindForDate, isUnassigned, taskOrigin, UNASSIGNED_OWNER } from "./workflow-tasks";
@@ -76,14 +76,18 @@ export function useTaskFilters(prefix = "", defaults: Partial<TaskFilters> = {})
       scope: read("scope") ?? base.scope,
     };
   }, [base, params, prefix]);
+  const pending = useRef<string | null>(null);
+  useEffect(() => { if (pending.current === params.toString()) pending.current = null; }, [params]);
   const set = useCallback((patch: Partial<TaskFilters>) => {
-    const next = new URLSearchParams(params.toString());
+    // Parte del último cambio pedido aunque la navegación todavía no terminó: dos cambios seguidos no se pisan.
+    const next = new URLSearchParams(pending.current ?? params.toString());
     for (const [key, value] of Object.entries(patch) as [keyof TaskFilters, TaskFilters[keyof TaskFilters]][]) {
       const name = `${prefix}${PARAM[key]}`;
       const text = typeof value === "boolean" ? (value ? "1" : "") : String(value ?? "");
       if (!text || text === String(base[key] === false ? "" : base[key])) next.delete(name); else next.set(name, text);
     }
     const qs = next.toString();
+    pending.current = qs;
     router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
   }, [base, params, pathname, prefix, router]);
   /** Limpia los filtros (no la vista) en una sola navegación; `extra` agrega otros cambios al mismo paso. */
@@ -189,7 +193,7 @@ export function TaskRow({ task, showClient = true, showModule = true, onOpen, no
       <div className={t.main}>
         {onOpen ? <button type="button" className={t.title} onClick={() => onOpen(task)}>{task.title}</button>
           : <ReturnLink className={t.title} href={moduleTaskHref(task)}>{task.title}</ReturnLink>}
-        <span className={t.context}>{context || "Tarea manual"}{origin?.stage ? <> · etapa «{origin.stage}»</> : null}</span>
+        <span className={t.context}>{context || (getProject(task.projectSlug) ? `Proyecto: ${getProject(task.projectSlug)!.name}` : "Tarea sin objeto de origen")}{origin?.stage ? <> · etapa «{origin.stage}»</> : null}</span>
         <span className={t.code}>{task.id}{task.cycle && task.cycle > 1 ? ` · ${task.cycle}.ª vez` : ""}{task.blocked ? <span className={t.blocked}><Glyph name="blocked" size={11} />Bloqueada</span> : null}</span>
       </div>
       <span className={t.status} data-status={task.status}>{task.status}</span>
