@@ -483,10 +483,11 @@ export type PaidTeam = Record<Exclude<PaidWho, "client">, string>;
 export function paidTeam(client: OsClient): PaidTeam {
   const by = (pattern: RegExp) => client.team.find((person) => pattern.test(person.role))?.name;
   return {
-    lt: by(/Paid|Performance/i) || "Martín Ledesma",
-    pm: by(/Estrategia/i) || client.owner,
-    content: by(/Contenido/i) || "Lucía Benítez",
-    designer: by(/Diseño/i) || "Tomás Aguirre",
+    // Sin el rol en el equipo de la cuenta, el responsable queda pendiente: no se asigna a otra persona.
+    lt: by(/Paid|Performance/i) || "Pendiente de asignación",
+    pm: by(/Estrategia|Responsable de cuenta/i) || client.owner,
+    content: by(/Contenido/i) || "Pendiente de asignación",
+    designer: by(/Diseño/i) || "Pendiente de asignación",
   };
 }
 

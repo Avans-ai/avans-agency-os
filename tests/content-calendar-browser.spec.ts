@@ -100,7 +100,10 @@ test("una pieza recorre el proceso desde el calendario: ajustes, aprobaciones po
   const stored = (await local(page, "client:epsa:module:contenidos:piezas")).find((item: { id: string }) => item.id === id);
   expect(stored.values).toMatchObject({ estado: "Programado", version: "v2", preliminaryApprovedVersion: "Propuesta v2", finalApprovedVersion: "Diseño v2" });
   const workspace = await local(page, "workspace");
-  expect(workspace.tasks.filter((task: { workItem?: { id: string } }) => task.workItem?.id === id)).toHaveLength(1);
+  // Cadena de tareas por etapa: sin duplicados por etapa y como mucho una tarea abierta por pieza.
+  const chain = workspace.tasks.filter((task: { workItem?: { id: string } }) => task.workItem?.id === id);
+  expect(new Set(chain.map((task: { id: string }) => task.id)).size).toBe(chain.length);
+  expect(chain.filter((task: { status: string }) => task.status !== "Hecho").length).toBeLessThanOrEqual(1);
   expect(workspace.notifications.length).toBeGreaterThan(notificationsBefore);
 
   // «Volver» recupera la semana del calendario y la pieza aparece con su marca de programación local.
@@ -152,6 +155,7 @@ test("«Volver» desde una pieza restaura mes, vista, filtros y búsqueda; cambi
 
   // Enlace directo (recarga) reabre la misma pieza con su contexto.
   await piece.click();
+  await expect(page).toHaveURL(/pieza=/);
   await page.reload();
   await expect(detail).toBeVisible();
   await expect(detail.getByText("Ajustes", { exact: true }).first()).toBeVisible();

@@ -4,7 +4,6 @@
  * Lee el store único de tareas (no hay otra base de tareas): una tarea creada
  * acá es la misma que aparece en «Tareas» del cliente y en su proyecto. */
 import { useMemo, useState } from "react";
-import { BackButton, useReturnPath } from "../navigation/back";
 import { filterTasks, ownersOf, TaskFilterBar, TasksByOwner, useTaskFilters } from "../task-lists";
 import { ORIGIN_KIND_LABEL, REMINDERS_NOTE } from "../workflow-tasks";
 import { Glyph } from "../glyphs";
@@ -47,7 +46,6 @@ export function ModuleTaskBoard({
   const scope = filters.scope || "todos";
   const archived = filters.archived;
   const [creating, setCreating] = useState(false);
-  const back = useReturnPath();
 
   const own = useMemo(() => tasksForService(tasks, client.slug, serviceId), [client.slug, serviceId, tasks]);
   const current = own.filter((task) => !isArchivedTask(task));
@@ -72,7 +70,7 @@ export function ModuleTaskBoard({
 
   return (
     <div className={m.stack}>
-      {back ? <BackButton fallback={`/v2/clientes/${client.slug}/tareas`} /> : null}
+      {/* «Volver» lo ofrece la cabecera del módulo (mismo origen). */}
       <Strip
         label={`Resumen de tareas de ${serviceLabel(serviceId)}`}
         items={[
