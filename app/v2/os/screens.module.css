@@ -220,3 +220,4 @@
 /* Servicios activos */
 .serviceIcon{color:var(--av-coral-300)}
 .checkRow{display:flex;align-items:center;gap:12px;min-height:44px;padding:4px 0;font-size:16px;color:var(--av-text);cursor:pointer}
+.taskTools{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--av-border)}

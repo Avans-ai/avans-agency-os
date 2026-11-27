@@ -1,3 +1,4 @@
+import { expectChain, openOf, type ChainTask } from "./task-chain-helpers";
 import { test, expect, type Page, type Locator } from "@playwright/test";
 
 /* QA de Contenidos con los DATOS DE DEMOSTRACIÓN de ACA: plan, eje, contenido, revisiones,
@@ -134,10 +135,12 @@ test("QA Contenidos ACA: plan, eje, propuesta, validación del cliente, preprodu
   let requests = await linkedRequests(page, created.id);
   expect(requests).toHaveLength(1);
   expect(requests[0]).toMatchObject({ id: `DIS-${created.id}`, source: "manual", values: { servicioOrigen: "contenidos", consideraciones: expect.stringContaining("tres láminas numeradas"), recursos: expect.stringContaining("Fotos QA de una ruta") } });
+  // Cadena de tareas por etapa: la de diseño es la vigente; las de etapas anteriores quedan completadas.
   let tasks = await linkedTasks(page, created.id);
-  expect(tasks).toHaveLength(1);
-  expect(requests[0].values.tareaId).toBe(tasks[0].id);
-  expect(tasks[0]).toMatchObject({ serviceId: "diseno-marca", status: "Por hacer" });
+  const designTask = expectChain(tasks);
+  expect(requests[0].values.tareaId).toBe(designTask.id);
+  expect(designTask).toMatchObject({ serviceId: "diseno-marca", status: "Por hacer", workflow: { stage: "Producción de diseño" } });
+  expect(tasks.filter((task: ChainTask) => task.status === "Hecho").length).toBeGreaterThan(0);
 
   // Entrega, devolución interna (vuelve una etapa) y segunda versión: sin pedidos ni tareas duplicadas.
   await detail.getByLabel("Enlace a la versión de diseño").fill("https://example.com/qa-enero-v1.png");
@@ -145,7 +148,7 @@ test("QA Contenidos ACA: plan, eje, propuesta, validación del cliente, preprodu
   await act(detail, "Entregar diseño", "Revisión interna del diseño");
   await act(detail, "Solicitar ajustes", "Ajustes", "Subir el contraste del titular");
   expect(await linkedRequests(page, created.id)).toHaveLength(1);
-  expect(await linkedTasks(page, created.id)).toHaveLength(1);
+  expect(expectChain(await linkedTasks(page, created.id))).toMatchObject({ status: "Por hacer", workflow: { stage: "Ajustes" } });
   await detail.getByLabel("Enlace a la versión de diseño").fill("https://example.com/qa-enero-v2.png");
   await detail.getByLabel("Versión del diseño").fill("v2");
   await act(detail, "Reenviar a revisión", "Revisión interna del diseño");
@@ -164,8 +167,8 @@ test("QA Contenidos ACA: plan, eje, propuesta, validación del cliente, preprodu
   tasks = await linkedTasks(page, created.id);
   expect(requests).toHaveLength(1);
   expect(requests[0].values.estado).toBe("Aprobado");
-  expect(tasks).toHaveLength(1);
-  expect(tasks[0].status).toBe("Hecho");
+  expect(expectChain(tasks).status).toBe("Hecho");
+  expect(openOf(tasks)).toHaveLength(0);
   const library = ((await local(page, "client:aca:module:diseno-marca:biblioteca")) || []).filter((item: { values: { contenidoId: string } }) => item.values.contenidoId === created.id);
   expect(library.map((item: { values: { versionContenido: string } }) => item.values.versionContenido).sort()).toEqual(["v1", "v2"]);
   expect(new Set(library.map((item: { values: { piezaId: string } }) => item.values.piezaId)).size).toBe(1);

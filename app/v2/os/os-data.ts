@@ -165,7 +165,17 @@ export type OsTask = {
   id: string;
   /** Vínculo explícito para tareas sin proyecto y para aislar flujos operativos. */
   clientSlug?: string;
+  /** Flujo de origen: tipo, etapa que originó la tarea y enlace directo al objeto de trabajo. */
   workflow?: { kind: "content" | "design" | "paid" | "jornada"; stage: string; href: string };
+  /** Cadena de tareas por etapa del mismo objeto de origen: id de la primera tarea (ver workflow-tasks.ts).
+   * Ausente en la primera tarea y en las tareas manuales. */
+  chainId?: string;
+  /** Vez que se repite la etapa dentro de la cadena (1 = primera vez; 2 = segunda revisión…). */
+  cycle?: number;
+  /** Tarea de la etapa anterior que se completó al crearse esta. */
+  previousTaskId?: string;
+  /** ISO de creación (tareas creadas desde este campo en adelante). */
+  createdAt?: string;
   projectSlug: string;
   /** Módulo de servicio al que pertenece la tarea. Cada tarea vive una sola vez y en un solo módulo.
    * Opcional para leer datos guardados antes de este campo: el store lo completa al hidratar. */

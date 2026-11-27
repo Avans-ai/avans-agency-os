@@ -7,7 +7,7 @@
  * siguiente. Funciones puras, sin acceso a localStorage: las usan la operación, el portal,
  * el espacio del proveedor y las pruebas de dominio. */
 import { osProjects, type OsClient, type OsTask } from "../os-data";
-import { dueKindForDate, workflowNotification, type WorkflowNotification } from "../workflow-tasks";
+import { dueKindForDate, latestChainTask, ownerOrPending, workflowNotification, type WorkflowNotification } from "../workflow-tasks";
 import type { ModuleRecord } from "./types";
 
 export const JORNADA_STATES = ["Validación", "Agenda", "Brief y guiones", "Rodaje", "Edición", "Validación de Content", "Subtítulos y motion", "Aprobación del cliente", "Cerrada", "Cancelada"] as const;
@@ -320,12 +320,13 @@ function stageDue(record: ModuleRecord, state: JornadaState) {
 /** Entregable del alcance (DEFAULT_SCOPE de Audiovisuales) al que aporta cada etapa. */
 const DELIVERABLE_OF: Partial<Record<JornadaState, string>> = { Validación: "Preproducción", Agenda: "Preproducción", "Brief y guiones": "Guion", Rodaje: "Rodaje", Edición: "Edición y versiones", "Validación de Content": "Edición y versiones", "Subtítulos y motion": "Edición y versiones", "Aprobación del cliente": "Edición y versiones", Cerrada: "Edición y versiones" };
 export function buildJornadaTask(client: OsClient, record: ModuleRecord, tasks: OsTask[], actor: string, at: string, usage?: QuotaUsage): OsTask {
-  const id = jornadaTaskId(client.slug, record);
-  const previous = tasks.find((task) => task.id === id);
+  // Tarea vigente de la cadena de la jornada (la primera conserva el id AV-<cliente>-<jornada>).
+  const previous = latestChainTask(tasks, jornadaTaskId(client.slug, record));
+  const id = previous?.id ?? jornadaTaskId(client.slug, record);
   const state = jornadaState(record);
   const done = state === "Cerrada" || state === "Cancelada";
   const review = state === "Validación" || state === "Validación de Content" || state === "Aprobación del cliente";
-  const owner = jornadaOwner(client, record, state);
+  const owner = ownerOrPending(jornadaOwner(client, record, state));
   const title = `${STAGE_TITLE[state]} · ${record.values.titulo || record.id}`;
   const due = stageDue(record, state) || "Sin fecha";
   const blocked = state === "Validación" && usage && usage.available < 1 ? "Sin jornadas disponibles en el cupo contratado" : undefined;

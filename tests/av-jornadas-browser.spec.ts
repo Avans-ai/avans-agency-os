@@ -1,9 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
+import { expectChain, openOf } from "./task-chain-helpers";
 test.use({ actionTimeout: 15000 });
 
 const KEY = "avans-os:preview:v1:";
 type Rec = { id: string; values: Record<string, string> };
-type Task = { id: string; owner: string; status: string; workItem?: { id: string; collection: string } };
+type Task = { id: string; owner: string; status: string; title: string; chainId?: string; cycle?: number; completedAt?: string; createdAt?: string; workflow?: { kind: string; stage: string; href: string }; workItem?: { id: string; collection: string } };
 type Note = { id: string; recipient: string; href: string; taskId: string };
 
 function errorsOf(page: Page) {
@@ -96,7 +97,7 @@ test("crear jornada con proveedor del catálogo, cupo usado/disponible y validac
   expect(errors).toEqual([]);
 });
 
-test("etapas: una sola tarea reasignada con avisos, proveedor limitado a sus jornadas, plazo de edición, un pedido a Diseño y aprobación del cliente", async ({ page }) => {
+test("etapas: una tarea por etapa en una sola cadena (sin duplicados) con avisos, proveedor limitado a sus jornadas, plazo de edición, un pedido a Diseño y aprobación del cliente", async ({ page }) => {
   const errors = errorsOf(page);
   await boot(page);
   await page.goto("/v2/clientes/edinovo/audiovisuales?seccion=jornadas&jornada=JOR-EDI-03");
@@ -105,7 +106,8 @@ test("etapas: una sola tarea reasignada con avisos, proveedor limitado a sus jor
   await detail().getByLabel("Guion", { exact: true }).fill("Tres preguntas a cada alumno y cierre con logo.");
   await detail().getByRole("button", { name: "Enviar brief al proveedor" }).click();
   await expect.poll(async () => (await jornadas(page)).find((record) => record.id === "JOR-EDI-03")!.values.estado).toBe("Rodaje");
-  expect(await tasksOf(page, "JOR-EDI-03")).toEqual([expect.objectContaining({ owner: "Estudio Bruma", status: "En curso" })]);
+  expect(openOf(await tasksOf(page, "JOR-EDI-03"))).toEqual([expect.objectContaining({ owner: "Estudio Bruma", status: "En curso", workflow: expect.objectContaining({ stage: "Rodaje" }) })]);
+  expect(expectChain(await tasksOf(page, "JOR-EDI-03"), "AV-edinovo-JOR-EDI-03")).toMatchObject({ owner: "Estudio Bruma" });
   expect((await workspace(page)).notifications.find((note) => note.recipient === "Estudio Bruma")).toMatchObject({ href: "/v2/proveedor?jornada=JOR-EDI-03" });
 
   // Proveedor externo (vista previa): solo sus jornadas y sin la gestión interna.
@@ -148,8 +150,11 @@ test("etapas: una sola tarea reasignada con avisos, proveedor limitado a sus jor
   await detail().getByRole("button", { name: "Validar edición y pedir subtítulos" }).click();
   await expect.poll(async () => (await jornadas(page)).find((record) => record.id === "JOR-EDI-03")!.values.estado).toBe("Subtítulos y motion");
   const design = await local<Rec[]>(page, "client:edinovo:module:diseno-marca:trabajos");
-  expect(design.filter((record) => record.values.jornadaId === "JOR-EDI-03")).toEqual([expect.objectContaining({ id: "DIS-JOR-EDI-03", values: expect.objectContaining({ servicioOrigen: "audiovisuales", responsable: "Tomás Aguirre", tareaId: "AV-edinovo-JOR-EDI-03" }) })]);
-  expect(await tasksOf(page, "JOR-EDI-03")).toEqual([expect.objectContaining({ owner: "Tomás Aguirre" })]);
+  const subtitles = expectChain(await tasksOf(page, "JOR-EDI-03"), "AV-edinovo-JOR-EDI-03");
+  expect(subtitles).toMatchObject({ owner: "Tomás Aguirre", status: "En curso", workflow: expect.objectContaining({ stage: "Subtítulos y motion" }) });
+  expect(design.filter((record) => record.values.jornadaId === "JOR-EDI-03")).toEqual([expect.objectContaining({ id: "DIS-JOR-EDI-03", values: expect.objectContaining({ servicioOrigen: "audiovisuales", responsable: "Tomás Aguirre", tareaId: subtitles.id }) })]);
+  // La devolución de la edición abrió un segundo ciclo de Edición, no una tarea duplicada.
+  expect((await tasksOf(page, "JOR-EDI-03")).filter((task) => task.workflow?.stage === "Edición").map((task) => task.cycle)).toEqual([1, 2]);
   // Diseño de marca no está contratado: el pedido aparece como apoyo, sin activar el módulo.
   await page.goto("/v2/clientes/edinovo/diseno-marca?seccion=trabajos");
   await expect(page.getByRole("link", { name: "Abrir jornada de origen" })).toBeVisible();
@@ -159,7 +164,7 @@ test("etapas: una sola tarea reasignada con avisos, proveedor limitado a sus jor
   await detail().getByLabel("Enlace a la versión final con subtítulos y motion").fill("https://example.com/qa-testimonios-final");
   await detail().getByRole("button", { name: "Entregar subtítulos y motion" }).click();
   await expect.poll(async () => (await jornadas(page)).find((record) => record.id === "JOR-EDI-03")!.values.estado).toBe("Aprobación del cliente");
-  const clientNote = (await workspace(page)).notifications.find((note) => note.recipient === "Cliente · Edinovo" && note.taskId === "AV-edinovo-JOR-EDI-03")!;
+  const clientNote = (await workspace(page)).notifications.find((note) => note.recipient === "Cliente · Edinovo" && note.taskId.startsWith("AV-edinovo-JOR-EDI-03"))!;
   expect(clientNote.href).toBe("/v2/portal/edinovo?jornada=JOR-EDI-03");
 
   // El cliente aprueba desde su front.
@@ -173,8 +178,9 @@ test("etapas: una sola tarea reasignada con avisos, proveedor limitado a sus jor
   await expect.poll(async () => (await jornadas(page)).find((record) => record.id === "JOR-EDI-03")!.values.estado).toBe("Cerrada");
 
   const tasks = await tasksOf(page, "JOR-EDI-03");
-  expect(tasks).toEqual([expect.objectContaining({ id: "AV-edinovo-JOR-EDI-03", status: "Hecho", owner: "Lucía Benítez" })]);
-  const notes = (await workspace(page)).notifications.filter((note) => note.taskId === "AV-edinovo-JOR-EDI-03");
+  expect(openOf(tasks)).toHaveLength(0);
+  expect(expectChain(tasks, "AV-edinovo-JOR-EDI-03")).toMatchObject({ status: "Hecho", owner: "Lucía Benítez", workflow: expect.objectContaining({ stage: "Cerrada" }) });
+  const notes = (await workspace(page)).notifications.filter((note) => note.taskId.startsWith("AV-edinovo-JOR-EDI-03"));
   expect(new Set(notes.map((note) => note.id)).size).toBe(notes.length);
   expect(notes.map((note) => note.recipient).reverse()).toEqual(["Estudio Bruma", "Estudio Bruma", "Lucía Benítez", "Estudio Bruma", "Lucía Benítez", "Tomás Aguirre", "Cliente · Edinovo", "Lucía Benítez"]);
   const finalDesign = (await local<Rec[]>(page, "client:edinovo:module:diseno-marca:trabajos")).filter((record) => record.values.jornadaId === "JOR-EDI-03");

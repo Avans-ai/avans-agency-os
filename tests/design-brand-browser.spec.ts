@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectChain, openOf, type ChainTask } from "./task-chain-helpers";
 test.use({ actionTimeout: 15000 });
 
 const KEY = "avans-os:preview:v1";
@@ -200,9 +201,11 @@ test("operation Kanban and list move a piece through states; approval puts the s
   expect(versions).toHaveLength(1);
   expect(versions[0].values).toMatchObject({ estado: "Aprobado", version: "1", archivo: "https://example.com/placa-qa-v1.png" });
   expect(JSON.parse(request.values.designApprovals).map((a: { decision: string }) => a.decision)).toEqual(["Ajustes solicitados", "Aprobado"]);
+  // Una tarea por etapa del pedido (producción, revisión, ajustes, aprobación) en una sola cadena, sin duplicados.
   const tasks = (await local(page, "workspace")).tasks.filter((t: { workItem?: { id: string } }) => t.workItem?.id === request.id);
-  expect(tasks).toHaveLength(1);
-  expect(tasks[0]).toMatchObject({ status: "Hecho", workflow: { kind: "design", stage: "Aprobados" } });
+  expect(openOf(tasks)).toHaveLength(0);
+  expect(expectChain(tasks, `DESIGN-aca-${request.id}`)).toMatchObject({ status: "Hecho", workflow: { kind: "design", stage: "Aprobados" } });
+  expect(tasks.map((t: ChainTask) => t.workflow?.stage)).toEqual(["En producción", "En revisión interna", "Ajustes", "En revisión interna", "Esperando aprobación", "Aprobados"]);
 });
 
 test("resetting demo data restores demo records and tasks and keeps manual records", async ({ page }) => {

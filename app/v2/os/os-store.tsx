@@ -7,12 +7,12 @@
  * mutations once the Avans Supabase project is active and its RLS policies
  * have been applied and tested. */
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useSyncExternalStore, type ReactNode } from "react";
-import { CURRENT_USER, ideas as seedIdeas, osClients, osTasks, serviceLabel, type DueKind, type Idea, type IdeaState, type OsTask, type Priority, type ServiceId, type TaskStatus, type TaskWorkItem } from "./os-data";
+import { CURRENT_USER, ideas as seedIdeas, osClients, osProjects, osTasks, serviceLabel, type DueKind, type Idea, type IdeaState, type OsTask, type Priority, type ServiceId, type TaskStatus, type TaskWorkItem } from "./os-data";
 import { readLocalJson, writeLocalJson, writeLocalBatch } from "./local-persistence";
 import { clientOfTask, serviceForTask, withTaskService } from "./director-data";
 
 import { PREVIEW_ROLES, previewActor, type PreviewRole } from "./preview-roles";
-import { upcomingNotifications, workflowNotification, type WorkflowNotification, type LocalWrite } from "./workflow-tasks";
+import { ownerOrPending, upcomingNotifications, upsertTasks, workflowNotification, type WorkflowNotification, type LocalWrite } from "./workflow-tasks";
 import { withContentDemoTasks } from "./modules/content-demo-tasks";
 export type { PreviewRole } from "./preview-roles";
 export type Toast = { id: number; message: string; tone: "default" | "success" | "error"; undo?: OsTask[] };
@@ -104,6 +104,8 @@ const completionDate = (status: TaskStatus, previous?: string) => status === "He
 
 export type NewTaskInput = {
   projectSlug: string;
+  /** Cliente explícito (si falta se deduce del proyecto). */
+  clientSlug?: string;
   title: string;
   owner: string;
   prio: Priority;
@@ -127,7 +129,9 @@ type Store = {
   localHydrated: boolean;
   notifications: WorkflowNotification[];
   markNotificationRead: (id: string) => void;
-  commitWorkflow: (task: OsTask, notification: WorkflowNotification | undefined, writes: LocalWrite[]) => boolean;
+  /** Guarda en un solo lote las tareas del flujo (una o varias: etapa completada + etapa nueva), sus avisos
+   * (sin duplicar por id) y los registros del módulo. Si falla, no queda nada a medias. */
+  commitWorkflow: (task: OsTask | OsTask[], notification: WorkflowNotification | WorkflowNotification[] | undefined, writes: LocalWrite[]) => boolean;
   /** Reemplaza tareas y registros locales en un solo guardado (p. ej. reiniciar datos de demostración). */
   commitTasks: (update: (tasks: OsTask[]) => OsTask[], writes: LocalWrite[], notifications?: WorkflowNotification[]) => boolean;
   servicesOf: (clientSlug: string) => ServiceId[];
@@ -215,10 +219,10 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
     },
     commitWorkflow: (task, notification, writes) => {
       const latest = validPersistedState(readLocalJson<PersistedState | null>(STORE_KEY, null), state);
-      const next: PersistedState = { ...latest,
-        tasks: latest.tasks.some((item) => item.id === task.id) ? latest.tasks.map((item) => item.id === task.id ? task : item) : [...latest.tasks, task],
-        notifications: notification && !latest.notifications.some((item) => item.id === notification.id) ? [notification, ...latest.notifications] : latest.notifications,
-      };
+      const changed = Array.isArray(task) ? task : [task];
+      const notes = (Array.isArray(notification) ? notification : notification ? [notification] : [])
+        .filter((item, index, list) => !latest.notifications.some((other) => other.id === item.id) && list.findIndex((other) => other.id === item.id) === index);
+      const next: PersistedState = { ...latest, tasks: upsertTasks(latest.tasks, changed), notifications: notes.length ? [...notes, ...latest.notifications] : latest.notifications };
       if (!writeLocalBatch([...writes, { key: STORE_KEY, value: next }])) {
         dispatch({ type: "toast", toast: { message: "No se pudo guardar el cambio. Revisá el espacio disponible del navegador y reintentá.", tone: "error" } });
         return false;
@@ -295,7 +299,8 @@ export function OsStoreProvider({ children }: { children: ReactNode }) {
     createTask: (input) => {
       const id = `T-${state.seq}`;
       const created: OsTask = {
-        id, projectSlug: input.projectSlug, title: input.title, owner: input.owner, prio: input.prio, due: input.due, dueKind: input.dueKind,
+        id, projectSlug: input.projectSlug, clientSlug: input.clientSlug ?? osProjects.find((project) => project.slug === input.projectSlug)?.clientSlug, createdAt: new Date().toISOString(),
+        title: input.title, owner: ownerOrPending(input.owner), prio: input.prio, due: input.due, dueKind: input.dueKind,
         serviceId: input.serviceId ?? serviceForTask({ id, projectSlug: input.projectSlug }),
         workItem: input.workItem,
         deliverable: input.deliverable,
