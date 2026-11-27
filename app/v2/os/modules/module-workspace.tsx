@@ -4,7 +4,7 @@
  * Navegación interna sincronizada con ?seccion= (y ?task= / ?campana= para paneles). */
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, type ReactNode } from "react";
+import { useCallback, useEffect, type ReactNode } from "react";
 import { AvansModuleIcon } from "../brand";
 import { canEditService } from "../director-data";
 import { serviceCatalog, type OsClient, type ServiceId } from "../os-data";
@@ -17,7 +17,7 @@ import { BackButton } from "../navigation/back";
 import { ActivateDemoModuleButton } from "../screens/service-modules-dialog";
 import { CollectionView, useWorkItems } from "./collection-view";
 import { collectionDef, moduleCollections, primaryWorkCollection } from "./collections";
-import { AxesSection, CalendarSection, ContentResultsSection, ContentSummary, IdeasSection, PiecesSection, PlansSection } from "./content";
+import { AxesSection, CalendarSection, CONTENT_LEGACY_SECTIONS, CONTENT_OPERATION_SECTIONS, ContentResultsSection, ContentSummary, IdeasSection, PiecesSection, PlansSection } from "./content";
 import { BrandSummary, DesignLibrarySection, DesignOperationSection, DesignRequestsSection } from "./design-workspace";
 import { DesignGuidelines } from "./design-guidelines";
 import { ServiceGuidelines } from "./service-guidelines";
@@ -55,17 +55,8 @@ export function moduleSections(serviceId: ServiceId): Section[] {
         ...COMMON_TAIL,
       ];
     case "contenidos":
-      return [
-        { id: "resumen", label: "Resumen" },
-        { id: "planes", label: "Plan mensual" },
-        { id: "calendario", label: "Calendario" },
-        { id: "piezas", label: "Piezas" },
-        { id: "ejes", label: "Ejes temáticos" },
-        { id: "ideas", label: "Ideas" },
-        { id: "tareas", label: "Tareas" },
-        { id: "resultados", label: "Resultados" },
-        ...COMMON_TAIL,
-      ];
+      // Operación mensual concentrada en el Plan de contenidos y el Calendario (herramienta principal).
+      return [...CONTENT_OPERATION_SECTIONS, ...COMMON_TAIL];
     case "diseno-marca":
       return [
         { id: "resumen", label: "Resumen" },
@@ -202,7 +193,16 @@ export function ModuleWorkspace({ client, service }: { client: OsClient; service
   const requested = legacy === "pedidos" && serviceId === "diseno-marca" ? "trabajos" : legacy === "produccion" && serviceId === "publicidad-digital" ? "anuncios" : legacy && LEGACY_TAIL.has(legacy) ? "aprobaciones" : legacy;
   const guidelines = params.get("area") === "lineamientos";
   const taskParam = params.get("task");
-  const current = sections.some((section) => section.id === requested) ? requested! : taskParam ? "tareas" : supportDesign ? "trabajos" : "resumen";
+  const current = sections.some((section) => section.id === requested) ? requested! : taskParam ? "tareas" : supportDesign ? "trabajos" : serviceId === "contenidos" ? "calendario" : "resumen";
+  // Secciones anteriores de Contenidos (ejes, ideas, piezas) redirigen conservando la query (p. ej. ?registro=).
+  const contentLegacy = serviceId === "contenidos" && legacy ? CONTENT_LEGACY_SECTIONS[legacy] : undefined;
+  useEffect(() => {
+    if (!contentLegacy) return;
+    const next = new URLSearchParams(params.toString());
+    next.set("seccion", contentLegacy.section);
+    for (const [key, value] of Object.entries(contentLegacy.params ?? {})) if (!next.has(key)) next.set(key, value);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+  }, [contentLegacy, params, pathname, router]);
   const primary = primaryWorkCollection(serviceId);
   const workItems = useWorkItems(client, serviceId, primary);
   const stats = useModuleTaskStats(client, serviceId);

@@ -172,8 +172,8 @@ test("«Volver» desde una pieza restaura mes, vista, filtros y búsqueda; cambi
 
 test("materiales vinculados desde Archivos y documentos: se consultan sin copiarse, persisten y no cruzan clientes", async ({ page }) => {
   const errors: string[] = []; page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/v2/clientes/aca?view=ficha&ficha=materiales");
-  await page.getByRole("button", { name: "Agregar material", exact: true }).click();
+  await page.goto("/v2/clientes/aca?view=documentos&archivos=biblioteca");
+  await page.getByRole("button", { name: "Agregar archivo", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "Ficha de material" });
   await editor.getByLabel("Nombre del material *", { exact: true }).fill("Brief QA de comercios");
   await editor.getByLabel("Tipo de material").selectOption("Archivo");

@@ -225,7 +225,7 @@ test("contenidos, estrategia, web and audiovisual workspaces show their own obje
   const errors = errorsOf(page);
   await page.goto("/v2/clientes/epsa/contenido");
   const contentNav = sectionNav(page, "Contenidos");
-  for (const label of ["Calendario", "Piezas", "Ejes temáticos", "Ideas", "Tareas", "Resultados", "Aprobaciones y seguimiento"]) {
+  for (const label of ["Plan de contenidos", "Calendario", "Tareas", "Resultados", "Aprobaciones y seguimiento"]) {
     await expect(contentNav.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
   }
   await expect(page.getByRole("navigation", { name: "Áreas de Contenidos" }).getByRole("link")).toHaveText(["Lineamientos", "Operación mensual"]);

@@ -29,10 +29,11 @@ const linkedRequests = async (page: Page, id: string) => ((await local(page, "cl
 test("QA Contenidos ACA: plan, eje, propuesta, validación del cliente, preproducción, diseño sin duplicados, aprobación, biblioteca e historial", async ({ page }) => {
   test.setTimeout(240000);
   const errors: string[] = []; page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/v2/clientes/aca/contenido");
+  await page.goto("/v2/clientes/aca/contenido?seccion=calendario");
+  await expect(page.getByText("Metricool no conectado")).toBeVisible();
+  await page.goto("/v2/clientes/aca/contenido?seccion=planes&plan=PLAN-ACA-2026-12");
   await expect(page.getByRole("note", { name: "DATOS DE DEMOSTRACIÓN" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Diciembre 2026 — ACA" })).toBeVisible();
-  await expect(page.getByText("Metricool no conectado")).toBeVisible();
   // Las tareas de los contenidos demo se agregan una sola vez.
   await expect.poll(async () => (await linkedTasks(page, "PZA-ACA-D07")).length).toBe(1);
 
