@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { osProjects, type ClientStatus } from "../os-data";
+import { Suspense, useMemo, useState } from "react";
+import { clientOfTask, isArchivedTask, serviceForTask } from "../director-data";
+import { filterTasks, liveDueKind, ownersOf, TaskFilterBar, TasksByOwner, useTaskFilters } from "../task-lists";
+import { isUnassigned, REMINDERS_NOTE } from "../workflow-tasks";
+import { osClients, osProjects, serviceCatalog, type ClientStatus } from "../os-data";
 import { useOsStore } from "../os-store";
 import { previewActor } from "../preview-roles";
-import { DUE_GROUPS, getClient, myApprovals, myOpenWork, pendingApprovals, projectProgress, STATUS_ORDER, tasksOf, waitsForMe } from "../selectors";
-import { ApprovalRow, MyTaskRow, NewTaskButton } from "../task-blocks";
-import { cx, OSEmptyState, OSStatus, PageHead, Progress } from "../ui";
+import { getClient, myApprovals, pendingApprovals, projectProgress, STATUS_ORDER, tasksOf, waitsForMe } from "../selectors";
+import { ApprovalRow, NewTaskButton } from "../task-blocks";
+import { cx, OSEmptyState, OSSkeletonRows, OSStatus, PageHead, Progress } from "../ui";
 import s from "../os.module.css";
 import sc from "../screens.module.css";
 
@@ -94,36 +97,67 @@ export function ApprovalsScreen() {
   );
 }
 
+/** Inicio general · tareas y responsabilidades de la persona en todos los clientes.
+ * Administrador: todo el equipo (puede acotar a las suyas). Otros perfiles: solo sus tareas
+ * (asignadas o que esperan su aprobación) según el actor del perfil de vista previa.
+ * Lee el mismo store que el módulo y la ficha del cliente: la misma tarea con el mismo id. */
 export function MyTasksScreen() {
-  const { tasks, role } = useOsStore();
+  return <Suspense fallback={<div className={s.page}><OSSkeletonRows rows={5} label="Cargando tareas…" /></div>}><MyTasksBody /></Suspense>;
+}
+const MY_DEFAULTS = {};
+function MyTasksBody() {
+  const { tasks, role, localHydrated } = useOsStore();
   const actor = previewActor(role);
-  const [showDone, setShowDone] = useState(false);
-  const open = myOpenWork(tasks, actor);
-  const done = tasks.filter(item => item.owner === actor && item.status === "Hecho");
+  const admin = role === "admin";
+  const { filters, set, clear, active } = useTaskFilters("", MY_DEFAULTS);
+  const team = admin && filters.scope !== "mias";
+  const now = useMemo(() => new Date().toISOString(), []);
+  const mine = useMemo(() => tasks.filter((task) => task.owner === actor || waitsForMe(task, actor)), [actor, tasks]);
+  const base = team ? tasks : mine;
+  const current = base.filter((task) => !isArchivedTask(task));
+  const archivedTasks = base.filter(isArchivedTask);
+  const visible = filterTasks(filters.archived ? archivedTasks : current, filters, now);
+  const open = current.filter((task) => task.status !== "Hecho");
+  const late = open.filter((task) => liveDueKind(task, now) === "late").length;
+  const unassigned = open.filter((task) => isUnassigned(task.owner)).length;
+  const clientSlugs = new Set(base.map((task) => clientOfTask(task)?.slug).filter(Boolean));
+  const clients = osClients.filter((client) => clientSlugs.has(client.slug)).map((client) => ({ slug: client.slug, name: client.name }));
+  const modules = serviceCatalog.map((service) => service.id).filter((id) => base.some((task) => serviceForTask(task) === id));
+  const createClient = filters.client !== "todos" ? filters.client : undefined;
   return (
     <div className={s.page}>
-      <PageHead rotulo="Operaciones" title="Mis tareas" description="Tus tareas abiertas en todos los proyectos, ordenadas por vencimiento." actions={<NewTaskButton />} />
-      <section className={s.surface} aria-label="Tareas abiertas">
-        <div className={s.cardHead}><h2>Pendientes</h2><span className={s.cardMeta}>{open.length}</span></div>
-        {open.length ? DUE_GROUPS.map(group => {
-          const items = open.filter(item => item.dueKind === group.kind);
-          if (!items.length) return null;
-          return (
-            <div key={group.kind} role="group" aria-label={group.label}>
-              <p className={cx(s.rotulo, group.kind !== "late" && s.rotuloInk, sc.groupLabel)}>{group.label}</p>
-              {items.map(item => <MyTaskRow key={item.id} item={item} />)}
+      <PageHead
+        rotulo="Inicio · Tareas"
+        title={team ? "Tareas del equipo" : "Mis tareas"}
+        description={team
+          ? "Responsabilidades de todo el equipo en todos los clientes, agrupadas por responsable. Es el mismo registro de tareas que se ve dentro de cada módulo y en «Tareas» de cada cliente."
+          : `Tareas asignadas a ${actor} y aprobaciones que esperan su decisión, en todos los clientes.`}
+        actions={<NewTaskButton clientSlug={createClient} />}
+      />
+      <section className={s.surface} aria-labelledby="my-tasks-title">
+        <div className={s.cardHead}>
+          <h2 id="my-tasks-title">{filters.archived ? "Tareas archivadas" : team ? "Por responsable" : "Tus tareas"}</h2>
+          <span className={s.cardMeta}>{open.length} abiertas · {late} vencidas{team && unassigned ? ` · ${unassigned} pendientes de asignación` : ""}</span>
+        </div>
+        <div className={sc.taskTools}>
+          {admin ? (
+            <div className={s.segmented} role="group" aria-label="Alcance de las tareas">
+              <button type="button" aria-pressed={team} onClick={() => set({ scope: "" })}>Todo el equipo</button>
+              <button type="button" aria-pressed={!team} onClick={() => set({ scope: "mias" })}>Solo mías</button>
             </div>
-          );
-        }) : <OSEmptyState icon="chispa" title="No tenés tareas pendientes" />}
+          ) : null}
+          <button type="button" className={s.tag} aria-pressed={filters.archived} onClick={() => set({ archived: !filters.archived })}>{filters.archived ? "Ver tareas activas" : `Archivadas (${archivedTasks.length})`}</button>
+        </div>
+        <TaskFilterBar filters={filters} set={set} clear={clear} active={active} label="Filtrar tareas" clients={clients} modules={modules} owners={team ? ownersOf(base) : undefined} />
+        {!localHydrated ? <OSSkeletonRows rows={4} label="Cargando tareas guardadas en este navegador…" /> : (
+          <TasksByOwner
+            tasks={visible}
+            label={team ? "Tareas del equipo por responsable" : `Tareas de ${actor}`}
+            empty={<OSEmptyState icon="chispa" title={base.length ? "No hay tareas que coincidan" : "No tenés tareas asignadas"} actions={active ? <button type="button" className={s.tag} onClick={() => clear()}>Limpiar filtros</button> : undefined}>{filters.archived ? "Las tareas hechas hace más de 30 días se archivan y quedan acá." : "Las tareas nacen de las acciones de cada módulo (enviar a revisión, pedir diseño, pedir cambios…) o se crean a mano."}</OSEmptyState>}
+          />
+        )}
+        <p className={s.demoNote} style={{ margin: 0, padding: "10px 16px" }}>Permisos de vista previa: el Administrador ve todo; cada perfil ve sus tareas y edita solo en los módulos que tiene permitidos. {REMINDERS_NOTE} Guardado en este navegador, sin sincronización entre usuarios.</p>
       </section>
-      <div>
-        <button type="button" className={s.tag} aria-pressed={showDone} onClick={() => setShowDone(value => !value)}>{showDone ? "Ocultar" : "Mostrar"} tareas hechas ({done.length})</button>
-      </div>
-      {showDone ? (
-        <section className={s.surface} aria-label="Tareas hechas">
-          {done.length ? done.map(item => <MyTaskRow key={item.id} item={item} />) : <OSEmptyState icon="registro" title="Todavía no marcaste tareas como hechas" />}
-        </section>
-      ) : null}
     </div>
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   clientOfTask,
   directorMeta,
+  isArchivedTask,
   isAssignedClient,
 } from "../director-data";
 import { osClients } from "../os-data";
@@ -11,7 +13,10 @@ import { useOsStore } from "../os-store";
 import { previewActor } from "../preview-roles";
 import { activeBlockers, myApprovals, myOpenWork, projectsNeedingAttention } from "../selectors";
 import { MyTaskRow, taskHref } from "../task-blocks";
-import { OSKpiTile, OSEmptyState, OSStatus, PageHead } from "../ui";
+import { liveDueKind, ownersOf } from "../task-lists";
+import { ReturnLink } from "../navigation/back";
+import { isUnassigned, REMINDERS_NOTE } from "../workflow-tasks";
+import { OSKpiTile, OSEmptyState, OSSkeletonRows, OSStatus, PageHead } from "../ui";
 import s from "../os.module.css";
 import d from "./director-update.module.css";
 
@@ -20,6 +25,11 @@ function plural(count: number, one: string, many: string) {
 }
 
 export function CommandCenter() {
+  // ReturnLink lee la URL actual: en una página estática necesita su propio límite de Suspense.
+  return <Suspense fallback={<div className={s.page}><OSSkeletonRows rows={5} label="Cargando Inicio…" /></div>}><CommandCenterBody /></Suspense>;
+}
+
+function CommandCenterBody() {
   const { tasks, role } = useOsStore();
   const actor = previewActor(role);
   const pending = myOpenWork(tasks, actor).filter((task) => task.status !== "Hecho");
@@ -28,10 +38,16 @@ export function CommandCenter() {
   const projectAlerts = projectsNeedingAttention().filter((project) => isAssignedClient(project.clientSlug, actor));
   const clients = osClients.filter((client) => isAssignedClient(client.slug, actor) || client.team.some((person) => person.name === actor));
   const attentionCount = approvals.length + blockers.length + projectAlerts.length;
+  // Administrador: responsabilidades abiertas de cada persona (mismo store; el detalle abre /v2/mis-tareas filtrado).
+  const now = new Date().toISOString();
+  const teamLoad = role === "admin" ? ownersOf(tasks.filter((task) => task.status !== "Hecho" && !isArchivedTask(task))).map((owner) => {
+    const own = tasks.filter((task) => task.status !== "Hecho" && !isArchivedTask(task) && (isUnassigned(owner) ? isUnassigned(task.owner) : task.owner === owner));
+    return { owner, open: own.length, late: own.filter((task) => liveDueKind(task, now) === "late").length, clients: new Set(own.map((task) => clientOfTask(task)?.slug).filter(Boolean)).size };
+  }) : [];
 
   const alerts = [
-    ...approvals.map((task) => ({ id: `approval-${task.id}`, title: `Aprobación pendiente · ${task.id}`, detail: task.approvalTitle ?? task.title, tone: task.dueKind === "late" ? "error" as const : "warning" as const, href: taskHref(task) })),
-    ...blockers.map((task) => ({ id: `blocked-${task.id}`, title: `Tarea bloqueada · ${task.id}`, detail: `${task.title}. ${task.blocked ?? "Requiere atención"}`, tone: "error" as const, href: taskHref(task) })),
+    ...approvals.map((task) => ({ id: `approval-${task.id}`, title: "Aprobación pendiente", detail: `${task.approvalTitle ?? task.title} · ${task.id}`, tone: task.dueKind === "late" ? "error" as const : "warning" as const, href: taskHref(task) })),
+    ...blockers.map((task) => ({ id: `blocked-${task.id}`, title: "Tarea bloqueada", detail: `${task.title}. ${task.blocked ?? "Requiere atención"} · ${task.id}`, tone: "error" as const, href: taskHref(task) })),
     ...projectAlerts.map((project) => ({ id: `project-${project.slug}`, title: `Proyecto ${project.status === "en-riesgo" ? "en riesgo" : "con atención"}`, detail: `${project.name}${project.alert ? ` · ${project.alert}` : ""}`, tone: project.status === "en-riesgo" ? "error" as const : "warning" as const, href: `/v2/proyectos/${project.slug}` })),
   ].slice(0, 7);
 
@@ -53,7 +69,21 @@ export function CommandCenter() {
         <section className={`${s.surface} ${d.homePanel}`} aria-labelledby="home-tasks-title">
           <div className={s.cardHead}><h2 id="home-tasks-title">Tareas pendientes</h2><Link className={s.link} href="/v2/mis-tareas">Ver todas</Link></div>
           {pending.length ? pending.slice(0, 7).map((task) => <MyTaskRow item={task} key={task.id} />) : <OSEmptyState icon="chispa" title="No tenés tareas pendientes">Las nuevas asignaciones aparecerán acá.</OSEmptyState>}
+          <p className={s.demoNote} style={{ margin: 0, padding: "10px 20px" }}>{REMINDERS_NOTE}</p>
         </section>
+
+        {teamLoad.length ? (
+          <section className={`${s.surface} ${d.homePanel}`} aria-labelledby="team-load-title">
+            <div className={s.cardHead}><h2 id="team-load-title">Responsabilidades del equipo</h2><Link className={s.link} href="/v2/mis-tareas">Ver por responsable</Link></div>
+            <div className={d.homeList}>{teamLoad.map((item) => (
+              <div className={d.homeAlert} key={item.owner} data-owner={item.owner}>
+                <span className={d.homeAlertDot} data-tone={item.late || isUnassigned(item.owner) ? "error" : "warning"} aria-hidden="true" />
+                <span className={d.homeAlertMain}><strong>{item.owner}</strong><span>{plural(item.open, "tarea abierta", "tareas abiertas")}{item.late ? ` · ${plural(item.late, "vencida", "vencidas")}` : ""} · {plural(item.clients, "cliente", "clientes")}</span></span>
+                <Link className={s.link} href={`/v2/mis-tareas?responsable=${encodeURIComponent(item.owner)}`} aria-label={`Ver tareas de ${item.owner}`}>Ver</Link>
+              </div>
+            ))}</div>
+          </section>
+        ) : null}
 
         <section className={`${s.surface} ${d.homePanel}`} aria-labelledby="atencion" id="atencion">
           <div className={s.cardHead}><h2>Alertas y temas que requieren tu atención</h2><span className={s.cardMeta}>{alerts.length}</span></div>
@@ -61,7 +91,7 @@ export function CommandCenter() {
             <div className={d.homeAlert} key={alert.id}>
               <span className={d.homeAlertDot} data-tone={alert.tone} aria-hidden="true" />
               <span className={d.homeAlertMain}><strong>{alert.title}</strong><span>{alert.detail}</span></span>
-              <Link className={s.link} href={alert.href}>Abrir</Link>
+              <ReturnLink className={s.link} href={alert.href}>Abrir</ReturnLink>
             </div>
           ))}</div> : <OSEmptyState icon="chispa" title="No hay alertas para vos">Los bloqueos, aprobaciones y proyectos críticos aparecerán acá.</OSEmptyState>}
         </section>

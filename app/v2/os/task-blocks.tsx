@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { AvansIcon } from "./brand";
-import { isArchivedTask, scopeDeliverables, serviceForProject, serviceForTask, TASK_ARCHIVE_AFTER_DAYS } from "./director-data";
+import { clientOfTask, isArchivedTask, scopeDeliverables, serviceForProject, serviceForTask, TASK_ARCHIVE_AFTER_DAYS } from "./director-data";
+import { ReturnLink } from "./navigation/back";
+import { chainBaseOf, chainTasks, taskOrigin, UNASSIGNED_OWNER } from "./workflow-tasks";
 import { Glyph } from "./glyphs";
 import {
   CURRENT_USER,
@@ -32,17 +34,28 @@ export function taskHref(item: Pick<OsTask, "id" | "projectSlug" | "workflow">) 
   return item.workflow?.href || `/v2/proyectos/${item.projectSlug}?task=${item.id}`;
 }
 
-/** Enlace al Kanban del módulo dueño de la tarea, con el panel abierto. */
-export function moduleTaskHref(item: Pick<OsTask, "id" | "projectSlug" | "serviceId">) {
-  const project = getProject(item.projectSlug);
-  if (!project) return taskHref(item);
-  return `${serviceHref(project.clientSlug, serviceForTask(item))}?seccion=tareas&task=${item.id}`;
+/** Enlace al detalle de la tarea: el Kanban del módulo dueño, con el panel de la tarea abierto. */
+export function moduleTaskHref(item: Pick<OsTask, "id" | "projectSlug" | "serviceId"> & { clientSlug?: string }) {
+  const clientSlug = item.clientSlug || getProject(item.projectSlug)?.clientSlug;
+  if (!clientSlug) return taskHref(item);
+  return `${serviceHref(clientSlug, serviceForTask(item))}?seccion=tareas&task=${encodeURIComponent(item.id)}`;
+}
+
+/** Texto del enlace al objeto de origen de una tarea. */
+export function originActionLabel(item: Pick<OsTask, "workflow" | "workItem">) {
+  const collection = item.workItem?.collection;
+  if (item.workflow?.kind === "content" || collection === "piezas") return "Abrir contenido vinculado";
+  if (collection === "campanas") return "Abrir campaña vinculada";
+  if (item.workflow?.kind === "paid" || collection === "anuncios") return "Abrir pedido de Publicidad digital vinculado";
+  if (item.workflow?.kind === "jornada" || collection === "jornadas") return "Abrir jornada vinculada";
+  return "Abrir pedido de diseño vinculado";
 }
 
 export function taskContext(item: OsTask) {
   const project = getProject(item.projectSlug);
-  const client = project ? getClient(project.clientSlug) : undefined;
-  return { project, client, label: [client?.name, project?.name].filter(Boolean).join(" · ") };
+  const client = clientOfTask(item) ?? (project ? getClient(project.clientSlug) : undefined);
+  const origin = taskOrigin(item);
+  return { project, client, origin, label: [origin ? `${origin.kind}: ${origin.label}` : project?.name, serviceLabel(serviceForTask(item)), client?.name].filter(Boolean).join(" · ") };
 }
 
 /** Row of "Mis tareas". Checking it marks the task done (or approves it when it waits for me). */
@@ -66,7 +79,7 @@ export function MyTaskRow({ item }: { item: OsTask }) {
         <OSPriority prio={item.prio} />
         <span className={sc.dueCell}><OSDue label={dueLabel(item)} kind={item.dueKind} status={item.status} /></span>
       </span>
-      <Link href={taskHref(item)} className={cx(s.link, sc.openLink)} aria-label={`Abrir ${title}`}>Abrir</Link>
+      <ReturnLink href={moduleTaskHref(item)} className={cx(s.link, sc.openLink)} aria-label={`Abrir ${title}`}>Abrir</ReturnLink>
     </div>
   );
 }
@@ -254,6 +267,7 @@ export function NewTaskModal({
             <span>Responsable</span>
             <select className={s.input} value={owner} onChange={event => setOwner(event.target.value)}>
               {people.map(person => <option key={person.name}>{person.name}</option>)}
+              <option value={UNASSIGNED_OWNER}>{UNASSIGNED_OWNER}</option>
             </select>
           </label>
           <label className={s.field}>
@@ -315,15 +329,18 @@ export function TaskSidePanel({
   workItems?: TaskWorkItem[];
   workItemLabel?: string;
 }) {
-  const { setStatus, setPriority, addComment, unblock, approve, requestChanges, editTask, addFileRef, role } = useOsStore();
+  const { setStatus, setPriority, addComment, unblock, approve, requestChanges, editTask, addFileRef, role, tasks } = useOsStore();
   const [draft, setDraft] = useState("");
   const [fileName, setFileName] = useState("");
   const [fileOpen, setFileOpen] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const mine = waitsForMe(item, previewActor(role)) && !readOnly && !item.workflow;
   const project = getProject(item.projectSlug);
-  const client = project ? getClient(project.clientSlug) : undefined;
+  const client = clientOfTask(item) ?? (project ? getClient(project.clientSlug) : undefined);
   const service = serviceForTask(item);
+  const origin = taskOrigin(item);
+  // Etapas del mismo objeto de origen: las completadas se conservan con su historial.
+  const chain = item.workflow ? chainTasks(tasks, chainBaseOf(item)) : [];
   const deliverables = scopeDeliverables(service);
   const archived = isArchivedTask(item);
   const decision = mine ? (
@@ -348,12 +365,32 @@ export function TaskSidePanel({
       label={`${item.id} ${item.title}`}
       onClose={onClose}
       titleRef={titleRef}
-      heading={<span>{item.id} · {serviceLabel(service)} · {project?.name}<span className={s.srOnly}> · {client?.name}</span></span>}
+      heading={<span>{[client?.name, serviceLabel(service), project?.name].filter(Boolean).join(" · ")}<span className={s.srOnly}> · {item.id}</span></span>}
       footer={decision}
     >
       <h2 className={sc.panelTitle} ref={titleRef} tabIndex={-1}>{item.title}</h2>
+      <p className={s.cellSub} style={{ marginTop: -8 }}>Código interno: {item.id}{item.cycle && item.cycle > 1 ? ` · ${item.cycle}.ª vez en esta etapa` : ""}</p>
 
-      {item.workflow ? <p><Link className={buttonClass("primary")} href={item.workflow.href}>Abrir {item.workflow.kind === "content" ? "contenido" : item.workflow.kind === "paid" ? "pedido de Publicidad digital" : item.workflow.kind === "jornada" ? "jornada" : "pedido de diseño"} vinculado</Link></p> : null}
+      {origin ? (
+        <div className={sc.panelSection} aria-label="Origen de la tarea" style={{ gap: 6 }}>
+          <p className={cx(s.rotulo, s.rotuloInk)}>Origen</p>
+          <p style={{ margin: 0 }}><strong style={{ fontWeight: 600 }}>{origin.kind}:</strong> {origin.label}{origin.stage ? <> · etapa que originó la tarea: «{origin.stage}»</> : null}</p>
+          {origin.href ? <p style={{ margin: 0 }}><ReturnLink className={buttonClass("primary")} href={origin.href}>{originActionLabel(item)}</ReturnLink></p> : null}
+        </div>
+      ) : null}
+      {chain.length > 1 ? (
+        <section className={sc.panelSection} aria-label="Etapas del mismo origen">
+          <p className={cx(s.rotulo, s.rotuloInk)}>Etapas de este origen · {chain.length}</p>
+          <ol className={sc.activity} style={{ listStyle: "decimal", paddingLeft: 20 }}>
+            {chain.map((entry) => (
+              <li key={entry.id} aria-current={entry.id === item.id ? "true" : undefined}>
+                {entry.id === item.id ? <strong style={{ fontWeight: 600 }}>{entry.title}</strong> : <ReturnLink className={s.link} href={moduleTaskHref(entry)}>{entry.title}</ReturnLink>}
+                <span> · {entry.status} · {entry.owner}{entry.completedAt && entry.status === "Hecho" ? ` · completada ${new Date(entry.completedAt).toLocaleDateString("es-AR")}` : ""}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
       {archived ? <p className={s.demoNote} style={{ marginTop: -8 }}><Glyph name="archive" size={14} /> Archivada: completada hace más de {TASK_ARCHIVE_AFTER_DAYS} días.</p> : null}
       {readOnly ? <p className={s.demoNote} style={{ marginTop: -8 }}>Solo lectura: tu rol de vista previa no puede modificar este módulo.</p> : null}
 
@@ -388,7 +425,8 @@ export function TaskSidePanel({
           <span className={s.cellSub}>Responsable</span>
           <select className={cx(s.input, s.inputSm)} value={item.owner} disabled={readOnly || Boolean(item.workflow)} onChange={event => editTask(item.id, { owner: event.target.value }, `asignó la tarea a ${event.target.value}`)}>
             {people.map(person => <option key={person.name}>{person.name}</option>)}
-            {people.some(person => person.name === item.owner) ? null : <option>{item.owner}</option>}
+            <option value={UNASSIGNED_OWNER}>{UNASSIGNED_OWNER}</option>
+            {people.some(person => person.name === item.owner) || item.owner === UNASSIGNED_OWNER ? null : <option>{item.owner}</option>}
           </select>
         </label>
         <label>

@@ -11,7 +11,7 @@ import { Glyph } from "./glyphs";
 import { CURRENT_USER, osClients, osProjects, serviceLabel } from "./os-data";
 import { useOsStore } from "./os-store";
 import { PREVIEW_ROLES, previewActor } from "./preview-roles";
-import { upcomingNotifications } from "./workflow-tasks";
+import { REMINDERS_NOTE, upcomingNotifications } from "./workflow-tasks";
 import { OSToastViewport } from "./overlays";
 import { myApprovals, pendingApprovals } from "./selectors";
 import { cx, OSRestricted, buttonClass } from "./ui";
@@ -152,7 +152,11 @@ function Notifications() {
   const { notifications: saved, role, tasks, localHydrated, markNotificationRead } = useOsStore();
   const [now, setNow] = useState(() => new Date().toISOString());
   useEffect(() => { const timer = setInterval(() => setNow(new Date().toISOString()), 60000); return () => clearInterval(timer); }, []);
-  const generated = localHydrated ? [...saved, ...upcomingNotifications(tasks, now).filter((item) => !saved.some((other) => other.id === item.id))].filter((item) => role === "admin" || item.recipient === previewActor(role)) : [];
+  // Avisos guardados (asignaciones y cambios) + recordatorios de vencimiento calculados ahora. Un id = un aviso: recargar no duplica.
+  const generated = localHydrated ? [...saved, ...upcomingNotifications(tasks, now).filter((item) => !saved.some((other) => other.id === item.id))]
+    .filter((item, index, list) => list.findIndex((other) => other.id === item.id) === index)
+    .filter((item) => role === "admin" || item.recipient === previewActor(role))
+    .sort((a, b) => Number(Boolean(a.readAt)) - Number(Boolean(b.readAt)) || b.at.localeCompare(a.at)) : [];
   const unread = generated.filter((item) => !item.readAt).length;
   const notifications = generated.length ? generated.map((item) => ({ id: item.id, text: item.title, href: item.href, when: new Date(item.at).toLocaleString("es-AR"), strong: item.readAt ? "Leída ·" : "", read: Boolean(item.readAt) })) : [];
   const [open, setOpen] = useState(false);
@@ -172,6 +176,8 @@ function Notifications() {
               <li key={item.id}><Link href={item.href} onClick={() => { markNotificationRead(item.id); setOpen(false); }}>{item.strong ? <strong>{item.strong} </strong> : null}{item.text}<small>{item.when}</small></Link></li>
             ))}
           </ul>
+          <p className={s.popNote}>{REMINDERS_NOTE}</p>
+          <Link className={s.popFoot} href="/v2/mis-tareas" onClick={() => setOpen(false)}>Ver mis tareas</Link>
           <Link className={s.popFoot} href="/v2/inbox" onClick={() => setOpen(false)}>Abrir bandeja de excepciones</Link>
         </div>
       ) : null}
